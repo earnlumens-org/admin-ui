@@ -1,0 +1,42 @@
+.DS_Store
+Thumbs.db
+
+node_modules
+/dist
+/dist-ssr
+
+# Local smoke/adhoc scripts (not committed)
+/scripts
+
+# local env files
+.env
+.env.*
+!.env.example
+
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testing
+/coverage
+
+# Linting
+.eslintcache
+
+# Auto-generated type definitions (Optional: uncomment if these cause merge conflicts)
+# components.d.ts
+# auto-imports.d.ts
+# typed-router.d.ts
