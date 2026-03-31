@@ -1,20 +1,20 @@
 # Admin UI
 
-Frontend administrativo de EarnLumens construido con Vue 3, Vite y Vuetify.
+EarnLumens administrative frontend built with Vue 3, Vite, and Vuetify.
 
-## Requisitos
+## Requirements
 
 - Node.js 20+
 - npm 10+
 
-## Desarrollo local
+## Local Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Scripts útiles
+## Useful Scripts
 
 ```bash
 npm run build
@@ -23,14 +23,14 @@ npm run type-check
 npm run lint
 ```
 
-## Estructura base
+## Base Structure
 
-- `src/` aplicación principal
-- `src/pages/` vistas y páginas
-- `src/components/` componentes reutilizables
-- `src/router/` enrutamiento
-- `src/stores/` estado global
+- `src/` main application
+- `src/pages/` views and pages
+- `src/components/` reusable components
+- `src/router/` routing
+- `src/stores/` global state
 
-## Remoto
+## Remote
 
-Repositorio objetivo: `https://github.com/earnlumens-org/admin-ui.git`
+Target repository: `https://github.com/earnlumens-org/admin-ui.git`
