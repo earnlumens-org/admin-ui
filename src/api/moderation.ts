@@ -61,6 +61,14 @@ export interface ModerationStats {
   rejected: number
 }
 
+export interface ContentUrlResponse {
+  type: string
+  hasContent: boolean
+  contentUrl?: string
+  contentType?: string
+  fileName?: string
+}
+
 export async function fetchEntries (
   tenantId: string,
   tab: string,
@@ -163,6 +171,18 @@ export async function fetchTenantIds (): Promise<string[]> {
   })
   if (!res.ok) {
     throw new Error('Failed to fetch tenants')
+  }
+  return res.json()
+}
+
+export async function fetchContentUrl (tenantId: string, entryId: string): Promise<ContentUrlResponse> {
+  const params = new URLSearchParams({ tenantId })
+  const res = await fetch(`${API_BASE_URL}/api/moderation/entries/${entryId}/content-url?${params}`, {
+    credentials: 'include',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) {
+    throw new Error('Failed to fetch content URL')
   }
   return res.json()
 }

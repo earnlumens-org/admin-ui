@@ -213,14 +213,76 @@
         </v-toolbar>
 
         <div class="pa-4">
-          <!-- Thumbnail -->
-          <v-img
-            v-if="detailEntry.thumbnailR2Key"
-            :src="cdnUrl(detailEntry.thumbnailR2Key)"
-            :aspect-ratio="16/9"
-            cover
-            class="rounded mb-4"
-          />
+          <!-- Content player -->
+          <div class="mb-4">
+            <!-- Loading content URL -->
+            <div v-if="contentLoading" class="d-flex align-center justify-center bg-surface-light rounded" style="aspect-ratio: 16/9">
+              <v-progress-circular indeterminate size="28" />
+            </div>
+
+            <!-- Video player -->
+            <video
+              v-else-if="contentInfo?.hasContent && isVideoContent"
+              :src="contentInfo.contentUrl"
+              :poster="detailEntry.thumbnailR2Key ? cdnUrl(detailEntry.thumbnailR2Key) : undefined"
+              controls
+              crossorigin="anonymous"
+              playsinline
+              class="w-100 rounded"
+              style="max-height: 320px; background: #000"
+            />
+
+            <!-- Audio player -->
+            <div v-else-if="contentInfo?.hasContent && isAudioContent" class="rounded bg-surface-light pa-3">
+              <v-img
+                v-if="detailEntry.thumbnailR2Key"
+                :src="cdnUrl(detailEntry.thumbnailR2Key)"
+                :aspect-ratio="16/9"
+                cover
+                class="rounded mb-3"
+              />
+              <audio
+                :src="contentInfo.contentUrl"
+                controls
+                crossorigin="anonymous"
+                class="w-100"
+              />
+            </div>
+
+            <!-- Image viewer -->
+            <v-img
+              v-else-if="contentInfo?.hasContent && isImageContent"
+              :src="contentInfo.contentUrl"
+              :aspect-ratio="16/9"
+              contain
+              class="rounded bg-surface-light"
+              style="max-height: 400px"
+            />
+
+            <!-- Fallback: thumbnail only -->
+            <v-img
+              v-else-if="detailEntry.thumbnailR2Key"
+              :src="cdnUrl(detailEntry.thumbnailR2Key)"
+              :aspect-ratio="16/9"
+              cover
+              class="rounded"
+            />
+
+            <!-- No content -->
+            <div
+              v-else
+              class="d-flex flex-column align-center justify-center bg-surface-light rounded pa-4"
+              style="aspect-ratio: 16/9"
+            >
+              <v-icon color="medium-emphasis" size="32">{{ typeIcon(detailEntry.type) }}</v-icon>
+              <span class="text-caption text-medium-emphasis mt-2">No preview available</span>
+            </div>
+
+            <!-- Content error -->
+            <div v-if="contentError" class="text-caption text-error mt-1">
+              {{ contentError }}
+            </div>
+          </div>
 
           <div class="text-h6 mb-2">{{ detailEntry.title }}</div>
 
@@ -379,11 +441,13 @@
     fetchEntries,
     fetchModerationStats,
     fetchTenantIds,
+    fetchContentUrl,
     approveEntry,
     rejectEntry,
     suspendEntry,
     type EntryDto,
     type ModerationStats,
+    type ContentUrlResponse,
   } from '@/api/moderation'
 
   const { width: windowWidth } = useWindowSize()
@@ -402,6 +466,19 @@
   // Detail drawer
   const detailDrawer = ref(false)
   const detailEntry = ref<EntryDto | null>(null)
+  const contentInfo = ref<ContentUrlResponse | null>(null)
+  const contentLoading = ref(false)
+  const contentError = ref('')
+
+  const isVideoContent = computed(() =>
+    contentInfo.value?.contentType?.startsWith('video/') || contentInfo.value?.type === 'VIDEO',
+  )
+  const isAudioContent = computed(() =>
+    contentInfo.value?.contentType?.startsWith('audio/') || contentInfo.value?.type === 'AUDIO',
+  )
+  const isImageContent = computed(() =>
+    contentInfo.value?.contentType?.startsWith('image/') || contentInfo.value?.type === 'IMAGE',
+  )
 
   // Action dialogs
   const rejectDialog = ref(false)
@@ -531,6 +608,23 @@
   function openDetail (entry: EntryDto) {
     detailEntry.value = entry
     detailDrawer.value = true
+    contentInfo.value = null
+    contentError.value = ''
+    loadContentUrl(entry)
+  }
+
+  async function loadContentUrl (entry: EntryDto) {
+    if (entry.type === 'RESOURCE') {
+      return
+    }
+    contentLoading.value = true
+    try {
+      contentInfo.value = await fetchContentUrl(selectedTenant.value, entry.id)
+    } catch {
+      contentError.value = 'Could not load content'
+    } finally {
+      contentLoading.value = false
+    }
   }
 
   async function handleApprove (entry: EntryDto) {
