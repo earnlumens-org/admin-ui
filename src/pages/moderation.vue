@@ -2,30 +2,641 @@
   <v-container class="pa-4 pa-sm-6" fluid>
     <v-breadcrumbs class="px-0 pt-0" :items="[{ title: 'earnlumens', disabled: true }, { title: 'moderation', disabled: true }]" />
 
-    <div class="text-h6 mb-1">Moderation</div>
-    <div class="text-body-2 text-medium-emphasis mb-4">
-      Review and moderate content entries
+    <div class="d-flex flex-column flex-sm-row align-sm-center justify-space-between mb-1">
+      <div>
+        <div class="text-h6">Moderation</div>
+        <div class="text-body-2 text-medium-emphasis mb-4 mb-sm-0">
+          Review and moderate content entries
+        </div>
+      </div>
+      <v-select
+        v-model="selectedTenant"
+        :items="tenantOptions"
+        item-title="title"
+        item-value="value"
+        density="compact"
+        variant="outlined"
+        hide-details
+        class="tenant-select"
+        @update:model-value="loadEntries"
+      />
+    </div>
+
+    <!-- Stats chips -->
+    <div class="d-flex flex-wrap ga-2 mb-4" v-if="stats">
+      <v-chip size="small" variant="tonal" color="warning" prepend-icon="mdi-clock-outline">
+        {{ stats.inReview }} in review
+      </v-chip>
+      <v-chip size="small" variant="tonal" color="success" prepend-icon="mdi-check-circle-outline">
+        {{ stats.published }} published
+      </v-chip>
+      <v-chip size="small" variant="tonal" color="error" prepend-icon="mdi-cancel">
+        {{ stats.suspended }} suspended
+      </v-chip>
+      <v-chip size="small" variant="tonal" prepend-icon="mdi-close-circle-outline">
+        {{ stats.rejected }} rejected
+      </v-chip>
     </div>
 
     <v-divider class="mb-4" />
 
-    <v-tabs v-model="tab" class="mb-4">
-      <v-tab value="in-review">In Review</v-tab>
+    <v-tabs v-model="tab" class="mb-4" @update:model-value="onTabChange">
+      <v-tab value="in-review">
+        In Review
+        <v-badge v-if="stats && stats.inReview > 0" :content="stats.inReview" color="warning" inline class="ml-1" />
+      </v-tab>
       <v-tab value="all">All Entries</v-tab>
     </v-tabs>
 
-    <v-card class="pa-8 text-center" variant="tonal">
+    <!-- Status filter for "All Entries" tab -->
+    <div v-if="tab === 'all'" class="d-flex flex-wrap ga-2 mb-4">
+      <v-chip
+        v-for="s in statusFilters" :key="s.value"
+        :variant="statusFilter === s.value ? 'flat' : 'outlined'"
+        :color="s.color"
+        size="small"
+        @click="statusFilter = s.value; loadEntries()"
+      >
+        {{ s.label }}
+      </v-chip>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="loading" class="d-flex justify-center py-12">
+      <v-progress-circular indeterminate />
+    </div>
+
+    <!-- Empty state -->
+    <v-card v-else-if="entries.length === 0" class="pa-8 text-center" variant="tonal">
       <v-icon color="medium-emphasis" size="48">mdi-file-check-outline</v-icon>
-      <div class="text-body-1 mt-4">No entries to review</div>
+      <div class="text-body-1 mt-4">
+        {{ tab === 'in-review' ? 'No entries to review' : 'No entries found' }}
+      </div>
       <div class="text-body-2 text-medium-emphasis mt-1">
-        Entries submitted for review will appear here.
+        {{ tab === 'in-review'
+          ? 'Entries submitted for review will appear here.'
+          : 'Try changing the status filter or tenant.'
+        }}
       </div>
     </v-card>
+
+    <!-- Entry list -->
+    <div v-else class="d-flex flex-column ga-3">
+      <v-card
+        v-for="entry in entries" :key="entry.id"
+        variant="outlined"
+        class="entry-card"
+      >
+        <div class="d-flex flex-column flex-sm-row">
+          <!-- Thumbnail -->
+          <div class="entry-thumb flex-shrink-0" @click="openDetail(entry)">
+            <v-img
+              v-if="entry.thumbnailR2Key"
+              :src="cdnUrl(entry.thumbnailR2Key)"
+              :aspect-ratio="16/9"
+              cover
+              class="rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0"
+            >
+              <template #placeholder>
+                <div class="d-flex align-center justify-center fill-height bg-surface-light">
+                  <v-icon color="medium-emphasis">mdi-image-outline</v-icon>
+                </div>
+              </template>
+              <!-- Duration badge -->
+              <div v-if="entry.durationSec" class="entry-duration">
+                {{ formatDuration(entry.durationSec) }}
+              </div>
+            </v-img>
+            <div v-else class="d-flex align-center justify-center fill-height bg-surface-light rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0">
+              <v-icon color="medium-emphasis" size="32">{{ typeIcon(entry.type) }}</v-icon>
+            </div>
+          </div>
+
+          <!-- Content -->
+          <div class="flex-grow-1 pa-3 pa-sm-4 d-flex flex-column" style="min-width: 0">
+            <div class="d-flex align-start justify-space-between ga-2">
+              <div style="min-width: 0; flex: 1">
+                <div class="text-body-1 font-weight-medium text-truncate cursor-pointer" @click="openDetail(entry)">
+                  {{ entry.title }}
+                </div>
+                <div class="d-flex align-center flex-wrap ga-2 mt-1">
+                  <span class="text-body-2 text-medium-emphasis">
+                    @{{ entry.authorUsername || 'unknown' }}
+                  </span>
+                  <v-chip :color="typeColor(entry.type)" size="x-small" variant="tonal" label>
+                    {{ entry.type }}
+                  </v-chip>
+                  <v-chip :color="statusColor(entry.status)" size="x-small" variant="tonal" label>
+                    {{ entry.status }}
+                  </v-chip>
+                  <v-chip v-if="entry.paid" size="x-small" variant="tonal" color="info" label>
+                    {{ formatPrice(entry) }}
+                  </v-chip>
+                </div>
+              </div>
+
+              <!-- Actions menu -->
+              <v-menu>
+                <template #activator="{ props }">
+                  <v-btn v-bind="props" icon="mdi-dots-vertical" variant="text" size="small" />
+                </template>
+                <v-list density="compact">
+                  <v-list-item
+                    prepend-icon="mdi-eye-outline"
+                    title="View details"
+                    @click="openDetail(entry)"
+                  />
+                  <v-list-item
+                    v-if="entry.status === 'IN_REVIEW'"
+                    prepend-icon="mdi-check"
+                    title="Approve"
+                    @click="handleApprove(entry)"
+                  />
+                  <v-list-item
+                    v-if="entry.status === 'IN_REVIEW'"
+                    prepend-icon="mdi-close"
+                    title="Reject..."
+                    @click="openRejectDialog(entry)"
+                  />
+                  <v-list-item
+                    v-if="entry.status === 'PUBLISHED' || entry.status === 'APPROVED'"
+                    prepend-icon="mdi-cancel"
+                    title="Suspend..."
+                    @click="openSuspendDialog(entry)"
+                  />
+                </v-list>
+              </v-menu>
+            </div>
+
+            <!-- Meta row -->
+            <div class="d-flex align-center flex-wrap ga-2 mt-auto pt-2">
+              <span class="text-caption text-medium-emphasis">
+                {{ formatDate(entry.createdAt) }}
+              </span>
+              <span v-if="entry.tenantId !== selectedTenant" class="text-caption text-medium-emphasis">
+                · {{ entry.tenantId }}
+              </span>
+              <span v-if="entry.contentLanguage" class="text-caption text-medium-emphasis">
+                · {{ entry.contentLanguage.toUpperCase() }}
+              </span>
+              <span class="text-caption text-medium-emphasis">
+                · {{ entry.viewCount.toLocaleString() }} views
+              </span>
+            </div>
+          </div>
+        </div>
+      </v-card>
+
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="d-flex justify-center mt-2">
+        <v-pagination
+          v-model="currentPage"
+          :length="totalPages"
+          :total-visible="5"
+          density="compact"
+          @update:model-value="loadEntries"
+        />
+      </div>
+    </div>
+
+    <!-- Detail drawer -->
+    <v-navigation-drawer
+      v-model="detailDrawer"
+      location="right"
+      temporary
+      :width="Math.min(480, windowWidth - 16)"
+    >
+      <template v-if="detailEntry">
+        <v-toolbar density="compact" color="transparent">
+          <v-toolbar-title class="text-body-1">Entry Details</v-toolbar-title>
+          <v-btn icon="mdi-close" variant="text" @click="detailDrawer = false" />
+        </v-toolbar>
+
+        <div class="pa-4">
+          <!-- Thumbnail -->
+          <v-img
+            v-if="detailEntry.thumbnailR2Key"
+            :src="cdnUrl(detailEntry.thumbnailR2Key)"
+            :aspect-ratio="16/9"
+            cover
+            class="rounded mb-4"
+          />
+
+          <div class="text-h6 mb-2">{{ detailEntry.title }}</div>
+
+          <!-- Info table -->
+          <v-table density="compact" class="mb-4">
+            <tbody>
+              <tr><td class="text-medium-emphasis" style="width: 120px">Author</td><td>@{{ detailEntry.authorUsername || '—' }}</td></tr>
+              <tr><td class="text-medium-emphasis">Status</td><td><v-chip :color="statusColor(detailEntry.status)" size="x-small" variant="tonal" label>{{ detailEntry.status }}</v-chip></td></tr>
+              <tr><td class="text-medium-emphasis">Type</td><td><v-chip :color="typeColor(detailEntry.type)" size="x-small" variant="tonal" label>{{ detailEntry.type }}</v-chip></td></tr>
+              <tr><td class="text-medium-emphasis">Tenant</td><td>{{ detailEntry.tenantId }}</td></tr>
+              <tr><td class="text-medium-emphasis">Visibility</td><td>{{ detailEntry.visibility }}</td></tr>
+              <tr><td class="text-medium-emphasis">Created</td><td>{{ formatDate(detailEntry.createdAt) }}</td></tr>
+              <tr v-if="detailEntry.publishedAt"><td class="text-medium-emphasis">Published</td><td>{{ formatDate(detailEntry.publishedAt) }}</td></tr>
+              <tr><td class="text-medium-emphasis">Views</td><td>{{ detailEntry.viewCount.toLocaleString() }}</td></tr>
+              <tr v-if="detailEntry.durationSec"><td class="text-medium-emphasis">Duration</td><td>{{ formatDuration(detailEntry.durationSec) }}</td></tr>
+              <tr v-if="detailEntry.contentLanguage"><td class="text-medium-emphasis">Language</td><td>{{ detailEntry.contentLanguage.toUpperCase() }}</td></tr>
+              <tr v-if="detailEntry.paid"><td class="text-medium-emphasis">Price</td><td>{{ formatPrice(detailEntry) }}</td></tr>
+              <tr v-if="detailEntry.pricingMode"><td class="text-medium-emphasis">Pricing Mode</td><td>{{ detailEntry.pricingMode }}</td></tr>
+              <tr v-if="detailEntry.hlsReady"><td class="text-medium-emphasis">HLS</td><td><v-chip size="x-small" color="success" variant="tonal" label>Ready</v-chip></td></tr>
+              <tr><td class="text-medium-emphasis">Entry ID</td><td class="text-caption" style="word-break: break-all">{{ detailEntry.id }}</td></tr>
+              <tr><td class="text-medium-emphasis">User ID</td><td class="text-caption" style="word-break: break-all">{{ detailEntry.userId }}</td></tr>
+            </tbody>
+          </v-table>
+
+          <!-- Tags -->
+          <div v-if="detailEntry.tags?.length" class="mb-4">
+            <div class="text-caption text-medium-emphasis mb-1">Tags</div>
+            <div class="d-flex flex-wrap ga-1">
+              <v-chip v-for="t in detailEntry.tags" :key="t" size="x-small" variant="outlined" label>
+                {{ t }}
+              </v-chip>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div v-if="detailEntry.description" class="mb-4">
+            <div class="text-caption text-medium-emphasis mb-1">Description</div>
+            <div class="text-body-2">{{ detailEntry.description }}</div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex flex-wrap ga-2 mt-4">
+            <v-btn
+              v-if="detailEntry.status === 'IN_REVIEW'"
+              color="success"
+              variant="flat"
+              prepend-icon="mdi-check"
+              @click="handleApprove(detailEntry)"
+              :loading="actionLoading"
+            >
+              Approve
+            </v-btn>
+            <v-btn
+              v-if="detailEntry.status === 'IN_REVIEW'"
+              color="error"
+              variant="outlined"
+              prepend-icon="mdi-close"
+              @click="openRejectDialog(detailEntry)"
+            >
+              Reject
+            </v-btn>
+            <v-btn
+              v-if="detailEntry.status === 'PUBLISHED' || detailEntry.status === 'APPROVED'"
+              color="warning"
+              variant="outlined"
+              prepend-icon="mdi-cancel"
+              @click="openSuspendDialog(detailEntry)"
+            >
+              Suspend
+            </v-btn>
+          </div>
+        </div>
+      </template>
+    </v-navigation-drawer>
+
+    <!-- Reject dialog -->
+    <v-dialog v-model="rejectDialog" max-width="440">
+      <v-card>
+        <v-card-title class="text-h6">Reject Entry</v-card-title>
+        <v-card-text>
+          <div class="text-body-2 text-medium-emphasis mb-3">
+            Provide a reason for rejecting "{{ actionTarget?.title }}".
+            The creator will see this justification.
+          </div>
+          <v-textarea
+            v-model="justification"
+            label="Justification"
+            variant="outlined"
+            rows="3"
+            :rules="[v => !!v?.trim() || 'Justification is required']"
+            counter
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="rejectDialog = false">Cancel</v-btn>
+          <v-btn
+            color="error"
+            variant="flat"
+            :disabled="!justification?.trim()"
+            :loading="actionLoading"
+            @click="handleReject"
+          >
+            Reject
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Suspend dialog -->
+    <v-dialog v-model="suspendDialog" max-width="440">
+      <v-card>
+        <v-card-title class="text-h6">Suspend Entry</v-card-title>
+        <v-card-text>
+          <div class="text-body-2 text-medium-emphasis mb-3">
+            Provide a reason for suspending "{{ actionTarget?.title }}".
+            This will remove it from public visibility.
+          </div>
+          <v-textarea
+            v-model="justification"
+            label="Justification"
+            variant="outlined"
+            rows="3"
+            :rules="[v => !!v?.trim() || 'Justification is required']"
+            counter
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="suspendDialog = false">Cancel</v-btn>
+          <v-btn
+            color="warning"
+            variant="flat"
+            :disabled="!justification?.trim()"
+            :loading="actionLoading"
+            @click="handleSuspend"
+          >
+            Suspend
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar -->
+    <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
+      {{ snackbarText }}
+    </v-snackbar>
   </v-container>
 </template>
 
 <script lang="ts" setup>
-  import { ref } from 'vue'
+  import { ref, computed, onMounted } from 'vue'
+  import { useWindowSize } from '@/composables/useWindowSize'
+  import { CDN_BASE_URL } from '@/config/env'
+  import {
+    fetchEntries,
+    fetchModerationStats,
+    fetchTenantIds,
+    approveEntry,
+    rejectEntry,
+    suspendEntry,
+    type EntryDto,
+    type ModerationStats,
+  } from '@/api/moderation'
 
+  const { width: windowWidth } = useWindowSize()
+
+  // State
   const tab = ref('in-review')
+  const selectedTenant = ref('earnlumens')
+  const tenantIds = ref<string[]>([])
+  const entries = ref<EntryDto[]>([])
+  const stats = ref<ModerationStats | null>(null)
+  const loading = ref(false)
+  const currentPage = ref(1)
+  const totalPages = ref(0)
+  const statusFilter = ref('')
+
+  // Detail drawer
+  const detailDrawer = ref(false)
+  const detailEntry = ref<EntryDto | null>(null)
+
+  // Action dialogs
+  const rejectDialog = ref(false)
+  const suspendDialog = ref(false)
+  const actionTarget = ref<EntryDto | null>(null)
+  const justification = ref('')
+  const actionLoading = ref(false)
+
+  // Snackbar
+  const snackbar = ref(false)
+  const snackbarText = ref('')
+  const snackbarColor = ref('')
+
+  const statusFilters = [
+    { value: '', label: 'All', color: undefined },
+    { value: 'IN_REVIEW', label: 'In Review', color: 'warning' },
+    { value: 'APPROVED', label: 'Approved', color: 'info' },
+    { value: 'PUBLISHED', label: 'Published', color: 'success' },
+    { value: 'REJECTED', label: 'Rejected', color: undefined },
+    { value: 'SUSPENDED', label: 'Suspended', color: 'error' },
+  ]
+
+  const tenantOptions = computed(() => {
+    const opts = [{ title: 'All tenants', value: '_all' }]
+    for (const t of tenantIds.value) {
+      opts.push({ title: t === 'earnlumens' ? 'earnlumens (root)' : t, value: t })
+    }
+    if (!tenantIds.value.includes('earnlumens')) {
+      opts.splice(1, 0, { title: 'earnlumens (root)', value: 'earnlumens' })
+    }
+    return opts
+  })
+
+  function cdnUrl (r2Key: string): string {
+    return `${CDN_BASE_URL}/${r2Key}`
+  }
+
+  function typeIcon (type: string): string {
+    switch (type) {
+      case 'VIDEO': return 'mdi-video-outline'
+      case 'AUDIO': return 'mdi-music-note'
+      case 'IMAGE': return 'mdi-image-outline'
+      case 'RESOURCE': return 'mdi-file-document-outline'
+      default: return 'mdi-file-outline'
+    }
+  }
+
+  function typeColor (type: string): string | undefined {
+    switch (type) {
+      case 'VIDEO': return 'purple'
+      case 'AUDIO': return 'deep-orange'
+      case 'IMAGE': return 'teal'
+      case 'RESOURCE': return 'blue-grey'
+      default: return undefined
+    }
+  }
+
+  function statusColor (status: string): string | undefined {
+    switch (status) {
+      case 'IN_REVIEW': return 'warning'
+      case 'APPROVED': return 'info'
+      case 'PUBLISHED': return 'success'
+      case 'REJECTED': return undefined
+      case 'SUSPENDED': return 'error'
+      default: return undefined
+    }
+  }
+
+  function formatDate (iso: string): string {
+    if (!iso) return '—'
+    return new Date(iso).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  function formatDuration (sec: number): string {
+    const m = Math.floor(sec / 60)
+    const s = sec % 60
+    return `${m}:${String(s).padStart(2, '0')}`
+  }
+
+  function formatPrice (entry: EntryDto): string {
+    if (entry.priceUsd != null) return `$${entry.priceUsd}`
+    if (entry.priceXlm != null) return `${entry.priceXlm} XLM`
+    return 'Paid'
+  }
+
+  function showSnackbar (text: string, color: string) {
+    snackbarText.value = text
+    snackbarColor.value = color
+    snackbar.value = true
+  }
+
+  async function loadEntries () {
+    loading.value = true
+    try {
+      const [pageData, statsData] = await Promise.all([
+        fetchEntries(
+          selectedTenant.value,
+          tab.value,
+          currentPage.value - 1,
+          20,
+          tab.value === 'all' ? statusFilter.value || undefined : undefined,
+        ),
+        fetchModerationStats(selectedTenant.value),
+      ])
+      entries.value = pageData.content
+      totalPages.value = pageData.totalPages
+      stats.value = statsData
+    } catch {
+      showSnackbar('Failed to load entries', 'error')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function onTabChange () {
+    currentPage.value = 1
+    statusFilter.value = ''
+    loadEntries()
+  }
+
+  function openDetail (entry: EntryDto) {
+    detailEntry.value = entry
+    detailDrawer.value = true
+  }
+
+  async function handleApprove (entry: EntryDto) {
+    actionLoading.value = true
+    try {
+      await approveEntry(selectedTenant.value, entry.id)
+      showSnackbar('Entry approved', 'success')
+      detailDrawer.value = false
+      loadEntries()
+    } catch (e: any) {
+      showSnackbar(e.message, 'error')
+    } finally {
+      actionLoading.value = false
+    }
+  }
+
+  function openRejectDialog (entry: EntryDto) {
+    actionTarget.value = entry
+    justification.value = ''
+    rejectDialog.value = true
+  }
+
+  async function handleReject () {
+    if (!actionTarget.value || !justification.value.trim()) return
+    actionLoading.value = true
+    try {
+      await rejectEntry(selectedTenant.value, actionTarget.value.id, justification.value.trim())
+      showSnackbar('Entry rejected', 'success')
+      rejectDialog.value = false
+      detailDrawer.value = false
+      loadEntries()
+    } catch (e: any) {
+      showSnackbar(e.message, 'error')
+    } finally {
+      actionLoading.value = false
+    }
+  }
+
+  function openSuspendDialog (entry: EntryDto) {
+    actionTarget.value = entry
+    justification.value = ''
+    suspendDialog.value = true
+  }
+
+  async function handleSuspend () {
+    if (!actionTarget.value || !justification.value.trim()) return
+    actionLoading.value = true
+    try {
+      await suspendEntry(selectedTenant.value, actionTarget.value.id, justification.value.trim())
+      showSnackbar('Entry suspended', 'warning')
+      suspendDialog.value = false
+      detailDrawer.value = false
+      loadEntries()
+    } catch (e: any) {
+      showSnackbar(e.message, 'error')
+    } finally {
+      actionLoading.value = false
+    }
+  }
+
+  onMounted(async () => {
+    try {
+      tenantIds.value = await fetchTenantIds()
+    } catch {
+      // If tenants fail to load, we still default to earnlumens
+    }
+    loadEntries()
+  })
 </script>
+
+<style scoped>
+  .tenant-select {
+    max-width: 220px;
+    min-width: 180px;
+  }
+
+  .entry-card:hover {
+    border-color: rgb(var(--v-theme-primary));
+  }
+
+  .entry-thumb {
+    width: 100%;
+    height: 140px;
+    cursor: pointer;
+  }
+
+  @media (min-width: 600px) {
+    .entry-thumb {
+      width: 200px;
+      min-width: 200px;
+      height: auto;
+    }
+  }
+
+  .entry-duration {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    background: rgba(0, 0, 0, 0.75);
+    color: white;
+    font-size: 11px;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .cursor-pointer {
+    cursor: pointer;
+  }
+</style>
