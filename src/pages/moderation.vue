@@ -294,9 +294,9 @@
               {{ contentError }}
             </div>
 
-            <!-- Download button -->
+            <!-- Download button — only for RESOURCE attachments, not for paid media -->
             <v-btn
-              v-if="contentInfo?.hasContent && contentInfo?.contentUrl"
+              v-if="detailEntry?.type === 'RESOURCE' && contentInfo?.hasContent && contentInfo?.contentUrl"
               :href="contentInfo.contentUrl"
               :download="contentInfo.fileName || 'download'"
               target="_blank"
@@ -643,11 +643,6 @@
   }
 
   async function loadContentUrl (entry: EntryDto) {
-    if (entry.type === 'RESOURCE') {
-      // RESOURCE entries have inline resourceContent, no R2 file
-      contentInfo.value = { type: 'RESOURCE', hasContent: !!entry.resourceContent }
-      return
-    }
     contentLoading.value = true
     try {
       contentInfo.value = await fetchContentUrl(selectedTenant.value, entry.id)
