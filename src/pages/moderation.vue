@@ -293,6 +293,20 @@
             <div v-if="contentError" class="text-caption text-error mt-1">
               {{ contentError }}
             </div>
+
+            <!-- Download button -->
+            <v-btn
+              v-if="contentInfo?.hasContent && contentInfo?.contentUrl"
+              :href="contentInfo.contentUrl"
+              :download="contentInfo.fileName || 'download'"
+              target="_blank"
+              variant="tonal"
+              size="small"
+              prepend-icon="mdi-download"
+              class="mt-2"
+            >
+              Download {{ contentInfo.fileName || 'file' }}
+            </v-btn>
           </div>
 
           <div class="text-h6 mb-2">{{ detailEntry.title }}</div>
