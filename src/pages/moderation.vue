@@ -11,32 +11,32 @@
       </div>
       <v-select
         v-model="selectedTenant"
-        :items="tenantOptions"
+        class="tenant-select"
+        density="compact"
+        hide-details
         item-title="title"
         item-value="value"
-        density="compact"
+        :items="tenantOptions"
         variant="outlined"
-        hide-details
-        class="tenant-select"
         @update:model-value="loadEntries"
       />
     </div>
 
     <!-- Stats chips -->
-    <div class="d-flex flex-wrap ga-2 mb-4" v-if="stats">
-      <v-chip size="small" variant="tonal" color="warning" prepend-icon="mdi-clock-outline">
+    <div v-if="stats" class="d-flex flex-wrap ga-2 mb-4">
+      <v-chip color="warning" prepend-icon="mdi-clock-outline" size="small" variant="tonal">
         {{ stats.inReview }} in review
       </v-chip>
-      <v-chip size="small" variant="tonal" color="success" prepend-icon="mdi-check-circle-outline">
+      <v-chip color="success" prepend-icon="mdi-check-circle-outline" size="small" variant="tonal">
         {{ stats.published }} published
       </v-chip>
-      <v-chip size="small" variant="tonal" color="error" prepend-icon="mdi-cancel">
+      <v-chip color="error" prepend-icon="mdi-cancel" size="small" variant="tonal">
         {{ stats.suspended }} suspended
       </v-chip>
-      <v-chip size="small" variant="tonal" prepend-icon="mdi-close-circle-outline">
+      <v-chip prepend-icon="mdi-close-circle-outline" size="small" variant="tonal">
         {{ stats.rejected }} rejected
       </v-chip>
-      <v-chip size="small" variant="tonal" color="grey" prepend-icon="mdi-archive-outline">
+      <v-chip color="grey" prepend-icon="mdi-archive-outline" size="small" variant="tonal">
         {{ stats.archived }} archived
       </v-chip>
     </div>
@@ -46,7 +46,13 @@
     <v-tabs v-model="tab" class="mb-4" @update:model-value="onTabChange">
       <v-tab value="in-review">
         In Review
-        <v-badge v-if="stats && stats.inReview > 0" :content="stats.inReview" color="warning" inline class="ml-1" />
+        <v-badge
+          v-if="stats && stats.inReview > 0"
+          class="ml-1"
+          color="warning"
+          :content="stats.inReview"
+          inline
+        />
       </v-tab>
       <v-tab value="all">All Entries</v-tab>
     </v-tabs>
@@ -54,10 +60,11 @@
     <!-- Status filter for "All Entries" tab -->
     <div v-if="tab === 'all'" class="d-flex flex-wrap ga-2 mb-4">
       <v-chip
-        v-for="s in statusFilters" :key="s.value"
-        :variant="statusFilter === s.value ? 'flat' : 'outlined'"
+        v-for="s in statusFilters"
+        :key="s.value"
         :color="s.color"
         size="small"
+        :variant="statusFilter === s.value ? 'flat' : 'outlined'"
         @click="statusFilter = s.value; loadEntries()"
       >
         {{ s.label }}
@@ -86,19 +93,20 @@
     <!-- Entry list -->
     <div v-else class="d-flex flex-column ga-3">
       <v-card
-        v-for="entry in entries" :key="entry.id"
-        variant="outlined"
+        v-for="entry in entries"
+        :key="entry.id"
         class="entry-card"
+        variant="outlined"
       >
         <div class="d-flex flex-column flex-sm-row">
           <!-- Thumbnail -->
           <div class="entry-thumb flex-shrink-0" @click="openDetail(entry)">
             <v-img
               v-if="entry.thumbnailR2Key"
-              :src="cdnUrl(entry.thumbnailR2Key)"
               :aspect-ratio="16/9"
-              cover
               class="rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0"
+              cover
+              :src="cdnUrl(entry.thumbnailR2Key)"
             >
               <template #placeholder>
                 <div class="d-flex align-center justify-center fill-height bg-surface-light">
@@ -126,13 +134,19 @@
                   <span class="text-body-2 text-medium-emphasis">
                     @{{ entry.authorUsername || 'unknown' }}
                   </span>
-                  <v-chip :color="typeColor(entry.type)" size="x-small" variant="tonal" label>
+                  <v-chip :color="typeColor(entry.type)" label size="x-small" variant="tonal">
                     {{ entry.type }}
                   </v-chip>
-                  <v-chip :color="statusColor(entry.status)" size="x-small" variant="tonal" label>
+                  <v-chip :color="statusColor(entry.status)" label size="x-small" variant="tonal">
                     {{ entry.status }}
                   </v-chip>
-                  <v-chip v-if="entry.paid" size="x-small" variant="tonal" color="info" label>
+                  <v-chip
+                    v-if="entry.paid"
+                    color="info"
+                    label
+                    size="x-small"
+                    variant="tonal"
+                  >
                     {{ formatPrice(entry) }}
                   </v-chip>
                 </div>
@@ -141,7 +155,7 @@
               <!-- Actions menu -->
               <v-menu>
                 <template #activator="{ props }">
-                  <v-btn v-bind="props" icon="mdi-dots-vertical" variant="text" size="small" />
+                  <v-btn v-bind="props" icon="mdi-dots-vertical" size="small" variant="text" />
                 </template>
                 <v-list density="compact">
                   <v-list-item
@@ -194,9 +208,9 @@
       <div v-if="totalPages > 1" class="d-flex justify-center mt-2">
         <v-pagination
           v-model="currentPage"
+          density="compact"
           :length="totalPages"
           :total-visible="5"
-          density="compact"
           @update:model-value="loadEntries"
         />
       </div>
@@ -210,7 +224,7 @@
       :width="Math.min(480, windowWidth - 16)"
     >
       <template v-if="detailEntry">
-        <v-toolbar density="compact" color="transparent">
+        <v-toolbar color="transparent" density="compact">
           <v-toolbar-title class="text-body-1">Entry Details</v-toolbar-title>
           <v-btn icon="mdi-close" variant="text" @click="detailDrawer = false" />
         </v-toolbar>
@@ -226,12 +240,12 @@
             <!-- Video player -->
             <video
               v-else-if="contentInfo?.hasContent && isVideoContent"
-              :src="contentInfo.contentUrl"
-              :poster="detailEntry.thumbnailR2Key ? cdnUrl(detailEntry.thumbnailR2Key) : undefined"
+              class="w-100 rounded"
               controls
               crossorigin="anonymous"
               playsinline
-              class="w-100 rounded"
+              :poster="detailEntry.thumbnailR2Key ? cdnUrl(detailEntry.thumbnailR2Key) : undefined"
+              :src="contentInfo.contentUrl"
               style="max-height: 320px; background: #000"
             />
 
@@ -239,26 +253,26 @@
             <div v-else-if="contentInfo?.hasContent && isAudioContent" class="rounded bg-surface-light pa-3">
               <v-img
                 v-if="detailEntry.thumbnailR2Key"
-                :src="cdnUrl(detailEntry.thumbnailR2Key)"
                 :aspect-ratio="16/9"
-                cover
                 class="rounded mb-3"
+                cover
+                :src="cdnUrl(detailEntry.thumbnailR2Key)"
               />
               <audio
-                :src="contentInfo.contentUrl"
+                class="w-100"
                 controls
                 crossorigin="anonymous"
-                class="w-100"
+                :src="contentInfo.contentUrl"
               />
             </div>
 
             <!-- Image viewer -->
             <v-img
               v-else-if="contentInfo?.hasContent && isImageContent"
-              :src="contentInfo.contentUrl"
               :aspect-ratio="16/9"
-              contain
               class="rounded bg-surface-light"
+              contain
+              :src="contentInfo.contentUrl"
               style="max-height: 400px"
             />
 
@@ -273,10 +287,10 @@
             <!-- Fallback: thumbnail only -->
             <v-img
               v-else-if="detailEntry.thumbnailR2Key"
-              :src="cdnUrl(detailEntry.thumbnailR2Key)"
               :aspect-ratio="16/9"
-              cover
               class="rounded"
+              cover
+              :src="cdnUrl(detailEntry.thumbnailR2Key)"
             />
 
             <!-- No content -->
@@ -297,13 +311,13 @@
             <!-- Download button — only for RESOURCE attachments, not for paid media -->
             <v-btn
               v-if="detailEntry?.type === 'RESOURCE' && contentInfo?.hasContent && contentInfo?.contentUrl"
-              :href="contentInfo.contentUrl"
+              class="mt-2"
               :download="contentInfo.fileName || 'download'"
+              :href="contentInfo.contentUrl"
+              prepend-icon="mdi-download"
+              size="small"
               target="_blank"
               variant="tonal"
-              size="small"
-              prepend-icon="mdi-download"
-              class="mt-2"
             >
               Download {{ contentInfo.fileName || 'file' }}
             </v-btn>
@@ -312,11 +326,11 @@
           <div class="text-h6 mb-2">{{ detailEntry.title }}</div>
 
           <!-- Info table -->
-          <v-table density="compact" class="mb-4">
+          <v-table class="mb-4" density="compact">
             <tbody>
               <tr><td class="text-medium-emphasis" style="width: 120px">Author</td><td>@{{ detailEntry.authorUsername || '—' }}</td></tr>
-              <tr><td class="text-medium-emphasis">Status</td><td><v-chip :color="statusColor(detailEntry.status)" size="x-small" variant="tonal" label>{{ detailEntry.status }}</v-chip></td></tr>
-              <tr><td class="text-medium-emphasis">Type</td><td><v-chip :color="typeColor(detailEntry.type)" size="x-small" variant="tonal" label>{{ detailEntry.type }}</v-chip></td></tr>
+              <tr><td class="text-medium-emphasis">Status</td><td><v-chip :color="statusColor(detailEntry.status)" label size="x-small" variant="tonal">{{ detailEntry.status }}</v-chip></td></tr>
+              <tr><td class="text-medium-emphasis">Type</td><td><v-chip :color="typeColor(detailEntry.type)" label size="x-small" variant="tonal">{{ detailEntry.type }}</v-chip></td></tr>
               <tr><td class="text-medium-emphasis">Tenant</td><td>{{ detailEntry.tenantId }}</td></tr>
               <tr><td class="text-medium-emphasis">Visibility</td><td>{{ detailEntry.visibility }}</td></tr>
               <tr><td class="text-medium-emphasis">Created</td><td>{{ formatDate(detailEntry.createdAt) }}</td></tr>
@@ -326,7 +340,7 @@
               <tr v-if="detailEntry.contentLanguage"><td class="text-medium-emphasis">Language</td><td>{{ detailEntry.contentLanguage.toUpperCase() }}</td></tr>
               <tr v-if="detailEntry.paid"><td class="text-medium-emphasis">Price</td><td>{{ formatPrice(detailEntry) }}</td></tr>
               <tr v-if="detailEntry.pricingMode"><td class="text-medium-emphasis">Pricing Mode</td><td>{{ detailEntry.pricingMode }}</td></tr>
-              <tr v-if="detailEntry.hlsReady"><td class="text-medium-emphasis">HLS</td><td><v-chip size="x-small" color="success" variant="tonal" label>Ready</v-chip></td></tr>
+              <tr v-if="detailEntry.hlsReady"><td class="text-medium-emphasis">HLS</td><td><v-chip color="success" label size="x-small" variant="tonal">Ready</v-chip></td></tr>
               <tr><td class="text-medium-emphasis">Entry ID</td><td class="text-caption" style="word-break: break-all">{{ detailEntry.id }}</td></tr>
               <tr><td class="text-medium-emphasis">User ID</td><td class="text-caption" style="word-break: break-all">{{ detailEntry.userId }}</td></tr>
             </tbody>
@@ -336,7 +350,13 @@
           <div v-if="detailEntry.tags?.length" class="mb-4">
             <div class="text-caption text-medium-emphasis mb-1">Tags</div>
             <div class="d-flex flex-wrap ga-1">
-              <v-chip v-for="t in detailEntry.tags" :key="t" size="x-small" variant="outlined" label>
+              <v-chip
+                v-for="t in detailEntry.tags"
+                :key="t"
+                label
+                size="x-small"
+                variant="outlined"
+              >
                 {{ t }}
               </v-chip>
             </div>
@@ -353,18 +373,18 @@
             <v-btn
               v-if="detailEntry.status === 'IN_REVIEW'"
               color="success"
-              variant="flat"
-              prepend-icon="mdi-check"
-              @click="handleApprove(detailEntry)"
               :loading="actionLoading"
+              prepend-icon="mdi-check"
+              variant="flat"
+              @click="handleApprove(detailEntry)"
             >
               Approve
             </v-btn>
             <v-btn
               v-if="detailEntry.status === 'IN_REVIEW'"
               color="error"
-              variant="outlined"
               prepend-icon="mdi-close"
+              variant="outlined"
               @click="openRejectDialog(detailEntry)"
             >
               Reject
@@ -372,8 +392,8 @@
             <v-btn
               v-if="detailEntry.status === 'PUBLISHED' || detailEntry.status === 'APPROVED'"
               color="warning"
-              variant="outlined"
               prepend-icon="mdi-cancel"
+              variant="outlined"
               @click="openSuspendDialog(detailEntry)"
             >
               Suspend
@@ -394,11 +414,11 @@
           </div>
           <v-textarea
             v-model="justification"
+            counter
             label="Justification"
-            variant="outlined"
             rows="3"
             :rules="[v => !!v?.trim() || 'Justification is required']"
-            counter
+            variant="outlined"
           />
         </v-card-text>
         <v-card-actions>
@@ -406,9 +426,9 @@
           <v-btn variant="text" @click="rejectDialog = false">Cancel</v-btn>
           <v-btn
             color="error"
-            variant="flat"
             :disabled="!justification?.trim()"
             :loading="actionLoading"
+            variant="flat"
             @click="handleReject"
           >
             Reject
@@ -428,11 +448,11 @@
           </div>
           <v-textarea
             v-model="justification"
+            counter
             label="Justification"
-            variant="outlined"
             rows="3"
             :rules="[v => !!v?.trim() || 'Justification is required']"
-            counter
+            variant="outlined"
           />
         </v-card-text>
         <v-card-actions>
@@ -440,9 +460,9 @@
           <v-btn variant="text" @click="suspendDialog = false">Cancel</v-btn>
           <v-btn
             color="warning"
-            variant="flat"
             :disabled="!justification?.trim()"
             :loading="actionLoading"
+            variant="flat"
             @click="handleSuspend"
           >
             Suspend
@@ -459,21 +479,21 @@
 </template>
 
 <script lang="ts" setup>
-  import { ref, computed, onMounted } from 'vue'
-  import { useWindowSize } from '@/composables/useWindowSize'
-  import { CDN_BASE_URL } from '@/config/env'
+  import { computed, onMounted, ref } from 'vue'
   import {
+    approveEntry,
+    type ContentUrlResponse,
+    type EntryDto,
+    fetchContentUrl,
     fetchEntries,
     fetchModerationStats,
     fetchTenantIds,
-    fetchContentUrl,
-    approveEntry,
+    type ModerationStats,
     rejectEntry,
     suspendEntry,
-    type EntryDto,
-    type ModerationStats,
-    type ContentUrlResponse,
   } from '@/api/moderation'
+  import { useWindowSize } from '@/composables/useWindowSize'
+  import { CDN_BASE_URL } from '@/config/env'
 
   const { width: windowWidth } = useWindowSize()
 
@@ -545,34 +565,52 @@
 
   function typeIcon (type: string): string {
     switch (type) {
-      case 'VIDEO': return 'mdi-video-outline'
-      case 'AUDIO': return 'mdi-music-note'
-      case 'IMAGE': return 'mdi-image-outline'
-      case 'RESOURCE': return 'mdi-file-document-outline'
-      default: return 'mdi-file-outline'
+      case 'VIDEO': { return 'mdi-video-outline'
+      }
+      case 'AUDIO': { return 'mdi-music-note'
+      }
+      case 'IMAGE': { return 'mdi-image-outline'
+      }
+      case 'RESOURCE': { return 'mdi-file-document-outline'
+      }
+      default: { return 'mdi-file-outline'
+      }
     }
   }
 
   function typeColor (type: string): string | undefined {
     switch (type) {
-      case 'VIDEO': return 'purple'
-      case 'AUDIO': return 'deep-orange'
-      case 'IMAGE': return 'teal'
-      case 'RESOURCE': return 'blue-grey'
-      default: return undefined
+      case 'VIDEO': { return 'purple'
+      }
+      case 'AUDIO': { return 'deep-orange'
+      }
+      case 'IMAGE': { return 'teal'
+      }
+      case 'RESOURCE': { return 'blue-grey'
+      }
+      default: { return undefined
+      }
     }
   }
 
   function statusColor (status: string): string | undefined {
     switch (status) {
-      case 'IN_REVIEW': return 'warning'
-      case 'APPROVED': return 'info'
-      case 'PUBLISHED': return 'success'
-      case 'REJECTED': return undefined
-      case 'SUSPENDED': return 'error'
-      case 'UNLISTED': return 'blue-grey'
-      case 'ARCHIVED': return 'grey'
-      default: return undefined
+      case 'IN_REVIEW': { return 'warning'
+      }
+      case 'APPROVED': { return 'info'
+      }
+      case 'PUBLISHED': { return 'success'
+      }
+      case 'REJECTED': { return undefined
+      }
+      case 'SUSPENDED': { return 'error'
+      }
+      case 'UNLISTED': { return 'blue-grey'
+      }
+      case 'ARCHIVED': { return 'grey'
+      }
+      default: { return undefined
+      }
     }
   }
 
@@ -660,8 +698,8 @@
       showSnackbar('Entry approved', 'success')
       detailDrawer.value = false
       loadEntries()
-    } catch (e: any) {
-      showSnackbar(e.message, 'error')
+    } catch (error: any) {
+      showSnackbar(error.message, 'error')
     } finally {
       actionLoading.value = false
     }
@@ -682,8 +720,8 @@
       rejectDialog.value = false
       detailDrawer.value = false
       loadEntries()
-    } catch (e: any) {
-      showSnackbar(e.message, 'error')
+    } catch (error: any) {
+      showSnackbar(error.message, 'error')
     } finally {
       actionLoading.value = false
     }
@@ -704,8 +742,8 @@
       suspendDialog.value = false
       detailDrawer.value = false
       loadEntries()
-    } catch (e: any) {
-      showSnackbar(e.message, 'error')
+    } catch (error: any) {
+      showSnackbar(error.message, 'error')
     } finally {
       actionLoading.value = false
     }
