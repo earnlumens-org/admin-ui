@@ -22,6 +22,7 @@ export interface EntryDto {
   authorBadge: string | null
   title: string
   description: string | null
+  resourceContent: string | null
   type: string
   status: string
   previousStatus: string | null
@@ -59,6 +60,7 @@ export interface ModerationStats {
   published: number
   suspended: number
   rejected: number
+  archived: number
 }
 
 export interface ContentUrlResponse {

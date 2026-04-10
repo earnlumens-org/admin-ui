@@ -36,6 +36,9 @@
       <v-chip size="small" variant="tonal" prepend-icon="mdi-close-circle-outline">
         {{ stats.rejected }} rejected
       </v-chip>
+      <v-chip size="small" variant="tonal" color="grey" prepend-icon="mdi-archive-outline">
+        {{ stats.archived }} archived
+      </v-chip>
     </div>
 
     <v-divider class="mb-4" />
@@ -257,6 +260,14 @@
               contain
               class="rounded bg-surface-light"
               style="max-height: 400px"
+            />
+
+            <!-- Resource content (rich text) -->
+            <div
+              v-else-if="detailEntry.type === 'RESOURCE' && detailEntry.resourceContent"
+              class="rounded bg-surface-light pa-4 resource-content"
+              style="max-height: 400px; overflow-y: auto"
+              v-html="detailEntry.resourceContent"
             />
 
             <!-- Fallback: thumbnail only -->
@@ -499,6 +510,8 @@
     { value: 'PUBLISHED', label: 'Published', color: 'success' },
     { value: 'REJECTED', label: 'Rejected', color: undefined },
     { value: 'SUSPENDED', label: 'Suspended', color: 'error' },
+    { value: 'UNLISTED', label: 'Unlisted', color: 'blue-grey' },
+    { value: 'ARCHIVED', label: 'Archived', color: 'grey' },
   ]
 
   const tenantOptions = computed(() => {
@@ -543,6 +556,8 @@
       case 'PUBLISHED': return 'success'
       case 'REJECTED': return undefined
       case 'SUSPENDED': return 'error'
+      case 'UNLISTED': return 'blue-grey'
+      case 'ARCHIVED': return 'grey'
       default: return undefined
     }
   }
@@ -615,6 +630,8 @@
 
   async function loadContentUrl (entry: EntryDto) {
     if (entry.type === 'RESOURCE') {
+      // RESOURCE entries have inline resourceContent, no R2 file
+      contentInfo.value = { type: 'RESOURCE', hasContent: !!entry.resourceContent }
       return
     }
     contentLoading.value = true
@@ -732,5 +749,26 @@
 
   .cursor-pointer {
     cursor: pointer;
+  }
+
+  .resource-content {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .resource-content :deep(img) {
+    max-width: 100%;
+    border-radius: 4px;
+  }
+
+  .resource-content :deep(a) {
+    color: rgb(var(--v-theme-primary));
+  }
+
+  .resource-content :deep(pre) {
+    overflow-x: auto;
+    padding: 8px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.1);
   }
 </style>
