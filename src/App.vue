@@ -65,6 +65,11 @@
             to="/moderation"
           />
           <v-list-item
+            prepend-icon="mdi-tune-variant"
+            title="Moderation Settings"
+            to="/moderation-settings"
+          />
+          <v-list-item
             prepend-icon="mdi-account-badge-outline"
             title="Moderators"
             to="/moderators"
