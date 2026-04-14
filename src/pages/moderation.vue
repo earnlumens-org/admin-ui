@@ -164,6 +164,13 @@
                     @click="openDetail(entry)"
                   />
                   <v-list-item
+                    v-if="entry.moderationFeedback && (entry.status === 'REJECTED' || entry.status === 'SUSPENDED')"
+                    class="text-warning"
+                    prepend-icon="mdi-alert-circle-outline"
+                    title="View moderation feedback"
+                    @click="openDetail(entry)"
+                  />
+                  <v-list-item
                     v-if="entry.status === 'IN_REVIEW'"
                     prepend-icon="mdi-check"
                     title="Approve"
@@ -367,6 +374,19 @@
             <div class="text-caption text-medium-emphasis mb-1">Description</div>
             <div class="text-body-2">{{ detailEntry.description }}</div>
           </div>
+
+          <!-- Moderation feedback -->
+          <v-alert
+            v-if="detailEntry.moderationFeedback"
+            class="mb-4"
+            :color="detailEntry.status === 'SUSPENDED' ? 'warning' : 'error'"
+            density="compact"
+            :icon="detailEntry.status === 'SUSPENDED' ? 'mdi-alert-circle-outline' : 'mdi-close-circle-outline'"
+            :title="detailEntry.status === 'SUSPENDED' ? 'Suspension reason' : 'Rejection reason'"
+            variant="tonal"
+          >
+            {{ detailEntry.moderationFeedback }}
+          </v-alert>
 
           <!-- Actions -->
           <div class="d-flex flex-wrap ga-2 mt-4">

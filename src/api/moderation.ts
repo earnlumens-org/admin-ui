@@ -43,6 +43,7 @@ export interface EntryDto {
   createdAt: string
   updatedAt: string
   publishedAt: string | null
+  moderationFeedback: string | null
 }
 
 export interface PageResponse<T> {
