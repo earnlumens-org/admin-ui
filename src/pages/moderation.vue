@@ -6,7 +6,7 @@
       <div>
         <div class="text-h6">Moderation</div>
         <div class="text-body-2 text-medium-emphasis mb-4 mb-sm-0">
-          Review and moderate content entries
+          Content moderation pipeline — AI first, then human review
         </div>
       </div>
       <v-select
@@ -22,10 +22,61 @@
       />
     </div>
 
+    <!-- Pipeline visualization -->
+    <v-card class="mb-4" color="surface-variant" variant="tonal">
+      <v-card-text class="py-3 px-4">
+        <div class="d-flex align-center justify-center flex-wrap ga-3 ga-sm-4">
+          <div class="d-flex align-center ga-1 text-body-2">
+            <v-icon color="medium-emphasis" size="18">mdi-upload</v-icon>
+            <span>New Upload</span>
+          </div>
+          <v-icon color="medium-emphasis" size="14">mdi-arrow-right</v-icon>
+          <div
+            class="d-flex align-center ga-1 text-body-2 pipeline-step cursor-pointer"
+            :class="{ 'pipeline-active': tab === 'ai-processing' }"
+            @click="switchTab('ai-processing')"
+          >
+            <v-progress-circular
+              v-if="(stats?.aiProcessing ?? 0) > 0"
+              color="info"
+              indeterminate
+              size="14"
+              width="2"
+            />
+            <v-icon v-else color="info" size="18">mdi-robot-outline</v-icon>
+            <span class="font-weight-medium">AI Analysis</span>
+            <v-chip color="info" size="x-small" variant="tonal">
+              {{ stats?.aiProcessing ?? 0 }}
+            </v-chip>
+          </div>
+          <v-icon color="medium-emphasis" size="14">mdi-arrow-right</v-icon>
+          <div
+            class="d-flex align-center ga-1 text-body-2 pipeline-step cursor-pointer"
+            :class="{ 'pipeline-active': tab === 'in-review' }"
+            @click="switchTab('in-review')"
+          >
+            <v-icon color="warning" size="18">mdi-account-eye-outline</v-icon>
+            <span class="font-weight-medium">Human Review</span>
+            <v-chip color="warning" size="x-small" variant="tonal">
+              {{ stats?.inReview ?? 0 }}
+            </v-chip>
+          </div>
+          <v-icon color="medium-emphasis" size="14">mdi-arrow-right</v-icon>
+          <div class="d-flex align-center ga-1 text-body-2">
+            <v-icon color="success" size="18">mdi-check-circle-outline</v-icon>
+            <span>Published</span>
+          </div>
+        </div>
+      </v-card-text>
+    </v-card>
+
     <!-- Stats chips -->
     <div v-if="stats" class="d-flex flex-wrap ga-2 mb-4">
+      <v-chip color="info" prepend-icon="mdi-robot-outline" size="small" variant="tonal">
+        {{ stats.aiProcessing ?? 0 }} AI processing
+      </v-chip>
       <v-chip color="warning" prepend-icon="mdi-clock-outline" size="small" variant="tonal">
-        {{ stats.inReview }} in review
+        {{ stats.inReview }} needs review
       </v-chip>
       <v-chip color="success" prepend-icon="mdi-check-circle-outline" size="small" variant="tonal">
         {{ stats.published }} published
@@ -44,8 +95,20 @@
     <v-divider class="mb-4" />
 
     <v-tabs v-model="tab" class="mb-4" @update:model-value="onTabChange">
+      <v-tab value="ai-processing">
+        <v-icon class="mr-1" size="16">mdi-robot-outline</v-icon>
+        AI Processing
+        <v-badge
+          v-if="stats && (stats.aiProcessing ?? 0) > 0"
+          class="ml-1"
+          color="info"
+          :content="stats.aiProcessing"
+          inline
+        />
+      </v-tab>
       <v-tab value="in-review">
-        In Review
+        <v-icon class="mr-1" size="16">mdi-account-eye-outline</v-icon>
+        Human Queue
         <v-badge
           v-if="stats && stats.inReview > 0"
           class="ml-1"
@@ -56,6 +119,28 @@
       </v-tab>
       <v-tab value="all">All Entries</v-tab>
     </v-tabs>
+
+    <!-- Tab contextual banners -->
+    <v-alert
+      v-if="tab === 'ai-processing'"
+      class="mb-4"
+      color="info"
+      density="compact"
+      icon="mdi-shield-lock-outline"
+      variant="tonal"
+    >
+      These entries are being analyzed by the automated moderation system. No human action is possible until AI processing completes.
+    </v-alert>
+    <v-alert
+      v-if="tab === 'in-review'"
+      class="mb-4"
+      color="warning"
+      density="compact"
+      icon="mdi-alert-outline"
+      variant="tonal"
+    >
+      These entries were flagged by the AI system and require human review.
+    </v-alert>
 
     <!-- Status filter for "All Entries" tab -->
     <div v-if="tab === 'all'" class="d-flex flex-wrap ga-2 mb-4">
@@ -78,14 +163,23 @@
 
     <!-- Empty state -->
     <v-card v-else-if="entries.length === 0" class="pa-8 text-center" variant="tonal">
-      <v-icon color="medium-emphasis" size="48">mdi-file-check-outline</v-icon>
+      <v-icon color="medium-emphasis" size="48">
+        {{ tab === 'ai-processing' ? 'mdi-robot-happy-outline' : tab === 'in-review' ? 'mdi-check-decagram-outline' : 'mdi-file-check-outline' }}
+      </v-icon>
       <div class="text-body-1 mt-4">
-        {{ tab === 'in-review' ? 'No entries to review' : 'No entries found' }}
+        {{ tab === 'ai-processing'
+          ? 'No entries in AI processing'
+          : tab === 'in-review'
+            ? 'No entries awaiting human review'
+            : 'No entries found'
+        }}
       </div>
       <div class="text-body-2 text-medium-emphasis mt-1">
-        {{ tab === 'in-review'
-          ? 'Entries submitted for review will appear here.'
-          : 'Try changing the status filter or tenant.'
+        {{ tab === 'ai-processing'
+          ? 'New uploads will appear here while the automated system analyzes them.'
+          : tab === 'in-review'
+            ? 'All flagged entries have been reviewed. Great work!'
+            : 'Try changing the status filter or tenant.'
         }}
       </div>
     </v-card>
@@ -96,6 +190,7 @@
         v-for="entry in entries"
         :key="entry.id"
         class="entry-card"
+        :class="{ 'entry-card-locked': tab === 'ai-processing' }"
         variant="outlined"
       >
         <div class="d-flex flex-column flex-sm-row">
@@ -116,6 +211,10 @@
               <!-- Duration badge -->
               <div v-if="entry.durationSec" class="entry-duration">
                 {{ formatDuration(entry.durationSec) }}
+              </div>
+              <!-- AI Processing overlay -->
+              <div v-if="tab === 'ai-processing'" class="entry-processing-overlay d-flex align-center justify-center">
+                <v-progress-circular color="white" indeterminate size="24" width="2" />
               </div>
             </v-img>
             <div v-else class="d-flex align-center justify-center fill-height bg-surface-light rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0">
@@ -153,7 +252,7 @@
               </div>
 
               <!-- Actions menu -->
-              <v-menu>
+              <v-menu v-if="tab !== 'ai-processing'">
                 <template #activator="{ props }">
                   <v-btn v-bind="props" icon="mdi-dots-vertical" size="small" variant="text" />
                 </template>
@@ -190,9 +289,15 @@
                   />
                 </v-list>
               </v-menu>
+              <!-- Locked indicator for AI processing -->
+              <v-tooltip v-else location="top" text="Locked — AI is analyzing this entry">
+                <template #activator="{ props: tooltipProps }">
+                  <v-icon v-bind="tooltipProps" class="mt-1" color="info" size="20">mdi-lock-outline</v-icon>
+                </template>
+              </v-tooltip>
             </div>
 
-            <!-- Meta row -->
+            <!-- Meta row with moderation actor -->
             <div class="d-flex align-center flex-wrap ga-2 mt-auto pt-2">
               <span class="text-caption text-medium-emphasis">
                 {{ formatDate(entry.createdAt) }}
@@ -206,6 +311,28 @@
               <span class="text-caption text-medium-emphasis">
                 · {{ entry.viewCount.toLocaleString() }} views
               </span>
+              <v-spacer />
+              <!-- Moderation actor badge -->
+              <v-chip
+                v-if="tab === 'ai-processing'"
+                color="info"
+                label
+                size="x-small"
+                variant="tonal"
+              >
+                <v-progress-circular class="mr-1" indeterminate size="10" width="1" />
+                AI analyzing
+              </v-chip>
+              <v-chip
+                v-else-if="getActorInfo(entry).type !== 'unknown'"
+                :color="getActorInfo(entry).color"
+                label
+                :prepend-icon="getActorInfo(entry).icon"
+                size="x-small"
+                variant="tonal"
+              >
+                {{ getActorInfo(entry).label }}
+              </v-chip>
             </div>
           </div>
         </div>
@@ -332,6 +459,22 @@
 
           <div class="text-h6 mb-2">{{ detailEntry.title }}</div>
 
+          <!-- Moderation actor highlight -->
+          <v-card
+            class="mb-4 pa-3"
+            :color="getActorInfo(detailEntry).type === 'ai' ? 'info' : getActorInfo(detailEntry).type === 'human' ? 'primary' : 'warning'"
+            density="compact"
+            variant="tonal"
+          >
+            <div class="d-flex align-center ga-2">
+              <v-icon size="18">{{ getActorInfo(detailEntry).icon }}</v-icon>
+              <div>
+                <div class="text-caption font-weight-medium">{{ getActorInfo(detailEntry).actionLabel }}</div>
+                <div class="text-caption text-medium-emphasis">{{ getActorInfo(detailEntry).label }}</div>
+              </div>
+            </div>
+          </v-card>
+
           <!-- Info table -->
           <v-table class="mb-4" density="compact">
             <tbody>
@@ -387,6 +530,107 @@
           >
             {{ detailEntry.moderationFeedback }}
           </v-alert>
+
+          <!-- AI Moderation Jobs -->
+          <div v-if="moderationJobs.length" class="mb-4">
+            <div class="text-caption text-medium-emphasis mb-2">AI Moderation History</div>
+            <v-card
+              v-for="job in moderationJobs"
+              :key="job.id"
+              class="mb-2"
+              density="compact"
+              variant="tonal"
+            >
+              <v-card-text class="pa-3">
+                <div class="d-flex align-center flex-wrap ga-2 mb-2">
+                  <v-chip
+                    :color="job.status === 'COMPLETED' ? (job.decision === 'APPROVE' ? 'success' : job.decision === 'REJECT' ? 'error' : 'warning') : job.status === 'DEAD' || job.status === 'FAILED' ? 'error' : 'info'"
+                    label
+                    size="x-small"
+                    variant="flat"
+                  >
+                    {{ job.status }}
+                  </v-chip>
+                  <v-chip
+                    v-if="job.decision"
+                    :color="job.decision === 'APPROVE' ? 'success' : job.decision === 'REJECT' ? 'error' : 'warning'"
+                    label
+                    size="x-small"
+                    variant="outlined"
+                  >
+                    {{ job.decision }}
+                  </v-chip>
+                  <v-chip
+                    v-if="job.confidence != null"
+                    label
+                    size="x-small"
+                    variant="outlined"
+                  >
+                    {{ (job.confidence * 100).toFixed(0) }}% confidence
+                  </v-chip>
+                </div>
+
+                <div v-if="job.decidingStep" class="text-caption mb-1">
+                  <span class="text-medium-emphasis">Pipeline step:</span> {{ job.decidingStep }}
+                </div>
+                <div v-if="job.decisionReason" class="text-caption mb-1">
+                  <span class="text-medium-emphasis">Reason:</span> {{ job.decisionReason }}
+                </div>
+                <div v-if="job.categoriesDetected?.length" class="d-flex flex-wrap ga-1 mb-1">
+                  <v-chip
+                    v-for="cat in job.categoriesDetected"
+                    :key="cat"
+                    color="deep-orange"
+                    label
+                    size="x-small"
+                    variant="tonal"
+                  >
+                    {{ cat }}
+                  </v-chip>
+                </div>
+                <div v-if="job.errorMessage" class="text-caption text-error mb-1">
+                  Error: {{ job.errorMessage }}
+                </div>
+                <div v-if="job.retryCount > 0" class="text-caption text-medium-emphasis mb-1">
+                  Retries: {{ job.retryCount }}/{{ job.maxRetries }}
+                </div>
+
+                <v-divider class="my-2" />
+                <div class="d-flex flex-wrap ga-3 text-caption text-medium-emphasis">
+                  <span>Created: {{ formatDate(job.createdAt) }}</span>
+                  <span v-if="job.dispatchedAt">Dispatched: {{ formatDate(job.dispatchedAt) }}</span>
+                  <span v-if="job.processingStartedAt">Started: {{ formatDate(job.processingStartedAt) }}</span>
+                  <span v-if="job.completedAt">Completed: {{ formatDate(job.completedAt) }}</span>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
+
+          <!-- Status History -->
+          <div v-if="detailEntry.statusHistory?.length" class="mb-4">
+            <div class="text-caption text-medium-emphasis mb-2">Status History</div>
+            <v-timeline density="compact" side="end">
+              <v-timeline-item
+                v-for="(record, idx) in detailEntry.statusHistory"
+                :key="idx"
+                :dot-color="statusColor(record.toStatus) || 'grey'"
+                size="x-small"
+              >
+                <div class="text-caption">
+                  <v-chip :color="statusColor(record.fromStatus)" label size="x-small" variant="tonal">{{ record.fromStatus }}</v-chip>
+                  <v-icon class="mx-1" size="x-small">mdi-arrow-right</v-icon>
+                  <v-chip :color="statusColor(record.toStatus)" label size="x-small" variant="tonal">{{ record.toStatus }}</v-chip>
+                  <span v-if="record.actor" class="text-medium-emphasis ml-2">by {{ record.actor }}</span>
+                </div>
+                <div v-if="record.reason" class="text-caption text-medium-emphasis mt-1" style="max-width: 340px">
+                  {{ record.reason }}
+                </div>
+                <div class="text-caption text-disabled mt-1">
+                  {{ formatDate(record.timestamp) }}
+                </div>
+              </v-timeline-item>
+            </v-timeline>
+          </div>
 
           <!-- Actions -->
           <div class="d-flex flex-wrap ga-2 mt-4">
@@ -506,8 +750,10 @@
     type EntryDto,
     fetchContentUrl,
     fetchEntries,
+    fetchModerationJobs,
     fetchModerationStats,
     fetchTenantIds,
+    type ModerationJobDto,
     type ModerationStats,
     rejectEntry,
     suspendEntry,
@@ -534,6 +780,7 @@
   const contentInfo = ref<ContentUrlResponse | null>(null)
   const contentLoading = ref(false)
   const contentError = ref('')
+  const moderationJobs = ref<ModerationJobDto[]>([])
 
   const isVideoContent = computed(() =>
     contentInfo.value?.contentType?.startsWith('video/') || contentInfo.value?.type === 'VIDEO',
@@ -657,6 +904,60 @@
     return 'Paid'
   }
 
+  interface ActorInfo {
+    type: 'ai' | 'human' | 'pending' | 'unknown'
+    label: string
+    icon: string
+    color: string
+    actionLabel: string
+  }
+
+  function getActorInfo (entry: EntryDto): ActorInfo {
+    if (entry.status === 'IN_REVIEW') {
+      return { type: 'pending', label: 'Awaiting human review', icon: 'mdi-clock-outline', color: 'warning', actionLabel: 'Pending' }
+    }
+
+    const history = [...(entry.statusHistory || [])].reverse()
+    const decision = history.find(r =>
+      ['APPROVED', 'PUBLISHED', 'REJECTED', 'SUSPENDED'].includes(r.toStatus),
+    )
+
+    if (!decision) {
+      return { type: 'unknown', label: '', icon: 'mdi-help-circle-outline', color: 'grey', actionLabel: '' }
+    }
+
+    const actionMap: Record<string, string> = {
+      APPROVED: 'Approved',
+      PUBLISHED: 'Published',
+      REJECTED: 'Rejected',
+      SUSPENDED: 'Suspended',
+    }
+    const action = actionMap[decision.toStatus] || decision.toStatus
+
+    if (decision.actor) {
+      return {
+        type: 'human',
+        label: decision.actor,
+        icon: 'mdi-account-check',
+        color: 'primary',
+        actionLabel: `${action} by moderator`,
+      }
+    }
+
+    return {
+      type: 'ai',
+      label: 'AI System',
+      icon: 'mdi-robot-outline',
+      color: 'info',
+      actionLabel: `Auto-${action.toLowerCase()}`,
+    }
+  }
+
+  function switchTab (value: string) {
+    tab.value = value
+    onTabChange()
+  }
+
   function showSnackbar (text: string, color: string) {
     snackbarText.value = text
     snackbarColor.value = color
@@ -697,7 +998,9 @@
     detailDrawer.value = true
     contentInfo.value = null
     contentError.value = ''
+    moderationJobs.value = []
     loadContentUrl(entry)
+    loadModerationJobs(entry)
   }
 
   async function loadContentUrl (entry: EntryDto) {
@@ -708,6 +1011,14 @@
       contentError.value = 'Could not load content'
     } finally {
       contentLoading.value = false
+    }
+  }
+
+  async function loadModerationJobs (entry: EntryDto) {
+    try {
+      moderationJobs.value = await fetchModerationJobs(selectedTenant.value, entry.id)
+    } catch {
+      moderationJobs.value = []
     }
   }
 
@@ -837,5 +1148,35 @@
     padding: 8px;
     border-radius: 4px;
     background: rgba(0, 0, 0, 0.1);
+  }
+
+  .pipeline-step {
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+  }
+
+  .pipeline-step:hover {
+    background: rgba(var(--v-theme-on-surface), 0.05);
+  }
+
+  .pipeline-active {
+    background: rgba(var(--v-theme-on-surface), 0.08);
+  }
+
+  .entry-card-locked {
+    opacity: 0.75;
+    border-style: dashed !important;
+  }
+
+  .entry-card-locked:hover {
+    border-color: rgb(var(--v-theme-info)) !important;
+  }
+
+  .entry-processing-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: inherit;
   }
 </style>

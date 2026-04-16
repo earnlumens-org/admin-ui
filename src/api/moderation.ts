@@ -44,6 +44,37 @@ export interface EntryDto {
   updatedAt: string
   publishedAt: string | null
   moderationFeedback: string | null
+  statusHistory: StatusChangeRecord[]
+}
+
+export interface StatusChangeRecord {
+  fromStatus: string
+  toStatus: string
+  actor: string | null
+  reason: string | null
+  timestamp: string
+}
+
+export interface ModerationJobDto {
+  id: string
+  tenantId: string
+  entryId: string
+  entryType: string
+  entryTitle: string | null
+  status: string
+  decision: string | null
+  confidence: number | null
+  categoriesDetected: string[] | null
+  decisionReason: string | null
+  decidingStep: string | null
+  retryCount: number
+  maxRetries: number
+  errorMessage: string | null
+  dispatchedAt: string | null
+  processingStartedAt: string | null
+  completedAt: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface PageResponse<T> {
@@ -57,6 +88,7 @@ export interface PageResponse<T> {
 }
 
 export interface ModerationStats {
+  aiProcessing?: number
   inReview: number
   published: number
   suspended: number
@@ -186,6 +218,18 @@ export async function fetchContentUrl (tenantId: string, entryId: string): Promi
   })
   if (!res.ok) {
     throw new Error('Failed to fetch content URL')
+  }
+  return res.json()
+}
+
+export async function fetchModerationJobs (tenantId: string, entryId: string): Promise<ModerationJobDto[]> {
+  const params = new URLSearchParams({ tenantId })
+  const res = await fetch(`${API_BASE_URL}/api/moderation/entries/${entryId}/moderation-jobs?${params}`, {
+    credentials: 'include',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) {
+    throw new Error('Failed to fetch moderation jobs')
   }
   return res.json()
 }
