@@ -97,47 +97,6 @@
       </div>
 
       <v-row>
-        <!-- NudeNet -->
-        <v-col cols="12" lg="4" md="6">
-          <v-card class="fill-height" variant="outlined">
-            <v-card-item>
-              <template #prepend>
-                <v-icon color="error" icon="mdi-shield-alert-outline" />
-              </template>
-              <v-card-title class="text-body-1 font-weight-bold">NudeNet (NSFW Detection)</v-card-title>
-              <v-card-subtitle>Visual nudity classifier — first layer</v-card-subtitle>
-            </v-card-item>
-            <v-card-text>
-              <v-table density="compact">
-                <tbody>
-                  <tr>
-                    <td class="text-medium-emphasis">Rejection threshold</td>
-                    <td class="font-weight-medium text-right">0.80</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Applies to</td>
-                    <td class="font-weight-medium text-right">VIDEO, IMAGE, THUMBNAIL</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Frame sampling</td>
-                    <td class="font-weight-medium text-right">~10 frames per video</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Action on detect</td>
-                    <td class="font-weight-medium text-right">
-                      <v-chip color="error" size="x-small" variant="tonal">AUTO REJECT</v-chip>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Cost</td>
-                    <td class="font-weight-medium text-right">$0 (self-hosted)</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </v-card-text>
-          </v-card>
-        </v-col>
-
         <!-- Fingerprint -->
         <v-col cols="12" lg="4" md="6">
           <v-card class="fill-height" variant="outlined">
@@ -302,15 +261,11 @@
                   </tr>
                   <tr>
                     <td class="text-medium-emphasis">Step 2</td>
-                    <td class="font-weight-medium text-right">NudeNet (NSFW visual)</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Step 3</td>
                     <td class="font-weight-medium text-right">ACRCloud (audio copyright)</td>
                   </tr>
                   <tr>
-                    <td class="text-medium-emphasis">Step 4</td>
-                    <td class="font-weight-medium text-right">Gemini Flash (business rules)</td>
+                    <td class="text-medium-emphasis">Step 3</td>
+                    <td class="font-weight-medium text-right">Gemini Flash (business rules + NSFW)</td>
                   </tr>
                   <tr>
                     <td class="text-medium-emphasis">Fail behavior</td>
