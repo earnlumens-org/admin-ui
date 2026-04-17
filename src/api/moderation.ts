@@ -94,6 +94,7 @@ export interface ModerationStats {
   suspended: number
   rejected: number
   archived: number
+  openReports?: number
 }
 
 export interface ContentUrlResponse {
@@ -243,6 +244,80 @@ export async function fetchJobSummaries (entryIds: string[]): Promise<Record<str
   })
   if (!res.ok) {
     throw new Error('Failed to fetch job summaries')
+  }
+  return res.json()
+}
+
+// ── Report types ──────────────────────────────────────────
+
+export interface ReportSnapshotDto {
+  title: string | null
+  description: string | null
+  thumbnailR2Key: string | null
+  authorUsername: string | null
+}
+
+export interface ReportDto {
+  id: string
+  tenantId: string
+  entryId: string
+  creatorUserId: string | null
+  reporterUserId: string
+  reporterUsername: string | null
+  reason: string
+  severity: string
+  comment: string | null
+  snapshot: ReportSnapshotDto | null
+  priorityScore: number
+  resolution: string
+  resolvedBy: string | null
+  resolvedAt: string | null
+  createdAt: string
+}
+
+export interface ReportSummary {
+  reportCount: number
+  maxSeverity: string
+  maxPriority: number
+  reasons: string[]
+}
+
+// ── Report API ────────────────────────────────────────────
+
+export async function fetchEntryReports (tenantId: string, entryId: string): Promise<ReportDto[]> {
+  const params = new URLSearchParams({ tenantId })
+  const res = await fetch(`${API_BASE_URL}/api/moderation/entries/${entryId}/reports?${params}`, {
+    credentials: 'include',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) {
+    throw new Error('Failed to fetch reports')
+  }
+  return res.json()
+}
+
+export async function fetchReportSummaries (entryIds: string[]): Promise<Record<string, ReportSummary>> {
+  const params = new URLSearchParams()
+  entryIds.forEach(id => params.append('entryIds', id))
+  const res = await fetch(`${API_BASE_URL}/api/moderation/report-summaries?${params}`, {
+    credentials: 'include',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) {
+    throw new Error('Failed to fetch report summaries')
+  }
+  return res.json()
+}
+
+export async function resolveReport (reportId: string, resolution: string): Promise<ReportDto> {
+  const res = await fetch(`${API_BASE_URL}/api/moderation/reports/${reportId}/resolve`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: await authHeaders(),
+    body: JSON.stringify({ resolution }),
+  })
+  if (!res.ok) {
+    throw new Error('Failed to resolve report')
   }
   return res.json()
 }

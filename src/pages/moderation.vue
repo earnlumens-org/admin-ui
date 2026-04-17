@@ -81,6 +81,9 @@
       <v-chip color="success" prepend-icon="mdi-check-circle-outline" size="small" variant="tonal">
         {{ stats.published }} published
       </v-chip>
+      <v-chip color="deep-orange" prepend-icon="mdi-flag-outline" size="small" variant="tonal">
+        {{ stats.openReports ?? 0 }} open reports
+      </v-chip>
       <v-chip color="error" prepend-icon="mdi-cancel" size="small" variant="tonal">
         {{ stats.suspended }} suspended
       </v-chip>
@@ -324,6 +327,32 @@
                   variant="flat"
                 >
                   {{ cat }}
+                </v-chip>
+              </div>
+            </v-alert>
+
+            <!-- User report summary badge -->
+            <v-alert
+              v-if="reportSummaries[entry.id]"
+              class="mt-2"
+              :color="severityColor(reportSummaries[entry.id].maxSeverity)"
+              density="compact"
+              icon="mdi-flag"
+              variant="tonal"
+            >
+              <div class="text-caption font-weight-medium">
+                {{ reportSummaries[entry.id].reportCount }} user report{{ reportSummaries[entry.id].reportCount > 1 ? 's' : '' }}
+                · Priority {{ reportSummaries[entry.id].maxPriority }}
+              </div>
+              <div v-if="reportSummaries[entry.id].reasons.length" class="d-flex flex-wrap ga-1 mt-1">
+                <v-chip
+                  v-for="reason in reportSummaries[entry.id].reasons"
+                  :key="reason"
+                  :color="severityColor(reportSummaries[entry.id].maxSeverity)"
+                  size="x-small"
+                  variant="flat"
+                >
+                  {{ reason }}
                 </v-chip>
               </div>
             </v-alert>
@@ -637,6 +666,87 @@
             </v-card>
           </div>
 
+          <!-- User Reports -->
+          <div v-if="detailReports.length" class="mb-4">
+            <div class="text-caption text-medium-emphasis mb-2">
+              User Reports ({{ detailReports.length }})
+            </div>
+            <v-card
+              v-for="report in detailReports"
+              :key="report.id"
+              class="mb-2"
+              density="compact"
+              variant="tonal"
+            >
+              <v-card-text class="pa-3">
+                <div class="d-flex align-center ga-2 mb-1">
+                  <v-chip
+                    :color="severityColor(report.severity)"
+                    label
+                    size="x-small"
+                    variant="flat"
+                  >
+                    {{ report.severity }}
+                  </v-chip>
+                  <v-chip label size="x-small" variant="tonal">
+                    {{ report.reason }}
+                  </v-chip>
+                  <v-chip
+                    :color="report.resolution === 'OPEN' ? 'warning' : report.resolution === 'DISMISSED' ? 'grey' : 'success'"
+                    label
+                    size="x-small"
+                    variant="tonal"
+                  >
+                    {{ report.resolution }}
+                  </v-chip>
+                  <span class="text-caption text-medium-emphasis">
+                    Priority {{ report.priorityScore }}
+                  </span>
+                </div>
+                <div class="text-caption">
+                  Reporter: <strong>{{ report.reporterUsername || report.reporterUserId }}</strong>
+                </div>
+                <div v-if="report.comment" class="text-caption text-medium-emphasis mt-1" style="max-width: 380px">
+                  {{ report.comment }}
+                </div>
+                <div class="text-caption text-disabled mt-1">
+                  {{ formatDate(report.createdAt) }}
+                  <span v-if="report.resolvedBy"> · Resolved by {{ report.resolvedBy }}</span>
+                </div>
+                <!-- Resolve actions for open reports -->
+                <div v-if="report.resolution === 'OPEN'" class="d-flex ga-1 mt-2">
+                  <v-btn
+                    color="grey"
+                    :loading="resolveLoading === report.id"
+                    size="x-small"
+                    variant="tonal"
+                    @click="handleResolveReport(report.id, 'DISMISSED')"
+                  >
+                    Dismiss
+                  </v-btn>
+                  <v-btn
+                    color="warning"
+                    :loading="resolveLoading === report.id"
+                    size="x-small"
+                    variant="tonal"
+                    @click="handleResolveReport(report.id, 'SANCTIONED')"
+                  >
+                    Sanction
+                  </v-btn>
+                  <v-btn
+                    color="error"
+                    :loading="resolveLoading === report.id"
+                    size="x-small"
+                    variant="tonal"
+                    @click="handleResolveReport(report.id, 'REMOVED')"
+                  >
+                    Remove
+                  </v-btn>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
+
           <!-- Status History -->
           <div v-if="detailEntry.statusHistory?.length" class="mb-4">
             <div class="text-caption text-medium-emphasis mb-2">Status History</div>
@@ -781,13 +891,18 @@
     type EntryDto,
     fetchContentUrl,
     fetchEntries,
+    fetchEntryReports,
     fetchJobSummaries,
     fetchModerationJobs,
     fetchModerationStats,
+    fetchReportSummaries,
     fetchTenantIds,
     type ModerationJobDto,
     type ModerationStats,
     rejectEntry,
+    type ReportDto,
+    type ReportSummary,
+    resolveReport,
     suspendEntry,
   } from '@/api/moderation'
   import { useWindowSize } from '@/composables/useWindowSize'
@@ -814,6 +929,9 @@
   const contentError = ref('')
   const moderationJobs = ref<ModerationJobDto[]>([])
   const jobSummaries = ref<Record<string, ModerationJobDto>>({})
+  const reportSummaries = ref<Record<string, ReportSummary>>({})
+  const detailReports = ref<ReportDto[]>([])
+  const resolveLoading = ref<string | null>(null)
 
   const isVideoContent = computed(() =>
     contentInfo.value?.contentType?.startsWith('video/') || contentInfo.value?.type === 'VIDEO',
@@ -1033,6 +1151,18 @@
       } else {
         jobSummaries.value = {}
       }
+
+      // Fetch report summaries for all visible entries
+      if (pageData.content.length > 0) {
+        try {
+          const ids = pageData.content.map(e => e.id)
+          reportSummaries.value = await fetchReportSummaries(ids)
+        } catch {
+          reportSummaries.value = {}
+        }
+      } else {
+        reportSummaries.value = {}
+      }
     } catch {
       showSnackbar('Failed to load entries', 'error')
     } finally {
@@ -1052,8 +1182,10 @@
     contentInfo.value = null
     contentError.value = ''
     moderationJobs.value = []
+    detailReports.value = []
     loadContentUrl(entry)
     loadModerationJobs(entry)
+    loadEntryReports(entry)
   }
 
   async function loadContentUrl (entry: EntryDto) {
@@ -1072,6 +1204,38 @@
       moderationJobs.value = await fetchModerationJobs(selectedTenant.value, entry.id)
     } catch {
       moderationJobs.value = []
+    }
+  }
+
+  async function loadEntryReports (entry: EntryDto) {
+    try {
+      detailReports.value = await fetchEntryReports(selectedTenant.value, entry.id)
+    } catch {
+      detailReports.value = []
+    }
+  }
+
+  async function handleResolveReport (reportId: string, resolution: string) {
+    resolveLoading.value = reportId
+    try {
+      await resolveReport(reportId, resolution)
+      if (detailEntry.value) {
+        await loadEntryReports(detailEntry.value)
+      }
+      showSnackbar(`Report ${resolution.toLowerCase()}`, 'success')
+    } catch (error: any) {
+      showSnackbar(error.message, 'error')
+    } finally {
+      resolveLoading.value = null
+    }
+  }
+
+  function severityColor (severity: string) {
+    switch (severity) {
+      case 'HIGH': return 'error'
+      case 'MEDIUM': return 'warning'
+      case 'LOW': return 'info'
+      default: return 'grey'
     }
   }
 
