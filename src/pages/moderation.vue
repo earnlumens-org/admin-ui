@@ -297,6 +297,37 @@
               </v-tooltip>
             </div>
 
+            <!-- AI flagging summary for in-review entries -->
+            <v-alert
+              v-if="jobSummaries[entry.id]?.decision === 'MANUAL_QUEUE'"
+              class="mt-2"
+              color="error"
+              density="compact"
+              icon="mdi-alert-decagram-outline"
+              variant="tonal"
+            >
+              <div class="text-caption font-weight-medium">
+                AI flagged by {{ jobSummaries[entry.id].decidingStep || 'AI' }}
+                <span v-if="jobSummaries[entry.id].confidence != null">
+                  · {{ Math.round((jobSummaries[entry.id].confidence ?? 0) * 100) }}% confidence
+                </span>
+              </div>
+              <div v-if="jobSummaries[entry.id].decisionReason" class="text-caption mt-1" style="opacity: 0.85">
+                {{ jobSummaries[entry.id].decisionReason }}
+              </div>
+              <div v-if="jobSummaries[entry.id].categoriesDetected?.length" class="d-flex flex-wrap ga-1 mt-1">
+                <v-chip
+                  v-for="cat in jobSummaries[entry.id].categoriesDetected"
+                  :key="cat"
+                  color="error"
+                  size="x-small"
+                  variant="flat"
+                >
+                  {{ cat }}
+                </v-chip>
+              </div>
+            </v-alert>
+
             <!-- Meta row with moderation actor -->
             <div class="d-flex align-center flex-wrap ga-2 mt-auto pt-2">
               <span class="text-caption text-medium-emphasis">
@@ -750,6 +781,7 @@
     type EntryDto,
     fetchContentUrl,
     fetchEntries,
+    fetchJobSummaries,
     fetchModerationJobs,
     fetchModerationStats,
     fetchTenantIds,
@@ -781,6 +813,7 @@
   const contentLoading = ref(false)
   const contentError = ref('')
   const moderationJobs = ref<ModerationJobDto[]>([])
+  const jobSummaries = ref<Record<string, ModerationJobDto>>({})
 
   const isVideoContent = computed(() =>
     contentInfo.value?.contentType?.startsWith('video/') || contentInfo.value?.type === 'VIDEO',
@@ -914,6 +947,14 @@
 
   function getActorInfo (entry: EntryDto): ActorInfo {
     if (entry.status === 'IN_REVIEW') {
+      const job = jobSummaries.value[entry.id]
+      if (job?.decision === 'MANUAL_QUEUE') {
+        const categories = job.categoriesDetected?.join(', ') || ''
+        const label = categories
+          ? `AI flagged: ${categories}`
+          : 'AI flagged for review'
+        return { type: 'ai', label, icon: 'mdi-alert-decagram-outline', color: 'error', actionLabel: 'AI Flagged' }
+      }
       return { type: 'pending', label: 'Awaiting human review', icon: 'mdi-clock-outline', color: 'warning', actionLabel: 'Pending' }
     }
 
@@ -980,6 +1021,18 @@
       entries.value = pageData.content
       totalPages.value = pageData.totalPages
       stats.value = statsData
+
+      // Fetch AI job summaries for in-review entries
+      if (tab.value === 'in-review' && pageData.content.length > 0) {
+        try {
+          const ids = pageData.content.map(e => e.id)
+          jobSummaries.value = await fetchJobSummaries(ids)
+        } catch {
+          jobSummaries.value = {}
+        }
+      } else {
+        jobSummaries.value = {}
+      }
     } catch {
       showSnackbar('Failed to load entries', 'error')
     } finally {

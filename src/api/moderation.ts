@@ -233,3 +233,16 @@ export async function fetchModerationJobs (tenantId: string, entryId: string): P
   }
   return res.json()
 }
+
+export async function fetchJobSummaries (entryIds: string[]): Promise<Record<string, ModerationJobDto>> {
+  const params = new URLSearchParams()
+  entryIds.forEach(id => params.append('entryIds', id))
+  const res = await fetch(`${API_BASE_URL}/api/moderation/job-summaries?${params}`, {
+    credentials: 'include',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) {
+    throw new Error('Failed to fetch job summaries')
+  }
+  return res.json()
+}
