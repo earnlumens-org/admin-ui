@@ -145,15 +145,15 @@
               <template #prepend>
                 <v-icon color="primary" icon="mdi-robot-outline" />
               </template>
-              <v-card-title class="text-body-1 font-weight-bold">Gemini 1.5 Flash (Business Rules)</v-card-title>
-              <v-card-subtitle>Context-aware AI moderation</v-card-subtitle>
+              <v-card-title class="text-body-1 font-weight-bold">Gemini 2.5 Flash (Business Rules)</v-card-title>
+              <v-card-subtitle>Multimodal AI moderation (vision + audio + text)</v-card-subtitle>
             </v-card-item>
             <v-card-text>
               <v-table density="compact">
                 <tbody>
                   <tr>
                     <td class="text-medium-emphasis">Model</td>
-                    <td class="font-weight-medium text-right">gemini-1.5-flash</td>
+                    <td class="font-weight-medium text-right">gemini-2.5-flash</td>
                   </tr>
                   <tr>
                     <td class="text-medium-emphasis">Temperature</td>
@@ -161,7 +161,7 @@
                   </tr>
                   <tr>
                     <td class="text-medium-emphasis">Analyzes</td>
-                    <td class="font-weight-medium text-right">Frames + metadata + text</td>
+                    <td class="font-weight-medium text-right">Frames + full audio + metadata</td>
                   </tr>
                   <tr>
                     <td class="text-medium-emphasis">Prompt</td>
@@ -220,7 +220,7 @@
                   </tr>
                   <tr>
                     <td class="text-medium-emphasis">Step 2</td>
-                    <td class="font-weight-medium text-right">Gemini Flash (business rules + NSFW)</td>
+                    <td class="font-weight-medium text-right">Gemini 2.5 Flash (business rules + NSFW + audio scams)</td>
                   </tr>
                   <tr>
                     <td class="text-medium-emphasis">Fail behavior</td>
