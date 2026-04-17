@@ -97,47 +97,6 @@
       </div>
 
       <v-row>
-        <!-- Fingerprint -->
-        <v-col cols="12" lg="4" md="6">
-          <v-card class="fill-height" variant="outlined">
-            <v-card-item>
-              <template #prepend>
-                <v-icon color="warning" icon="mdi-fingerprint" />
-              </template>
-              <v-card-title class="text-body-1 font-weight-bold">Content Fingerprinting</v-card-title>
-              <v-card-subtitle>Duplicate detection within platform</v-card-subtitle>
-            </v-card-item>
-            <v-card-text>
-              <v-table density="compact">
-                <tbody>
-                  <tr>
-                    <td class="text-medium-emphasis">Algorithm</td>
-                    <td class="font-weight-medium text-right">Perceptual Hash (pHash)</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Similarity threshold</td>
-                    <td class="font-weight-medium text-right">90%</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Applies to</td>
-                    <td class="font-weight-medium text-right">ALL entry types</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Action on detect</td>
-                    <td class="font-weight-medium text-right">
-                      <v-chip color="error" size="x-small" variant="tonal">AUTO REJECT</v-chip>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Cost</td>
-                    <td class="font-weight-medium text-right">$0 (self-hosted)</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </v-card-text>
-          </v-card>
-        </v-col>
-
         <!-- ACRCloud -->
         <v-col cols="12" lg="4" md="6">
           <v-card class="fill-height" variant="outlined">
@@ -257,14 +216,10 @@
                 <tbody>
                   <tr>
                     <td class="text-medium-emphasis">Step 1</td>
-                    <td class="font-weight-medium text-right">Fingerprint (duplicate check)</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Step 2</td>
                     <td class="font-weight-medium text-right">ACRCloud (audio copyright)</td>
                   </tr>
                   <tr>
-                    <td class="text-medium-emphasis">Step 3</td>
+                    <td class="text-medium-emphasis">Step 2</td>
                     <td class="font-weight-medium text-right">Gemini Flash (business rules + NSFW)</td>
                   </tr>
                   <tr>
