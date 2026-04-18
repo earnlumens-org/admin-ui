@@ -61,14 +61,35 @@
           />
           <v-list-item
             prepend-icon="mdi-file-check-outline"
-            title="Moderation"
             to="/moderation"
-          />
+          >
+            <v-list-item-title>Moderation</v-list-item-title>
+            <template v-if="inReviewCount > 0" #append>
+              <v-badge
+                color="warning"
+                :content="inReviewCount"
+                inline
+              />
+            </template>
+          </v-list-item>
           <v-list-item
             prepend-icon="mdi-tune-variant"
             title="Moderation Settings"
             to="/moderation-settings"
           />
+          <v-list-item
+            prepend-icon="mdi-flag-outline"
+            to="/reports"
+          >
+            <v-list-item-title>Reports</v-list-item-title>
+            <template v-if="openReportsCount > 0" #append>
+              <v-badge
+                color="error"
+                :content="openReportsCount"
+                inline
+              />
+            </template>
+          </v-list-item>
           <v-list-item
             prepend-icon="mdi-account-badge-outline"
             title="Moderators"
@@ -126,12 +147,14 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useTheme } from 'vuetify'
   import { useAuthStore } from '@/stores/auth'
+  import { useSidebarBadges } from '@/composables/useSidebarBadges'
 
   const authStore = useAuthStore()
   const route = useRoute()
   const router = useRouter()
   const theme = useTheme()
   const { mdAndUp } = useDisplay()
+  const { inReviewCount, openReportsCount } = useSidebarBadges()
 
   const authRoutes = ['/', '/oauth2/callback']
 

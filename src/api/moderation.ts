@@ -284,6 +284,22 @@ export interface ReportSummary {
 
 // ── Report API ────────────────────────────────────────────
 
+export async function fetchReports (
+  tenantId: string,
+  resolution: string | null,
+  page: number,
+  size: number,
+): Promise<PageResponse<ReportDto>> {
+  const params = new URLSearchParams({ tenantId, page: String(page), size: String(size) })
+  if (resolution) params.set('resolution', resolution)
+  const res = await fetch(`${API_BASE_URL}/api/moderation/reports?${params}`, {
+    credentials: 'include',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch reports')
+  return res.json()
+}
+
 export async function fetchEntryReports (tenantId: string, entryId: string): Promise<ReportDto[]> {
   const params = new URLSearchParams({ tenantId })
   const res = await fetch(`${API_BASE_URL}/api/moderation/entries/${entryId}/reports?${params}`, {

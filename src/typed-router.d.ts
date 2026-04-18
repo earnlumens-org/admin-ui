@@ -76,6 +76,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/reports': RouteRecordInfo<
+      '/reports',
+      '/reports',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/settings': RouteRecordInfo<
       '/settings',
       '/settings',
@@ -156,6 +163,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/oauth2/callback.vue': {
       routes:
         | '/oauth2/callback'
+      views:
+        | never
+    }
+    'src/pages/reports.vue': {
+      routes:
+        | '/reports'
       views:
         | never
     }

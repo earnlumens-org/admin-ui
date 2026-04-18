@@ -906,9 +906,11 @@
     suspendEntry,
   } from '@/api/moderation'
   import { useWindowSize } from '@/composables/useWindowSize'
+  import { useSidebarBadges } from '@/composables/useSidebarBadges'
   import { CDN_BASE_URL } from '@/config/env'
 
   const { width: windowWidth } = useWindowSize()
+  const { refresh: refreshBadges } = useSidebarBadges()
 
   // State
   const tab = ref('in-review')
@@ -1223,6 +1225,7 @@
         await loadEntryReports(detailEntry.value)
       }
       showSnackbar(`Report ${resolution.toLowerCase()}`, 'success')
+      refreshBadges()
     } catch (error: any) {
       showSnackbar(error.message, 'error')
     } finally {
@@ -1246,6 +1249,7 @@
       showSnackbar('Entry approved', 'success')
       detailDrawer.value = false
       loadEntries()
+      refreshBadges()
     } catch (error: any) {
       showSnackbar(error.message, 'error')
     } finally {
@@ -1268,6 +1272,7 @@
       rejectDialog.value = false
       detailDrawer.value = false
       loadEntries()
+      refreshBadges()
     } catch (error: any) {
       showSnackbar(error.message, 'error')
     } finally {
@@ -1290,6 +1295,7 @@
       suspendDialog.value = false
       detailDrawer.value = false
       loadEntries()
+      refreshBadges()
     } catch (error: any) {
       showSnackbar(error.message, 'error')
     } finally {
