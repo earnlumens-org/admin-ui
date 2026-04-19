@@ -325,7 +325,7 @@
                 >
                   {{ jobSummaries[entry.id].decisionReason }}
                 </div>
-                <div v-if="jobSummaries[entry.id].categoriesDetected?.length > 0" class="d-flex flex-wrap ga-1 mt-1">
+                <div v-if="(jobSummaries[entry.id].categoriesDetected?.length ?? 0) > 0" class="d-flex flex-wrap ga-1 mt-1">
                   <v-chip
                     v-for="cat in jobSummaries[entry.id].categoriesDetected"
                     :key="cat"
@@ -597,7 +597,7 @@
           </v-alert>
 
           <!-- AI Moderation Jobs -->
-          <div v-if="moderationJobs.length" class="mb-4">
+          <div v-if="moderationJobs.length > 0" class="mb-4">
             <div class="text-caption text-medium-emphasis mb-2">AI Moderation History</div>
             <v-card
               v-for="job in moderationJobs"
@@ -672,7 +672,7 @@
           </div>
 
           <!-- User Reports -->
-          <div v-if="detailReports.length" class="mb-4">
+          <div v-if="detailReports.length > 0" class="mb-4">
             <div class="text-caption text-medium-emphasis mb-2">
               User Reports ({{ detailReports.length }})
             </div>
@@ -949,8 +949,8 @@
     resolveReport,
     suspendEntry,
   } from '@/api/moderation'
-  import { useWindowSize } from '@/composables/useWindowSize'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
+  import { useWindowSize } from '@/composables/useWindowSize'
   import { CDN_BASE_URL } from '@/config/env'
 
   const { width: windowWidth } = useWindowSize()
@@ -962,7 +962,15 @@
   const reportConfirmTarget = ref<ReportDto | null>(null)
   const reportConfirmResolution = ref('')
 
-  const RESOLUTION_META: Record<string, { title: string; description: string; action: string; icon: string; color: string }> = {
+  interface ResolutionInfo {
+    title: string
+    description: string
+    action: string
+    icon: string
+    color: string
+  }
+
+  const RESOLUTION_META: Record<string, ResolutionInfo> = {
     DISMISSED: {
       title: 'Dismiss Report',
       description: 'The report will be closed with no action taken. The reported content stays published. This may lower the reporter\'s reputation score for future reports.',
@@ -1162,7 +1170,7 @@
       return { type: 'pending', label: 'Awaiting human review', icon: 'mdi-clock-outline', color: 'warning', actionLabel: 'Pending' }
     }
 
-    const history = [...(entry.statusHistory || [])].reverse()
+    const history = (entry.statusHistory || []).toReversed()
     const decision = history.find(r =>
       ['APPROVED', 'PUBLISHED', 'REJECTED', 'SUSPENDED'].includes(r.toStatus),
     )
@@ -1333,10 +1341,10 @@
 
   function severityColor (severity: string) {
     switch (severity) {
-      case 'HIGH': return 'error'
-      case 'MEDIUM': return 'warning'
-      case 'LOW': return 'info'
-      default: return 'grey'
+      case 'HIGH': { return 'error' }
+      case 'MEDIUM': { return 'warning' }
+      case 'LOW': { return 'info' }
+      default: { return 'grey' }
     }
   }
 
@@ -1489,6 +1497,7 @@
   .reason-clamped {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
