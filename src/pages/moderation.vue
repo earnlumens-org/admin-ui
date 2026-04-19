@@ -220,8 +220,9 @@
                 <v-progress-circular color="white" indeterminate size="24" width="2" />
               </div>
             </v-img>
-            <div v-else class="d-flex align-center justify-center fill-height bg-surface-light rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0">
-              <v-icon color="medium-emphasis" size="32">{{ typeIcon(entry.type) }}</v-icon>
+            <div v-else class="d-flex flex-column align-center justify-center fill-height bg-surface-light rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0">
+              <v-icon color="medium-emphasis" size="48">{{ typeIcon(entry.type) }}</v-icon>
+              <span class="text-caption text-medium-emphasis mt-1">{{ entry.type }}</span>
             </div>
           </div>
 

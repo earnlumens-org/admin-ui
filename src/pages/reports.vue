@@ -42,120 +42,126 @@
 
     <!-- Report list -->
     <div v-if="reports.length > 0">
-      <v-card v-for="report in reports" :key="report.id" class="mb-3" variant="outlined">
-        <v-card-text class="pa-3 pa-sm-4">
-          <div class="d-flex flex-column flex-sm-row ga-3">
-            <!-- Snapshot thumbnail -->
+      <v-card v-for="report in reports" :key="report.id" class="report-card mb-3" variant="outlined">
+        <div class="d-flex flex-column flex-sm-row">
+          <!-- Snapshot thumbnail -->
+          <div class="report-thumb flex-shrink-0">
             <v-img
               v-if="report.snapshot?.thumbnailR2Key"
-              class="rounded flex-shrink-0"
+              :aspect-ratio="16/9"
+              class="rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0"
               cover
-              height="80"
               :src="cdnUrl(report.snapshot.thumbnailR2Key)"
-              width="120"
-            />
-            <v-icon
-              v-else
-              class="flex-shrink-0 d-none d-sm-flex"
-              color="medium-emphasis"
-              size="40"
             >
-              mdi-file-document-outline
-            </v-icon>
-
-            <div class="flex-grow-1" style="min-width: 0">
-              <!-- Header: chips row -->
-              <div class="d-flex flex-wrap align-center ga-1 mb-1">
-                <v-chip
-                  :color="severityColor(report.severity)"
-                  label
-                  size="x-small"
-                  variant="flat"
-                >
-                  {{ report.severity }}
-                </v-chip>
-                <v-chip label size="x-small" variant="tonal">
-                  {{ report.reason }}
-                </v-chip>
-                <v-chip
-                  :color="resolutionColor(report.resolution)"
-                  label
-                  size="x-small"
-                  variant="tonal"
-                >
-                  {{ report.resolution }}
-                </v-chip>
-                <span class="text-caption text-medium-emphasis">
-                  Priority {{ report.priorityScore }}
-                </span>
-              </div>
-
-              <!-- Entry title from snapshot -->
-              <div v-if="report.snapshot?.title" class="text-body-2 font-weight-medium text-truncate">
-                {{ report.snapshot.title }}
-              </div>
-
-              <!-- Reporter + author info -->
-              <div class="text-caption text-medium-emphasis mt-1">
-                Reported by <strong>{{ report.reporterUsername || report.reporterUserId }}</strong>
-                <span v-if="report.snapshot?.authorUsername">
-                  · Author: <strong>{{ report.snapshot.authorUsername }}</strong>
-                </span>
-              </div>
-
-              <!-- Comment -->
-              <div v-if="report.comment" class="text-caption text-medium-emphasis mt-1" style="max-width: 500px">
-                "{{ report.comment }}"
-              </div>
-
-              <!-- Date + resolved info -->
-              <div class="text-caption text-disabled mt-1">
-                {{ formatDate(report.createdAt) }}
-                <span v-if="report.resolvedBy"> · Resolved by {{ report.resolvedBy }}</span>
-              </div>
-
-              <!-- Actions for open reports -->
-              <div v-if="report.resolution === 'OPEN'" class="d-flex flex-wrap align-center ga-2 mt-3">
-                <v-btn
-                  color="grey"
-                  prepend-icon="mdi-close-circle-outline"
-                  size="small"
-                  variant="tonal"
-                  @click="openConfirm(report, 'DISMISSED')"
-                >
-                  Dismiss
-                </v-btn>
-                <v-btn
-                  color="warning"
-                  prepend-icon="mdi-alert-outline"
-                  size="small"
-                  variant="flat"
-                  @click="openConfirm(report, 'SANCTIONED')"
-                >
-                  Sanction
-                </v-btn>
-                <v-btn
-                  color="error"
-                  prepend-icon="mdi-delete-outline"
-                  size="small"
-                  variant="flat"
-                  @click="openConfirm(report, 'REMOVED')"
-                >
-                  Remove
-                </v-btn>
-                <v-spacer />
-                <v-btn
-                  size="x-small"
-                  variant="text"
-                  @click="goToEntry(report)"
-                >
-                  View in Moderation
-                  <v-icon end size="14">mdi-arrow-right</v-icon>
-                </v-btn>
-              </div>
+              <template #placeholder>
+                <div class="d-flex align-center justify-center fill-height bg-surface-light">
+                  <v-icon color="medium-emphasis">mdi-image-outline</v-icon>
+                </div>
+              </template>
+            </v-img>
+            <div v-else class="d-flex flex-column align-center justify-center fill-height bg-surface-light rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0">
+              <v-icon color="medium-emphasis" size="48">mdi-file-document-outline</v-icon>
+              <span class="text-caption text-medium-emphasis mt-1">{{ report.snapshot?.type || 'content' }}</span>
             </div>
           </div>
-        </v-card-text>
+
+          <!-- Content -->
+          <div class="flex-grow-1 pa-3 pa-sm-4 d-flex flex-column" style="min-width: 0">
+            <!-- Header: chips row -->
+            <div class="d-flex flex-wrap align-center ga-1 mb-1">
+              <v-chip
+                :color="severityColor(report.severity)"
+                label
+                size="x-small"
+                variant="flat"
+              >
+                {{ report.severity }}
+              </v-chip>
+              <v-chip label size="x-small" variant="tonal">
+                {{ report.reason }}
+              </v-chip>
+              <v-chip
+                :color="resolutionColor(report.resolution)"
+                label
+                size="x-small"
+                variant="tonal"
+              >
+                {{ report.resolution }}
+              </v-chip>
+              <span class="text-caption text-medium-emphasis">
+                Priority {{ report.priorityScore }}
+              </span>
+            </div>
+
+            <!-- Entry title from snapshot -->
+            <div v-if="report.snapshot?.title" class="text-body-1 font-weight-medium text-truncate">
+              {{ report.snapshot.title }}
+            </div>
+
+            <!-- Reporter + author info -->
+            <div class="text-caption text-medium-emphasis mt-1">
+              Reported by <strong>{{ report.reporterUsername || report.reporterUserId }}</strong>
+              <span v-if="report.snapshot?.authorUsername">
+                · Author: <strong>{{ report.snapshot.authorUsername }}</strong>
+              </span>
+            </div>
+
+            <!-- Comment -->
+            <div v-if="report.comment" class="text-caption text-medium-emphasis mt-1" style="max-width: 500px">
+              "{{ report.comment }}"
+            </div>
+
+            <!-- Date + resolved info -->
+            <div class="d-flex align-center flex-wrap ga-2 mt-auto pt-2">
+              <span class="text-caption text-medium-emphasis">
+                {{ formatDate(report.createdAt) }}
+              </span>
+              <span v-if="report.resolvedBy" class="text-caption text-medium-emphasis">
+                · Resolved by {{ report.resolvedBy }}
+              </span>
+            </div>
+
+            <!-- Actions for open reports -->
+            <div v-if="report.resolution === 'OPEN'" class="d-flex flex-wrap align-center ga-2 mt-3">
+              <v-btn
+                color="grey"
+                prepend-icon="mdi-close-circle-outline"
+                size="small"
+                variant="tonal"
+                @click="openConfirm(report, 'DISMISSED')"
+              >
+                Dismiss
+              </v-btn>
+              <v-btn
+                color="warning"
+                prepend-icon="mdi-alert-outline"
+                size="small"
+                variant="flat"
+                @click="openConfirm(report, 'SANCTIONED')"
+              >
+                Sanction
+              </v-btn>
+              <v-btn
+                color="error"
+                prepend-icon="mdi-delete-outline"
+                size="small"
+                variant="flat"
+                @click="openConfirm(report, 'REMOVED')"
+              >
+                Remove
+              </v-btn>
+              <v-spacer />
+              <v-btn
+                size="x-small"
+                variant="text"
+                @click="goToEntry(report)"
+              >
+                View in Moderation
+                <v-icon end size="14">mdi-arrow-right</v-icon>
+              </v-btn>
+            </div>
+          </div>
+        </div>
       </v-card>
 
       <!-- Pagination -->
@@ -398,5 +404,22 @@
   .tenant-select {
     max-width: 220px;
     min-width: 180px;
+  }
+
+  .report-card:hover {
+    border-color: rgb(var(--v-theme-primary));
+  }
+
+  .report-thumb {
+    width: 100%;
+    height: 140px;
+  }
+
+  @media (min-width: 600px) {
+    .report-thumb {
+      width: 200px;
+      min-width: 200px;
+      height: auto;
+    }
   }
 </style>
