@@ -250,6 +250,30 @@ export async function fetchJobSummaries (entryIds: string[]): Promise<Record<str
 
 // ── Report types ──────────────────────────────────────────
 
+export interface AssetDto {
+  id: string
+  tenantId: string
+  entryId: string
+  r2Key: string
+  contentType: string | null
+  fileName: string | null
+  fileSizeBytes: number | null
+  kind: string       // THUMBNAIL, PREVIEW, FULL
+  status: string     // UPLOADED, READY
+}
+
+export async function fetchEntryAssets (tenantId: string, entryId: string): Promise<AssetDto[]> {
+  const params = new URLSearchParams({ tenantId })
+  const res = await fetch(`${API_BASE_URL}/api/moderation/entries/${entryId}/assets?${params}`, {
+    credentials: 'include',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) {
+    throw new Error('Failed to fetch entry assets')
+  }
+  return res.json()
+}
+
 export interface ReportSnapshotDto {
   title: string | null
   description: string | null

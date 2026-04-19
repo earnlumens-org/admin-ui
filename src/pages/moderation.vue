@@ -596,6 +596,31 @@
             {{ detailEntry.moderationFeedback }}
           </v-alert>
 
+          <!-- Attached Assets -->
+          <div v-if="entryAssets.length > 0" class="mb-4">
+            <div class="text-caption text-medium-emphasis mb-2">Attached Files ({{ entryAssets.length }})</div>
+            <v-card
+              v-for="asset in entryAssets"
+              :key="asset.id"
+              class="mb-2 pa-3"
+              density="compact"
+              variant="outlined"
+            >
+              <div class="d-flex align-center ga-2">
+                <v-icon :color="assetKindColor(asset.kind)" size="18">{{ assetKindIcon(asset.kind) }}</v-icon>
+                <div class="flex-grow-1" style="min-width: 0">
+                  <div class="text-caption font-weight-medium text-truncate">{{ asset.fileName || asset.r2Key }}</div>
+                  <div class="text-caption text-medium-emphasis">
+                    {{ asset.kind }}
+                    <span v-if="asset.contentType"> · {{ asset.contentType }}</span>
+                    <span v-if="asset.fileSizeBytes"> · {{ formatFileSize(asset.fileSizeBytes) }}</span>
+                  </div>
+                </div>
+                <v-chip :color="asset.status === 'READY' ? 'success' : 'warning'" label size="x-small" variant="tonal">{{ asset.status }}</v-chip>
+              </div>
+            </v-card>
+          </div>
+
           <!-- AI Moderation Jobs -->
           <div v-if="moderationJobs.length > 0" class="mb-4">
             <div class="text-caption text-medium-emphasis mb-2">AI Moderation History</div>
@@ -930,11 +955,13 @@
   import { useRoute } from 'vue-router'
   import {
     approveEntry,
+    type AssetDto,
     type ContentUrlResponse,
     type EntryDto,
     fetchContentUrl,
     fetchEntries,
     fetchEntry,
+    fetchEntryAssets,
     fetchEntryReports,
     fetchJobSummaries,
     fetchModerationJobs,
@@ -1014,6 +1041,7 @@
   const contentLoading = ref(false)
   const contentError = ref('')
   const moderationJobs = ref<ModerationJobDto[]>([])
+  const entryAssets = ref<AssetDto[]>([])
   const jobSummaries = ref<Record<string, ModerationJobDto>>({})
   const reportSummaries = ref<Record<string, ReportSummary>>({})
   const detailReports = ref<ReportDto[]>([])
@@ -1149,6 +1177,31 @@
     return 'Paid'
   }
 
+  function formatFileSize (bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+  }
+
+  function assetKindIcon (kind: string): string {
+    switch (kind) {
+      case 'FULL': { return 'mdi-file' }
+      case 'THUMBNAIL': { return 'mdi-image' }
+      case 'PREVIEW': { return 'mdi-eye' }
+      default: { return 'mdi-file-question' }
+    }
+  }
+
+  function assetKindColor (kind: string): string {
+    switch (kind) {
+      case 'FULL': { return 'primary' }
+      case 'THUMBNAIL': { return 'info' }
+      case 'PREVIEW': { return 'secondary' }
+      default: { return 'grey' }
+    }
+  }
+
   interface ActorInfo {
     type: 'ai' | 'human' | 'pending' | 'unknown'
     label: string
@@ -1276,10 +1329,12 @@
     contentInfo.value = null
     contentError.value = ''
     moderationJobs.value = []
+    entryAssets.value = []
     detailReports.value = []
     loadContentUrl(entry)
     loadModerationJobs(entry)
     loadEntryReports(entry)
+    loadEntryAssets(entry)
   }
 
   async function loadContentUrl (entry: EntryDto) {
@@ -1298,6 +1353,14 @@
       moderationJobs.value = await fetchModerationJobs(selectedTenant.value, entry.id)
     } catch {
       moderationJobs.value = []
+    }
+  }
+
+  async function loadEntryAssets (entry: EntryDto) {
+    try {
+      entryAssets.value = await fetchEntryAssets(selectedTenant.value, entry.id)
+    } catch {
+      entryAssets.value = []
     }
   }
 
