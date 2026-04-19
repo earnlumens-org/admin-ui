@@ -714,12 +714,13 @@
                   <span v-if="report.resolvedBy"> · Resolved by {{ report.resolvedBy }}</span>
                 </div>
                 <!-- Resolve actions for open reports -->
-                <div v-if="report.resolution === 'OPEN'" class="d-flex ga-1 mt-2">
+                <div v-if="report.resolution === 'OPEN'" class="d-flex ga-2 mt-3">
                   <v-btn
                     color="grey"
                     :loading="resolveLoading === report.id"
-                    size="x-small"
-                    variant="tonal"
+                    prepend-icon="mdi-close-circle-outline"
+                    size="small"
+                    variant="outlined"
                     @click="handleResolveReport(report.id, 'DISMISSED')"
                   >
                     Dismiss
@@ -727,8 +728,9 @@
                   <v-btn
                     color="warning"
                     :loading="resolveLoading === report.id"
-                    size="x-small"
-                    variant="tonal"
+                    prepend-icon="mdi-alert-outline"
+                    size="small"
+                    variant="flat"
                     @click="handleResolveReport(report.id, 'SANCTIONED')"
                   >
                     Sanction
@@ -736,8 +738,9 @@
                   <v-btn
                     color="error"
                     :loading="resolveLoading === report.id"
-                    size="x-small"
-                    variant="tonal"
+                    prepend-icon="mdi-delete-outline"
+                    size="small"
+                    variant="flat"
                     @click="handleResolveReport(report.id, 'REMOVED')"
                   >
                     Remove

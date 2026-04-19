@@ -115,12 +115,13 @@
               </div>
 
               <!-- Actions for open reports -->
-              <div v-if="report.resolution === 'OPEN'" class="d-flex flex-wrap ga-1 mt-2">
+              <div v-if="report.resolution === 'OPEN'" class="d-flex flex-wrap align-center ga-2 mt-3">
                 <v-btn
                   color="grey"
                   :loading="resolveLoading === report.id"
-                  size="x-small"
-                  variant="tonal"
+                  prepend-icon="mdi-close-circle-outline"
+                  size="small"
+                  variant="outlined"
                   @click="handleResolve(report.id, 'DISMISSED')"
                 >
                   Dismiss
@@ -128,8 +129,9 @@
                 <v-btn
                   color="warning"
                   :loading="resolveLoading === report.id"
-                  size="x-small"
-                  variant="tonal"
+                  prepend-icon="mdi-alert-outline"
+                  size="small"
+                  variant="flat"
                   @click="handleResolve(report.id, 'SANCTIONED')"
                 >
                   Sanction
@@ -137,8 +139,9 @@
                 <v-btn
                   color="error"
                   :loading="resolveLoading === report.id"
-                  size="x-small"
-                  variant="tonal"
+                  prepend-icon="mdi-delete-outline"
+                  size="small"
+                  variant="flat"
                   @click="handleResolve(report.id, 'REMOVED')"
                 >
                   Remove
