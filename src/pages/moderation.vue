@@ -717,31 +717,28 @@
                 <div v-if="report.resolution === 'OPEN'" class="d-flex ga-2 mt-3">
                   <v-btn
                     color="grey"
-                    :loading="resolveLoading === report.id"
                     prepend-icon="mdi-close-circle-outline"
                     size="small"
-                    variant="outlined"
-                    @click="handleResolveReport(report.id, 'DISMISSED')"
+                    variant="tonal"
+                    @click="openReportConfirm(report, 'DISMISSED')"
                   >
                     Dismiss
                   </v-btn>
                   <v-btn
                     color="warning"
-                    :loading="resolveLoading === report.id"
                     prepend-icon="mdi-alert-outline"
                     size="small"
                     variant="flat"
-                    @click="handleResolveReport(report.id, 'SANCTIONED')"
+                    @click="openReportConfirm(report, 'SANCTIONED')"
                   >
                     Sanction
                   </v-btn>
                   <v-btn
                     color="error"
-                    :loading="resolveLoading === report.id"
                     prepend-icon="mdi-delete-outline"
                     size="small"
                     variant="flat"
-                    @click="handleResolveReport(report.id, 'REMOVED')"
+                    @click="openReportConfirm(report, 'REMOVED')"
                   >
                     Remove
                   </v-btn>
@@ -879,6 +876,43 @@
       </v-card>
     </v-dialog>
 
+    <!-- Report resolve confirmation -->
+    <v-dialog v-model="reportConfirmDialog" max-width="480" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center ga-2">
+          <v-icon :color="reportConfirmMeta.color" :icon="reportConfirmMeta.icon" />
+          {{ reportConfirmMeta.title }}
+        </v-card-title>
+        <v-card-text>
+          <div class="text-body-2 mb-3">{{ reportConfirmMeta.description }}</div>
+          <v-alert
+            class="mb-3"
+            color="warning"
+            density="compact"
+            icon="mdi-account-eye"
+            variant="tonal"
+          >
+            This action will be recorded under your admin username.
+          </v-alert>
+          <div v-if="reportConfirmTarget" class="text-caption text-medium-emphasis">
+            Reason: <strong>{{ reportConfirmTarget.reason }}</strong> · Priority: <strong>{{ reportConfirmTarget.priorityScore }}</strong>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="reportConfirmDialog = false">Cancel</v-btn>
+          <v-btn
+            :color="reportConfirmMeta.color"
+            :loading="resolveLoading !== null"
+            variant="flat"
+            @click="executeResolveReport"
+          >
+            {{ reportConfirmMeta.action }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
       {{ snackbarText }}
@@ -888,12 +922,14 @@
 
 <script lang="ts" setup>
   import { computed, onMounted, ref } from 'vue'
+  import { useRoute } from 'vue-router'
   import {
     approveEntry,
     type ContentUrlResponse,
     type EntryDto,
     fetchContentUrl,
     fetchEntries,
+    fetchEntry,
     fetchEntryReports,
     fetchJobSummaries,
     fetchModerationJobs,
@@ -914,6 +950,38 @@
 
   const { width: windowWidth } = useWindowSize()
   const { refresh: refreshBadges } = useSidebarBadges()
+  const route = useRoute()
+
+  // Report resolve confirmation
+  const reportConfirmDialog = ref(false)
+  const reportConfirmTarget = ref<ReportDto | null>(null)
+  const reportConfirmResolution = ref('')
+
+  const RESOLUTION_META: Record<string, { title: string; description: string; action: string; icon: string; color: string }> = {
+    DISMISSED: {
+      title: 'Dismiss Report',
+      description: 'The report will be closed with no action taken. The reported content stays published. This may lower the reporter\'s reputation score for future reports.',
+      action: 'Dismiss report',
+      icon: 'mdi-close-circle-outline',
+      color: 'grey',
+    },
+    SANCTIONED: {
+      title: 'Sanction Content',
+      description: 'The reported content will be suspended immediately. The author will see a "suspended" status on their entry. The reporter\'s reputation score will increase for future reports.',
+      action: 'Sanction & suspend',
+      icon: 'mdi-alert-outline',
+      color: 'warning',
+    },
+    REMOVED: {
+      title: 'Remove Content',
+      description: 'The reported content will be suspended immediately for removal. The author will see a "suspended" status and the content will no longer be publicly visible. The reporter\'s reputation score will increase for future reports.',
+      action: 'Remove & suspend',
+      icon: 'mdi-delete-outline',
+      color: 'error',
+    },
+  }
+
+  const reportConfirmMeta = computed(() => RESOLUTION_META[reportConfirmResolution.value] ?? RESOLUTION_META.DISMISSED)
 
   // State
   const tab = ref('in-review')
@@ -1220,15 +1288,29 @@
     }
   }
 
-  async function handleResolveReport (reportId: string, resolution: string) {
-    resolveLoading.value = reportId
+  function openReportConfirm (report: ReportDto, resolution: string) {
+    reportConfirmTarget.value = report
+    reportConfirmResolution.value = resolution
+    reportConfirmDialog.value = true
+  }
+
+  async function executeResolveReport () {
+    if (!reportConfirmTarget.value) return
+    resolveLoading.value = reportConfirmTarget.value.id
     try {
-      await resolveReport(reportId, resolution)
+      await resolveReport(reportConfirmTarget.value.id, reportConfirmResolution.value)
+      reportConfirmDialog.value = false
       if (detailEntry.value) {
         await loadEntryReports(detailEntry.value)
+        // Reload entry if it was suspended
+        if (reportConfirmResolution.value !== 'DISMISSED') {
+          const refreshed = await fetchEntry(selectedTenant.value, detailEntry.value.id)
+          detailEntry.value = refreshed
+        }
       }
-      showSnackbar(`Report ${resolution.toLowerCase()}`, 'success')
+      showSnackbar(`Report ${reportConfirmResolution.value.toLowerCase()}`, 'success')
       refreshBadges()
+      loadEntries()
     } catch (error: any) {
       showSnackbar(error.message, 'error')
     } finally {
@@ -1312,7 +1394,25 @@
     } catch {
       // If tenants fail to load, we still default to earnlumens
     }
-    loadEntries()
+
+    // Deep link: /moderation?tab=all&entryId=xxx&tenantId=yyy
+    const qTab = route.query.tab as string | undefined
+    const qEntryId = route.query.entryId as string | undefined
+    const qTenantId = route.query.tenantId as string | undefined
+
+    if (qTenantId) selectedTenant.value = qTenantId
+    if (qTab) tab.value = qTab
+
+    await loadEntries()
+
+    if (qEntryId) {
+      try {
+        const entry = await fetchEntry(selectedTenant.value, qEntryId)
+        openDetail(entry)
+      } catch {
+        showSnackbar('Entry not found', 'error')
+      }
+    }
   })
 </script>
 

@@ -118,31 +118,28 @@
               <div v-if="report.resolution === 'OPEN'" class="d-flex flex-wrap align-center ga-2 mt-3">
                 <v-btn
                   color="grey"
-                  :loading="resolveLoading === report.id"
                   prepend-icon="mdi-close-circle-outline"
                   size="small"
-                  variant="outlined"
-                  @click="handleResolve(report.id, 'DISMISSED')"
+                  variant="tonal"
+                  @click="openConfirm(report, 'DISMISSED')"
                 >
                   Dismiss
                 </v-btn>
                 <v-btn
                   color="warning"
-                  :loading="resolveLoading === report.id"
                   prepend-icon="mdi-alert-outline"
                   size="small"
                   variant="flat"
-                  @click="handleResolve(report.id, 'SANCTIONED')"
+                  @click="openConfirm(report, 'SANCTIONED')"
                 >
                   Sanction
                 </v-btn>
                 <v-btn
                   color="error"
-                  :loading="resolveLoading === report.id"
                   prepend-icon="mdi-delete-outline"
                   size="small"
                   variant="flat"
-                  @click="handleResolve(report.id, 'REMOVED')"
+                  @click="openConfirm(report, 'REMOVED')"
                 >
                   Remove
                 </v-btn>
@@ -185,6 +182,44 @@
       </div>
     </v-card>
   </v-container>
+
+  <!-- Confirmation dialog -->
+  <v-dialog v-model="confirmDialog" max-width="480" persistent>
+    <v-card>
+      <v-card-title class="d-flex align-center ga-2">
+        <v-icon :color="confirmMeta.color" :icon="confirmMeta.icon" />
+        {{ confirmMeta.title }}
+      </v-card-title>
+      <v-card-text>
+        <div class="text-body-2 mb-3">{{ confirmMeta.description }}</div>
+        <v-alert
+          class="mb-3"
+          color="warning"
+          density="compact"
+          icon="mdi-account-eye"
+          variant="tonal"
+        >
+          This action will be recorded under your admin username.
+        </v-alert>
+        <div v-if="confirmReport" class="text-caption text-medium-emphasis">
+          Entry: <strong>{{ confirmReport.snapshot?.title || confirmReport.entryId }}</strong><br>
+          Reason: <strong>{{ confirmReport.reason }}</strong> · Priority: <strong>{{ confirmReport.priorityScore }}</strong>
+        </div>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" @click="confirmDialog = false">Cancel</v-btn>
+        <v-btn
+          :color="confirmMeta.color"
+          :loading="resolveLoading !== null"
+          variant="flat"
+          @click="executeResolve"
+        >
+          {{ confirmMeta.action }}
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script lang="ts" setup>
@@ -213,6 +248,45 @@
   const totalPages = ref(1)
   const openCount = ref(0)
   const resolveLoading = ref<string | null>(null)
+
+  // Confirmation dialog
+  const confirmDialog = ref(false)
+  const confirmReport = ref<ReportDto | null>(null)
+  const confirmResolution = ref('')
+
+  interface ResolutionInfo {
+    title: string
+    description: string
+    action: string
+    icon: string
+    color: string
+  }
+
+  const RESOLUTION_META: Record<string, ResolutionInfo> = {
+    DISMISSED: {
+      title: 'Dismiss Report',
+      description: 'The report will be closed with no action taken. The reported content stays published. This may lower the reporter\'s reputation score for future reports.',
+      action: 'Dismiss report',
+      icon: 'mdi-close-circle-outline',
+      color: 'grey',
+    },
+    SANCTIONED: {
+      title: 'Sanction Content',
+      description: 'The reported content will be suspended immediately. The author will see a "suspended" status on their entry. The reporter\'s reputation score will increase for future reports.',
+      action: 'Sanction & suspend',
+      icon: 'mdi-alert-outline',
+      color: 'warning',
+    },
+    REMOVED: {
+      title: 'Remove Content',
+      description: 'The reported content will be suspended immediately for removal. The author will see a "suspended" status and the content will no longer be publicly visible. The reporter\'s reputation score will increase for future reports.',
+      action: 'Remove & suspend',
+      icon: 'mdi-delete-outline',
+      color: 'error',
+    },
+  }
+
+  const confirmMeta = computed(() => RESOLUTION_META[confirmResolution.value] ?? RESOLUTION_META.DISMISSED)
 
   const tenantOptions = computed(() => {
     const opts = [{ title: 'All tenants', value: '_all' }]
@@ -285,10 +359,18 @@
     }
   }
 
-  async function handleResolve (reportId: string, resolution: string) {
-    resolveLoading.value = reportId
+  function openConfirm (report: ReportDto, resolution: string) {
+    confirmReport.value = report
+    confirmResolution.value = resolution
+    confirmDialog.value = true
+  }
+
+  async function executeResolve () {
+    if (!confirmReport.value) return
+    resolveLoading.value = confirmReport.value.id
     try {
-      await resolveReport(reportId, resolution)
+      await resolveReport(confirmReport.value.id, confirmResolution.value)
+      confirmDialog.value = false
       await loadReports()
       refreshBadges()
     } catch {
@@ -299,7 +381,7 @@
   }
 
   function goToEntry (report: ReportDto) {
-    router.push({ path: '/moderation', query: { entryId: report.entryId } })
+    router.push({ path: '/moderation', query: { tab: 'all', entryId: report.entryId, tenantId: report.tenantId } })
   }
 
   onMounted(async () => {
