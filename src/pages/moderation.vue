@@ -197,12 +197,12 @@
         variant="outlined"
       >
         <div class="d-flex flex-column flex-sm-row">
-          <!-- Thumbnail -->
-          <div class="entry-thumb flex-shrink-0" @click="openDetail(entry)">
+          <!-- Media -->
+          <div class="entry-media flex-shrink-0 cursor-pointer" @click="openDetail(entry)">
             <v-img
               v-if="entry.thumbnailR2Key"
               :aspect-ratio="16/9"
-              class="rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0"
+              class="fill-height rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0"
               cover
               :src="cdnUrl(entry.thumbnailR2Key)"
             >
@@ -211,30 +211,27 @@
                   <v-icon color="medium-emphasis">mdi-image-outline</v-icon>
                 </div>
               </template>
-              <!-- Duration badge -->
               <div v-if="entry.durationSec" class="entry-duration">
                 {{ formatDuration(entry.durationSec) }}
               </div>
-              <!-- AI Processing overlay -->
               <div v-if="tab === 'ai-processing'" class="entry-processing-overlay d-flex align-center justify-center">
                 <v-progress-circular color="white" indeterminate size="24" width="2" />
               </div>
             </v-img>
             <div v-else class="d-flex flex-column align-center justify-center fill-height bg-surface-light rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0">
-              <v-icon color="medium-emphasis" size="48">{{ typeIcon(entry.type) }}</v-icon>
-              <span class="text-caption text-medium-emphasis mt-1">{{ entry.type }}</span>
+              <v-icon color="medium-emphasis" size="36">{{ typeIcon(entry.type) }}</v-icon>
             </div>
           </div>
 
           <!-- Content -->
-          <div class="flex-grow-1 pa-3 pa-sm-4 d-flex flex-column" style="min-width: 0">
+          <div class="flex-grow-1 pa-3 d-flex flex-column" style="min-width: 0">
             <div class="d-flex align-start justify-space-between ga-2">
               <div style="min-width: 0; flex: 1">
-                <div class="text-body-1 font-weight-medium text-truncate cursor-pointer" @click="openDetail(entry)">
+                <div class="text-body-2 font-weight-medium text-truncate cursor-pointer" @click="openDetail(entry)">
                   {{ entry.title }}
                 </div>
-                <div class="d-flex align-center flex-wrap ga-2 mt-1">
-                  <span class="text-body-2 text-medium-emphasis">
+                <div class="d-flex align-center flex-wrap ga-1 mt-1">
+                  <span class="text-caption text-medium-emphasis">
                     @{{ entry.authorUsername || 'unknown' }}
                   </span>
                   <v-chip :color="typeColor(entry.type)" label size="x-small" variant="tonal">
@@ -258,7 +255,13 @@
               <!-- Actions menu -->
               <v-menu v-if="tab !== 'ai-processing'">
                 <template #activator="{ props }">
-                  <v-btn v-bind="props" icon="mdi-dots-vertical" size="small" variant="text" />
+                  <v-btn
+                    v-bind="props"
+                    density="compact"
+                    icon="mdi-dots-vertical"
+                    size="x-small"
+                    variant="text"
+                  />
                 </template>
                 <v-list density="compact">
                   <v-list-item
@@ -296,56 +299,57 @@
               <!-- Locked indicator for AI processing -->
               <v-tooltip v-else location="top" text="Locked — AI is analyzing this entry">
                 <template #activator="{ props: tooltipProps }">
-                  <v-icon v-bind="tooltipProps" class="mt-1" color="info" size="20">mdi-lock-outline</v-icon>
+                  <v-icon v-bind="tooltipProps" color="info" size="16">mdi-lock-outline</v-icon>
                 </template>
               </v-tooltip>
             </div>
 
-            <!-- AI flagging summary for in-review entries -->
-            <v-alert
+            <!-- AI flag -->
+            <div
               v-if="jobSummaries[entry.id]?.decision === 'MANUAL_QUEUE'"
-              class="mt-2"
-              color="error"
-              density="compact"
-              icon="mdi-alert-decagram-outline"
-              variant="tonal"
+              class="flag-indicator flag-ai d-flex align-start ga-2 mt-2"
             >
-              <div class="text-caption font-weight-medium">
-                AI flagged by {{ jobSummaries[entry.id].decidingStep || 'AI' }}
-                <span v-if="jobSummaries[entry.id].confidence != null">
-                  · {{ Math.round((jobSummaries[entry.id].confidence ?? 0) * 100) }}% confidence
+              <v-icon class="flex-shrink-0 mt-px" color="error" size="14">mdi-alert-decagram</v-icon>
+              <div style="min-width: 0; flex: 1">
+                <span class="text-caption font-weight-medium">
+                  Flagged by {{ jobSummaries[entry.id].decidingStep || 'AI' }}
                 </span>
-              </div>
-              <div v-if="jobSummaries[entry.id].decisionReason" class="text-caption mt-1" style="opacity: 0.85">
-                {{ jobSummaries[entry.id].decisionReason }}
-              </div>
-              <div v-if="jobSummaries[entry.id].categoriesDetected?.length" class="d-flex flex-wrap ga-1 mt-1">
-                <v-chip
-                  v-for="cat in jobSummaries[entry.id].categoriesDetected"
-                  :key="cat"
-                  color="error"
-                  size="x-small"
-                  variant="flat"
+                <span v-if="jobSummaries[entry.id].confidence != null" class="text-caption text-medium-emphasis">
+                  · {{ Math.round((jobSummaries[entry.id].confidence ?? 0) * 100) }}%
+                </span>
+                <div
+                  v-if="jobSummaries[entry.id].decisionReason"
+                  class="text-caption text-medium-emphasis reason-text"
+                  :class="{ 'reason-clamped': !expandedReasons.has(entry.id) }"
+                  @click.stop="toggleReason(entry.id)"
                 >
-                  {{ cat }}
-                </v-chip>
+                  {{ jobSummaries[entry.id].decisionReason }}
+                </div>
+                <div v-if="jobSummaries[entry.id].categoriesDetected?.length > 0" class="d-flex flex-wrap ga-1 mt-1">
+                  <v-chip
+                    v-for="cat in jobSummaries[entry.id].categoriesDetected"
+                    :key="cat"
+                    color="error"
+                    size="x-small"
+                    variant="flat"
+                  >
+                    {{ cat }}
+                  </v-chip>
+                </div>
               </div>
-            </v-alert>
+            </div>
 
-            <!-- User report summary badge -->
-            <v-alert
+            <!-- User reports -->
+            <div
               v-if="reportSummaries[entry.id]"
-              class="mt-2"
-              :color="severityColor(reportSummaries[entry.id].maxSeverity)"
-              density="compact"
-              icon="mdi-flag"
-              variant="tonal"
+              class="flag-indicator flag-report d-flex align-center ga-2 mt-2"
             >
-              <div class="text-caption font-weight-medium">
-                {{ reportSummaries[entry.id].reportCount }} user report{{ reportSummaries[entry.id].reportCount > 1 ? 's' : '' }}
-                · Priority {{ reportSummaries[entry.id].maxPriority }}
-              </div>
-              <div v-if="reportSummaries[entry.id].reasons.length" class="d-flex flex-wrap ga-1 mt-1">
+              <v-icon class="flex-shrink-0" :color="severityColor(reportSummaries[entry.id].maxSeverity)" size="14">mdi-flag</v-icon>
+              <span class="text-caption font-weight-medium">
+                {{ reportSummaries[entry.id].reportCount }} report{{ reportSummaries[entry.id].reportCount > 1 ? 's' : '' }}
+                · P{{ reportSummaries[entry.id].maxPriority }}
+              </span>
+              <div v-if="reportSummaries[entry.id].reasons.length > 0" class="d-flex flex-wrap ga-1">
                 <v-chip
                   v-for="reason in reportSummaries[entry.id].reasons"
                   :key="reason"
@@ -356,9 +360,9 @@
                   {{ reason }}
                 </v-chip>
               </div>
-            </v-alert>
+            </div>
 
-            <!-- Meta row with moderation actor -->
+            <!-- Meta row -->
             <div class="d-flex align-center flex-wrap ga-2 mt-auto pt-2">
               <span class="text-caption text-medium-emphasis">
                 {{ formatDate(entry.createdAt) }}
@@ -1006,6 +1010,14 @@
   const reportSummaries = ref<Record<string, ReportSummary>>({})
   const detailReports = ref<ReportDto[]>([])
   const resolveLoading = ref<string | null>(null)
+  const expandedReasons = ref(new Set<string>())
+
+  function toggleReason (entryId: string) {
+    const next = new Set(expandedReasons.value)
+    if (next.has(entryId)) next.delete(entryId)
+    else next.add(entryId)
+    expandedReasons.value = next
+  }
 
   const isVideoContent = computed(() =>
     contentInfo.value?.contentType?.startsWith('video/') || contentInfo.value?.type === 'VIDEO',
@@ -1427,16 +1439,16 @@
     border-color: rgb(var(--v-theme-primary));
   }
 
-  .entry-thumb {
+  .entry-media {
     width: 100%;
-    height: 140px;
-    cursor: pointer;
+    height: 120px;
+    overflow: hidden;
   }
 
   @media (min-width: 600px) {
-    .entry-thumb {
-      width: 200px;
-      min-width: 200px;
+    .entry-media {
+      width: 180px;
+      min-width: 180px;
       height: auto;
     }
   }
@@ -1450,6 +1462,35 @@
     font-size: 11px;
     padding: 1px 5px;
     border-radius: 3px;
+  }
+
+  .flag-indicator {
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+
+  .flag-ai {
+    background: rgba(var(--v-theme-error), 0.08);
+  }
+
+  .flag-report {
+    background: rgba(var(--v-theme-warning), 0.08);
+  }
+
+  .reason-text {
+    cursor: pointer;
+  }
+
+  .reason-text:hover {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+  }
+
+  .reason-clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .cursor-pointer {
