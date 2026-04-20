@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '@/config/env'
 
-export async function createSession(uuid: string): Promise<{ accessToken: string }> {
+export async function createSession (uuid: string): Promise<{ accessToken: string }> {
   const res = await fetch(`${API_BASE_URL}/api/auth/session`, {
     method: 'POST',
     credentials: 'include',
@@ -13,10 +13,23 @@ export async function createSession(uuid: string): Promise<{ accessToken: string
   return res.json()
 }
 
+export async function acceptModeratorInvitation (uuid: string): Promise<{ accessToken: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/auth/moderator-invitation/accept`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'UUID': uuid, 'X-Requested-With': 'XMLHttpRequest' },
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || 'Invitation acceptance failed')
+  }
+  return res.json()
+}
+
 // NOTE: refreshAccessToken is now handled exclusively by the Web Worker (tokenWorker.ts)
 // The worker calls /api/auth/refresh directly, keeping the access token out of the main thread.
 
-export async function logout(): Promise<void> {
+export async function logout (): Promise<void> {
   await fetch(`${API_BASE_URL}/api/auth/logout`, {
     method: 'POST',
     credentials: 'include',
