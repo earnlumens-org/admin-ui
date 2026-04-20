@@ -3,6 +3,7 @@ import type { ModerationStats } from '@/api/moderation'
 import { onUnmounted, ref } from 'vue'
 
 import { fetchModerationStats } from '@/api/moderation'
+import { useAuthStore } from '@/stores/auth'
 
 const inReviewCount = ref(0)
 const openReportsCount = ref(0)
@@ -11,6 +12,11 @@ let intervalId: ReturnType<typeof setInterval> | null = null
 let subscriberCount = 0
 
 async function refresh () {
+  const authStore = useAuthStore()
+  if (!authStore.isAuthenticated) {
+    return
+  }
+
   try {
     const stats: ModerationStats = await fetchModerationStats('earnlumens')
     inReviewCount.value = stats.inReview ?? 0
