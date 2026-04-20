@@ -951,7 +951,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, onMounted, ref } from 'vue'
+  import { computed, onMounted, onUnmounted, ref } from 'vue'
   import { useRoute } from 'vue-router'
   import {
     approveEntry,
@@ -1472,6 +1472,8 @@
     }
   }
 
+  let pollId: ReturnType<typeof setInterval> | null = null
+
   onMounted(async () => {
     try {
       tenantIds.value = await fetchTenantIds()
@@ -1496,6 +1498,15 @@
       } catch {
         showSnackbar('Entry not found', 'error')
       }
+    }
+
+    pollId = setInterval(loadEntries, 30_000)
+  })
+
+  onUnmounted(() => {
+    if (pollId) {
+      clearInterval(pollId)
+      pollId = null
     }
   })
 </script>

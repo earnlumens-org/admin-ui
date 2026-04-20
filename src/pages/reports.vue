@@ -239,7 +239,7 @@
 <script lang="ts" setup>
   import type { ReportDto } from '@/api/moderation'
 
-  import { computed, onMounted, ref } from 'vue'
+  import { computed, onMounted, onUnmounted, ref } from 'vue'
   import { useRouter } from 'vue-router'
 
   import {
@@ -406,6 +406,8 @@
     router.push({ path: '/moderation', query: { tab: 'all', entryId: report.entryId, tenantId: report.tenantId } })
   }
 
+  let pollId: ReturnType<typeof setInterval> | null = null
+
   onMounted(async () => {
     try {
       tenantIds.value = await fetchTenantIds()
@@ -413,6 +415,14 @@
       // fallback
     }
     await loadReports()
+    pollId = setInterval(loadReports, 30_000)
+  })
+
+  onUnmounted(() => {
+    if (pollId) {
+      clearInterval(pollId)
+      pollId = null
+    }
   })
 </script>
 
