@@ -2,15 +2,15 @@
   <v-app>
     <template v-if="showAdminShell">
       <v-app-bar>
-        <v-btn icon="mdi-menu" v-show="!drawer || !mdAndUp" @click="drawer = !drawer" />
+        <v-btn v-show="!drawer || !mdAndUp" icon="mdi-menu" @click="drawer = !drawer" />
 
         <v-toolbar-title>
           <b class="pl-1 font-weight-bold text-label-large">EARNLUMENS</b>
-          <v-chip size="x-small" color="primary" variant="tonal" class="ml-2">ADMIN</v-chip>
+          <v-chip class="ml-2" color="primary" size="x-small" variant="tonal">ADMIN</v-chip>
         </v-toolbar-title>
 
         <template #append>
-          <v-chip variant="tonal" size="small" class="hidden-sm-and-down mr-2">{{ authStore.user?.username }}</v-chip>
+          <v-chip class="hidden-sm-and-down mr-2" size="small" variant="tonal">{{ authStore.user?.username }}</v-chip>
           <v-menu>
             <template #activator="{ props }">
               <v-btn
@@ -43,18 +43,20 @@
       </v-app-bar>
 
       <v-navigation-drawer v-model="drawer" width="220">
-        <v-list nav density="compact" class="mt-1">
+        <v-list class="mt-1" density="compact" nav>
           <v-list-item
             prepend-icon="mdi-view-dashboard-outline"
             title="Dashboard"
             to="/dashboard"
           />
           <v-list-item
+            v-if="isSuperadmin"
             prepend-icon="mdi-domain"
             title="Tenants"
             to="/tenants"
           />
           <v-list-item
+            v-if="isSuperadmin"
             prepend-icon="mdi-shield-account-outline"
             title="Supervisors"
             to="/supervisors"
@@ -73,6 +75,7 @@
             </template>
           </v-list-item>
           <v-list-item
+            v-if="isSuperadmin"
             prepend-icon="mdi-tune-variant"
             title="Moderation Settings"
             to="/moderation-settings"
@@ -91,21 +94,25 @@
             </template>
           </v-list-item>
           <v-list-item
+            v-if="isSuperadmin"
             prepend-icon="mdi-account-badge-outline"
             title="Moderators"
             to="/moderators"
           />
           <v-list-item
+            v-if="isSuperadmin"
             prepend-icon="mdi-account-group-outline"
             title="Users"
             to="/users"
           />
           <v-list-item
+            v-if="isSuperadmin"
             prepend-icon="mdi-history"
             title="Audit Log"
             to="/audit"
           />
           <v-list-item
+            v-if="isSuperadmin"
             prepend-icon="mdi-cog-outline"
             title="Settings"
             to="/settings"
@@ -113,7 +120,7 @@
         </v-list>
 
         <template #append>
-          <v-list nav density="compact">
+          <v-list density="compact" nav>
             <v-list-item
               prepend-icon="mdi-logout"
               title="Sign out"
@@ -143,11 +150,10 @@
 
 <script lang="ts" setup>
   import { computed, ref, watch } from 'vue'
-  import { useDisplay } from 'vuetify'
   import { useRoute, useRouter } from 'vue-router'
-  import { useTheme } from 'vuetify'
-  import { useAuthStore } from '@/stores/auth'
+  import { useDisplay, useTheme } from 'vuetify'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
+  import { useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
   const route = useRoute()
@@ -156,22 +162,24 @@
   const { mdAndUp } = useDisplay()
   const { inReviewCount, openReportsCount } = useSidebarBadges()
 
-  const authRoutes = ['/', '/oauth2/callback']
+  const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
+
+  const authRoutes = new Set(['/', '/oauth2/callback'])
 
   const showAdminShell = computed(() => {
-    return authStore.isAuthenticated && !authRoutes.includes(route.path)
+    return authStore.isAuthenticated && !authRoutes.has(route.path)
   })
 
   const drawer = ref(true)
 
   // On mobile, drawer starts closed
-  watch(mdAndUp, (val) => {
+  watch(mdAndUp, val => {
     drawer.value = val
   }, { immediate: true })
 
   const isDark = computed(() => theme.global.current.value.dark)
 
-  function toggleTheme() {
+  function toggleTheme () {
     const next = theme.global.current.value.dark ? 'light' : 'dark'
     theme.global.name.value = next
     localStorage.setItem('theme', next)
@@ -187,17 +195,17 @@
 
   watch(
     () => authStore.error,
-    (newError) => {
+    newError => {
       if (newError) showError.value = true
     },
   )
 
-  function dismissError() {
+  function dismissError () {
     showError.value = false
     authStore.error = null
   }
 
-  async function handleLogout() {
+  async function handleLogout () {
     await authStore.logout()
     router.push('/')
   }
