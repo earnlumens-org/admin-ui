@@ -10,6 +10,7 @@
         </v-toolbar-title>
 
         <template #append>
+          <TenantSwitcher v-if="showSwitcher" class="hidden-sm-and-down mr-2" />
           <v-chip class="hidden-sm-and-down mr-2" size="small" variant="tonal">{{ authStore.user?.username }}</v-chip>
           <v-menu>
             <template #activator="{ props }">
@@ -50,9 +51,9 @@
             to="/dashboard"
           />
           <v-list-item
-            v-if="isSuperadmin"
+            v-if="isSuperadmin || isTenantOwner"
             prepend-icon="mdi-domain"
-            title="Tenants"
+            :title="isSuperadmin ? 'Tenants' : 'My Tenant'"
             to="/tenants"
           />
           <v-list-item
@@ -152,8 +153,9 @@
   import { computed, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay, useTheme } from 'vuetify'
+  import TenantSwitcher from '@/components/TenantSwitcher.vue'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
-  import { useAuthStore } from '@/stores/auth'
+  import { allUserTenants, useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
   const route = useRoute()
@@ -163,6 +165,8 @@
   const { inReviewCount, openReportsCount } = useSidebarBadges()
 
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
+  const isTenantOwner = computed(() => (authStore.user?.tenantAdminOf?.length ?? 0) > 0)
+  const showSwitcher = computed(() => allUserTenants(authStore.user).length >= 2)
 
   const authRoutes = new Set(['/', '/oauth2/callback'])
 
