@@ -51,9 +51,9 @@
             to="/dashboard"
           />
           <v-list-item
-            v-if="isSuperadmin || isTenantOwner"
+            v-if="isSuperadmin || isTenantOwner || canCreateTenant"
             prepend-icon="mdi-domain"
-            :title="isSuperadmin ? 'Tenants' : 'My Tenant'"
+            :title="isSuperadmin ? 'Tenants' : (isTenantOwner ? 'My Tenant' : 'Create Tenant')"
             to="/tenants"
           />
           <v-list-item
@@ -166,6 +166,7 @@
 
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
   const isTenantOwner = computed(() => (authStore.user?.tenantAdminOf?.length ?? 0) > 0)
+  const canCreateTenant = computed(() => authStore.user?.canCreateTenant === true)
   const showSwitcher = computed(() => allUserTenants(authStore.user).length >= 2)
 
   const authRoutes = new Set(['/', '/oauth2/callback'])

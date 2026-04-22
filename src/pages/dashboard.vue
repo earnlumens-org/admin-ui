@@ -9,6 +9,24 @@
 
     <v-divider class="mb-4" />
 
+    <v-alert
+      v-if="showCreateTenantReminder"
+      class="mb-4"
+      closable
+      color="primary"
+      icon="mdi-domain-plus"
+      prominent
+      variant="tonal"
+    >
+      <div class="text-subtitle-1 font-weight-medium">Set up your tenant</div>
+      <div class="text-body-2 mb-2">
+        Your Blue Credential lets you launch your own tenant on earnlumens. You can do it whenever you're ready — this reminder will keep showing until your tenant is configured.
+      </div>
+      <v-btn color="primary" :to="'/tenants'" variant="flat">
+        Configure tenant
+      </v-btn>
+    </v-alert>
+
     <!-- Revenue -->
     <div class="text-subtitle-2 text-medium-emphasis mb-2">Revenue</div>
     <v-row class="mb-2">
@@ -123,7 +141,15 @@
 </template>
 
 <script lang="ts" setup>
+  import { computed } from 'vue'
   import { useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
+
+  const showCreateTenantReminder = computed(() => {
+    const u = authStore.user
+    if (!u) return false
+    const ownsTenant = (u.tenantAdminOf?.length ?? 0) > 0
+    return u.canCreateTenant === true && !ownsTenant
+  })
 </script>

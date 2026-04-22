@@ -15,6 +15,8 @@ export interface AdminUser {
   tenantAdminOf?: string[]
   /** Tenants where the caller is a moderator. */
   moderatorOf?: string[]
+  /** True when the caller currently holds an active Blue Credential and may create a tenant. */
+  canCreateTenant?: boolean
 }
 
 /**
@@ -41,6 +43,7 @@ export function parseUserFromToken (token: string): AdminUser | null {
       tenantId: claims.tenantId,
       tenantAdminOf: Array.isArray(claims.tenantAdminOf) ? claims.tenantAdminOf : [],
       moderatorOf: Array.isArray(claims.moderatorOf) ? claims.moderatorOf : [],
+      canCreateTenant: claims.canCreateTenant === true,
     }
   } catch {
     return null

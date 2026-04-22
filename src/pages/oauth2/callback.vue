@@ -67,7 +67,10 @@
     } else {
       authStore.setAuthenticated(true)
     }
-    await router.replace('/dashboard')
+    // TENANT_PROSPECT users have no other capability than creating their tenant —
+    // send them straight to the wizard. Everyone else lands on the dashboard.
+    const landing = userProfile?.role === 'TENANT_PROSPECT' ? '/tenants' : '/dashboard'
+    await router.replace(landing)
   }
 
   async function handleAcceptInvitation () {
