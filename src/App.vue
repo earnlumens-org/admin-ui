@@ -53,7 +53,7 @@
           <v-list-item
             v-if="isSuperadmin || isTenantOwner || canCreateTenant"
             prepend-icon="mdi-domain"
-            :title="isSuperadmin ? 'Tenants' : (isTenantOwner ? 'My Tenant' : 'Create Tenant')"
+            title="Tenants"
             to="/tenants"
           />
           <v-list-item

@@ -35,6 +35,7 @@
               <v-text-field
                 v-model.trim="form.title"
                 autofocus
+                class="mt-2"
                 :counter="80"
                 :hint="$t('tenants.wizard.fields.title_hint')"
                 :label="$t('tenants.wizard.fields.title')"
@@ -43,6 +44,7 @@
               />
               <v-textarea
                 v-model.trim="form.description"
+                class="mt-2"
                 :counter="280"
                 :hint="$t('tenants.wizard.fields.description_hint')"
                 :label="$t('tenants.wizard.fields.description')"
@@ -58,6 +60,7 @@
               <v-text-field
                 v-model.trim="form.tenantWallet"
                 autofocus
+                class="mt-2"
                 :hint="$t('tenants.wizard.fields.wallet_hint')"
                 :label="$t('tenants.wizard.fields.wallet')"
                 placeholder="GABC...XYZ"
@@ -66,6 +69,7 @@
               />
               <v-text-field
                 v-model.trim="form.tenantFeePercent"
+                class="mt-2"
                 :hint="$t('tenants.wizard.fields.fee_hint')"
                 inputmode="decimal"
                 :label="$t('tenants.wizard.fields.fee')"
@@ -81,6 +85,7 @@
               <v-text-field
                 v-model.trim="form.subdomain"
                 autofocus
+                class="mt-2"
                 :counter="30"
                 :hint="subdomainHint"
                 :label="$t('tenants.wizard.fields.subdomain')"
@@ -173,7 +178,7 @@
         <v-btn
           v-if="step < 4"
           color="primary"
-          :disabled="loading"
+          :disabled="loading || (step === 3 && !isStep3Valid)"
           variant="flat"
           @click="handleNext"
         >
@@ -262,6 +267,13 @@
     subdomainLength: (v: string) => (v.length >= 3 && v.length <= 30) || t('tenants.errors.subdomain_length'),
     subdomainFormat: (v: string) => SUBDOMAIN_RE.test(v) || t('tenants.errors.subdomain_format'),
   }
+
+  const isStep3Valid = computed(() =>
+    form.confirmIrreversible &&
+    form.subdomain.length >= 3 &&
+    form.subdomain.length <= 30 &&
+    SUBDOMAIN_RE.test(form.subdomain),
+  )
 
   function normalizeSubdomain () {
     // Keep the input mirror-image of what the server will accept.
