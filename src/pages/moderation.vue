@@ -953,6 +953,7 @@
 <script lang="ts" setup>
   import { computed, onMounted, onUnmounted, ref } from 'vue'
   import { useRoute } from 'vue-router'
+  import { useTenantLabels } from '@/composables/useTenantLabels'
   import { allUserTenants, useAuthStore } from '@/stores/auth'
   import {
     approveEntry,
@@ -1026,6 +1027,7 @@
 
   const authStore = useAuthStore()
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
+  const { labelFor: tenantLabel } = useTenantLabels()
 
   // Initial tenant: superadmin keeps the legacy 'earnlumens' default. Anyone
   // else lands on the first tenant their JWT actually grants access to, so the
@@ -1107,15 +1109,12 @@
     // option entirely so they can't try to query content they don't own/moderate.
     if (!isSuperadmin.value) {
       const accessible = allUserTenants(authStore.user)
-      return accessible.map(t => ({
-        title: t === 'earnlumens' ? 'earnlumens (root)' : t,
-        value: t,
-      }))
+      return accessible.map(t => ({ title: tenantLabel(t), value: t }))
     }
 
     const opts = [{ title: 'All tenants', value: '_all' }]
     for (const t of tenantIds.value) {
-      opts.push({ title: t === 'earnlumens' ? 'earnlumens (root)' : t, value: t })
+      opts.push({ title: tenantLabel(t), value: t })
     }
     if (!tenantIds.value.includes('earnlumens')) {
       opts.splice(1, 0, { title: 'earnlumens (root)', value: 'earnlumens' })

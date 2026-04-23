@@ -163,3 +163,26 @@ export async function updateMyTenant (
   }
   return res.json()
 }
+
+/**
+ * Compact label-only view of a tenant the caller can access. Mirrors
+ * admin-api's AccessibleTenantResponse. Used to fill tenant-selector
+ * dropdowns with human-readable titles instead of raw Mongo ObjectIds.
+ */
+export interface AccessibleTenant {
+  id: string
+  title: string
+  subdomain: string
+  role: 'ADMIN' | 'MODERATOR'
+}
+
+export async function fetchAccessibleTenants (): Promise<AccessibleTenant[]> {
+  const res = await fetch(`${API_BASE_URL}/api/tenants/me/accessible`, {
+    credentials: 'include',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) {
+    throw new Error('Failed to fetch accessible tenants')
+  }
+  return res.json()
+}

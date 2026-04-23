@@ -248,6 +248,7 @@
     resolveReport,
   } from '@/api/moderation'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
+  import { useTenantLabels } from '@/composables/useTenantLabels'
   import { CDN_BASE_URL } from '@/config/env'
   import { allUserTenants, useAuthStore } from '@/stores/auth'
 
@@ -255,6 +256,7 @@
   const { refresh: refreshBadges } = useSidebarBadges()
   const authStore = useAuthStore()
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
+  const { labelFor: tenantLabel } = useTenantLabels()
 
   function defaultTenant (): string {
     if (authStore.user?.role === 'SUPERADMIN') return 'earnlumens'
@@ -322,15 +324,12 @@
   const tenantOptions = computed(() => {
     if (!isSuperadmin.value) {
       const accessible = allUserTenants(authStore.user)
-      return accessible.map(t => ({
-        title: t === 'earnlumens' ? 'earnlumens (root)' : t,
-        value: t,
-      }))
+      return accessible.map(t => ({ title: tenantLabel(t), value: t }))
     }
 
     const opts = [{ title: 'All tenants', value: '_all' }]
     for (const t of tenantIds.value) {
-      opts.push({ title: t === 'earnlumens' ? 'earnlumens (root)' : t, value: t })
+      opts.push({ title: tenantLabel(t), value: t })
     }
     if (!tenantIds.value.includes('earnlumens')) {
       opts.splice(1, 0, { title: 'earnlumens (root)', value: 'earnlumens' })

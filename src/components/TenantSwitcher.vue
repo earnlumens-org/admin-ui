@@ -21,7 +21,7 @@
         :key="id"
         :active="id === authStore.activeTenantId"
         :prepend-icon="id === authStore.activeTenantId ? 'mdi-check' : 'mdi-circle-outline'"
-        :title="id"
+        :title="labelFor(id)"
         @click="select(id)"
       >
         <template #append>
@@ -49,15 +49,18 @@
 
 <script lang="ts" setup>
   import { computed } from 'vue'
+  import { useTenantLabels } from '@/composables/useTenantLabels'
   import { allUserTenants, useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
+  const { labelFor } = useTenantLabels()
 
   const tenants = computed(() => allUserTenants(authStore.user))
 
-  const activeLabel = computed(() =>
-    authStore.activeTenantId ?? tenants.value[0] ?? '',
-  )
+  const activeLabel = computed(() => {
+    const id = authStore.activeTenantId ?? tenants.value[0] ?? ''
+    return id ? labelFor(id) : ''
+  })
 
   function roleOf (tenantId: string): 'admin' | 'moderator' {
     if (authStore.user?.tenantAdminOf?.includes(tenantId)) return 'admin'
