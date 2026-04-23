@@ -48,44 +48,46 @@
       </v-btn>
     </v-alert>
 
-    <!-- Revenue -->
-    <div class="text-subtitle-2 text-medium-emphasis mb-2">Revenue</div>
-    <v-row class="mb-2">
-      <v-col cols="12" lg="3" sm="6">
-        <v-card>
-          <v-card-item>
-            <v-card-title class="text-h5">—</v-card-title>
-            <v-card-subtitle>Total revenue (XLM)</v-card-subtitle>
-          </v-card-item>
-        </v-card>
-      </v-col>
-      <v-col cols="12" lg="3" sm="6">
-        <v-card>
-          <v-card-item>
-            <v-card-title class="text-h5">—</v-card-title>
-            <v-card-subtitle>Revenue this month</v-card-subtitle>
-          </v-card-item>
-        </v-card>
-      </v-col>
-      <v-col cols="12" lg="3" sm="6">
-        <v-card>
-          <v-card-item>
-            <v-card-title class="text-h5">—</v-card-title>
-            <v-card-subtitle>Top tenant revenue</v-card-subtitle>
-          </v-card-item>
-        </v-card>
-      </v-col>
-      <v-col cols="12" lg="3" sm="6">
-        <v-card>
-          <v-card-item>
-            <v-card-title class="text-h5">—</v-card-title>
-            <v-card-subtitle>Platform fees collected</v-card-subtitle>
-          </v-card-item>
-        </v-card>
-      </v-col>
-    </v-row>
+    <!-- Revenue (admin/superadmin only — moderators don't see financial data) -->
+    <template v-if="canSeeAdminSections">
+      <div class="text-subtitle-2 text-medium-emphasis mb-2">Revenue</div>
+      <v-row class="mb-2">
+        <v-col cols="12" lg="3" sm="6">
+          <v-card>
+            <v-card-item>
+              <v-card-title class="text-h5">—</v-card-title>
+              <v-card-subtitle>Total revenue (XLM)</v-card-subtitle>
+            </v-card-item>
+          </v-card>
+        </v-col>
+        <v-col cols="12" lg="3" sm="6">
+          <v-card>
+            <v-card-item>
+              <v-card-title class="text-h5">—</v-card-title>
+              <v-card-subtitle>Revenue this month</v-card-subtitle>
+            </v-card-item>
+          </v-card>
+        </v-col>
+        <v-col cols="12" lg="3" sm="6">
+          <v-card>
+            <v-card-item>
+              <v-card-title class="text-h5">—</v-card-title>
+              <v-card-subtitle>Top tenant revenue</v-card-subtitle>
+            </v-card-item>
+          </v-card>
+        </v-col>
+        <v-col cols="12" lg="3" sm="6">
+          <v-card>
+            <v-card-item>
+              <v-card-title class="text-h5">—</v-card-title>
+              <v-card-subtitle>Platform fees collected</v-card-subtitle>
+            </v-card-item>
+          </v-card>
+        </v-col>
+      </v-row>
+    </template>
 
-    <!-- Content & Moderation -->
+    <!-- Content & Moderation (always visible — this is the moderator's only section) -->
     <div class="text-subtitle-2 text-medium-emphasis mb-2">Content &amp; Moderation</div>
     <v-row class="mb-2">
       <v-col cols="12" lg="3" sm="6">
@@ -122,42 +124,44 @@
       </v-col>
     </v-row>
 
-    <!-- Platform -->
-    <div class="text-subtitle-2 text-medium-emphasis mb-2">Platform</div>
-    <v-row>
-      <v-col cols="12" lg="3" sm="6">
-        <v-card>
-          <v-card-item>
-            <v-card-title class="text-h5">0</v-card-title>
-            <v-card-subtitle>Active tenants</v-card-subtitle>
-          </v-card-item>
-        </v-card>
-      </v-col>
-      <v-col cols="12" lg="3" sm="6">
-        <v-card>
-          <v-card-item>
-            <v-card-title class="text-h5">0</v-card-title>
-            <v-card-subtitle>Total users</v-card-subtitle>
-          </v-card-item>
-        </v-card>
-      </v-col>
-      <v-col cols="12" lg="3" sm="6">
-        <v-card>
-          <v-card-item>
-            <v-card-title class="text-h5">0</v-card-title>
-            <v-card-subtitle>Transcoding queue</v-card-subtitle>
-          </v-card-item>
-        </v-card>
-      </v-col>
-      <v-col cols="12" lg="3" sm="6">
-        <v-card>
-          <v-card-item>
-            <v-card-title class="text-h5">0</v-card-title>
-            <v-card-subtitle>Failed jobs</v-card-subtitle>
-          </v-card-item>
-        </v-card>
-      </v-col>
-    </v-row>
+    <!-- Platform (admin/superadmin only — moderators don't see tenant-wide ops metrics) -->
+    <template v-if="canSeeAdminSections">
+      <div class="text-subtitle-2 text-medium-emphasis mb-2">Platform</div>
+      <v-row>
+        <v-col cols="12" lg="3" sm="6">
+          <v-card>
+            <v-card-item>
+              <v-card-title class="text-h5">0</v-card-title>
+              <v-card-subtitle>Active tenants</v-card-subtitle>
+            </v-card-item>
+          </v-card>
+        </v-col>
+        <v-col cols="12" lg="3" sm="6">
+          <v-card>
+            <v-card-item>
+              <v-card-title class="text-h5">0</v-card-title>
+              <v-card-subtitle>Total users</v-card-subtitle>
+            </v-card-item>
+          </v-card>
+        </v-col>
+        <v-col cols="12" lg="3" sm="6">
+          <v-card>
+            <v-card-item>
+              <v-card-title class="text-h5">0</v-card-title>
+              <v-card-subtitle>Transcoding queue</v-card-subtitle>
+            </v-card-item>
+          </v-card>
+        </v-col>
+        <v-col cols="12" lg="3" sm="6">
+          <v-card>
+            <v-card-item>
+              <v-card-title class="text-h5">0</v-card-title>
+              <v-card-subtitle>Failed jobs</v-card-subtitle>
+            </v-card-item>
+          </v-card>
+        </v-col>
+      </v-row>
+    </template>
   </v-container>
 </template>
 
@@ -168,6 +172,17 @@
 
   const authStore = useAuthStore()
   const { pendingInvitationsCount } = useSidebarBadges()
+
+  // SUPERADMIN and tenant owners see Revenue + Platform metrics. Moderators
+  // (users with moderatorOf entries but no tenant ownership and no superadmin
+  // role) see only the Content & Moderation section, since financial and
+  // platform-wide operational data is not their concern.
+  const canSeeAdminSections = computed(() => {
+    const u = authStore.user
+    if (!u) return false
+    if (u.role === 'SUPERADMIN') return true
+    return (u.tenantAdminOf?.length ?? 0) > 0
+  })
 
   const showCreateTenantReminder = computed(() => {
     const u = authStore.user
