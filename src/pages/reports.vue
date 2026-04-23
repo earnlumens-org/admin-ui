@@ -239,7 +239,7 @@
 <script lang="ts" setup>
   import type { ReportDto } from '@/api/moderation'
 
-  import { computed, onMounted, onUnmounted, ref } from 'vue'
+  import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
 
   import {
@@ -259,6 +259,7 @@
   const { labelFor: tenantLabel } = useTenantLabels()
 
   function defaultTenant (): string {
+    if (authStore.activeTenantId) return authStore.activeTenantId
     if (authStore.user?.role === 'SUPERADMIN') return 'earnlumens'
     const accessible = allUserTenants(authStore.user)
     return accessible[0] ?? 'earnlumens'
@@ -423,6 +424,16 @@
   }
 
   let pollId: ReturnType<typeof setInterval> | null = null
+
+  // Mirror the global tenant context (top-right TenantSwitcher) into the
+  // in-page filter so reports always reflect the tenant currently selected
+  // globally instead of forcing the user to pick again here.
+  watch(() => authStore.activeTenantId, newId => {
+    if (!newId || newId === selectedTenant.value) return
+    selectedTenant.value = newId
+    currentPage.value = 1
+    loadReports()
+  })
 
   onMounted(async () => {
     try {

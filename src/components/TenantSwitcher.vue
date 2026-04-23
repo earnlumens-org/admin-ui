@@ -10,8 +10,17 @@
         :title="$t('tenants.switcher.label')"
         variant="tonal"
       >
-        <span class="d-none d-sm-inline">{{ activeLabel }}</span>
-        <span class="d-sm-none">{{ activeLabel.slice(0, 8) }}</span>
+        <v-progress-circular
+          v-if="!labelsReady"
+          color="primary"
+          indeterminate
+          size="14"
+          width="2"
+        />
+        <template v-else>
+          <span class="d-none d-sm-inline">{{ activeLabel }}</span>
+          <span class="d-sm-none">{{ activeLabel.slice(0, 8) }}</span>
+        </template>
       </v-btn>
     </template>
     <v-list density="compact" min-width="200">
@@ -53,13 +62,21 @@
   import { allUserTenants, useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
-  const { labelFor } = useTenantLabels()
+  const { labelFor, loaded } = useTenantLabels()
 
   const tenants = computed(() => allUserTenants(authStore.user))
 
   const activeLabel = computed(() => {
     const id = authStore.activeTenantId ?? tenants.value[0] ?? ''
     return id ? labelFor(id) : ''
+  })
+
+  // Hide the raw ObjectId fallback while the label cache is still loading; the
+  // 'earnlumens' root tenant is special-cased to a static label inside the
+  // composable, so it doesn't need to wait for the network round-trip.
+  const labelsReady = computed(() => {
+    const id = authStore.activeTenantId ?? tenants.value[0] ?? ''
+    return loaded.value || id === 'earnlumens'
   })
 
   function roleOf (tenantId: string): 'admin' | 'moderator' {

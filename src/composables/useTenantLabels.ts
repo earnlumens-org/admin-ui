@@ -48,5 +48,5 @@ function labelFor (tenantId: string): string {
 
 export function useTenantLabels () {
   void load()
-  return { tenants, labelFor, refresh: () => { loaded.value = false; return load() }, clear }
+  return { tenants, loaded, labelFor, refresh: () => { loaded.value = false; return load() }, clear }
 }

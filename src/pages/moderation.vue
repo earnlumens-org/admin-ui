@@ -951,7 +951,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, onMounted, onUnmounted, ref } from 'vue'
+  import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRoute } from 'vue-router'
   import { useTenantLabels } from '@/composables/useTenantLabels'
   import { allUserTenants, useAuthStore } from '@/stores/auth'
@@ -1029,10 +1029,12 @@
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
   const { labelFor: tenantLabel } = useTenantLabels()
 
-  // Initial tenant: superadmin keeps the legacy 'earnlumens' default. Anyone
-  // else lands on the first tenant their JWT actually grants access to, so the
-  // first API call doesn't 403 against a tenant they can't see.
+  // Initial tenant: respect the central tenant context (top-right switcher)
+  // when set; otherwise superadmin keeps the legacy 'earnlumens' default and
+  // anyone else lands on the first tenant their JWT actually grants access to,
+  // so the first API call doesn't 403 against a tenant they can't see.
   function defaultTenant (): string {
+    if (authStore.activeTenantId) return authStore.activeTenantId
     if (authStore.user?.role === 'SUPERADMIN') return 'earnlumens'
     const accessible = allUserTenants(authStore.user)
     return accessible[0] ?? 'earnlumens'
@@ -1496,6 +1498,17 @@
   }
 
   let pollId: ReturnType<typeof setInterval> | null = null
+
+  // Keep this page in sync with the global tenant context. When the user picks
+  // a tenant in the top-right TenantSwitcher we mirror the choice into the
+  // in-page filter and reload, so the moderation queue always reflects the
+  // tenant currently selected globally.
+  watch(() => authStore.activeTenantId, newId => {
+    if (!newId || newId === selectedTenant.value) return
+    selectedTenant.value = newId
+    currentPage.value = 1
+    loadEntries()
+  })
 
   onMounted(async () => {
     try {
