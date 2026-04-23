@@ -20,7 +20,9 @@
         v-model="selectedTenant"
         density="compact"
         hide-details
-        :items="tenants"
+        item-title="title"
+        item-value="value"
+        :items="tenantOptions"
         label="Tenant"
         style="max-width: 240px"
         variant="outlined"
@@ -293,16 +295,38 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, onMounted, ref } from 'vue'
+  import { computed, onMounted, ref, watch } from 'vue'
   import { fetchTenantIds } from '@/api/moderation'
   import {
     fetchModerationConfig,
     type ModerationConfig,
     updateModerationConfig,
   } from '@/api/moderationConfig'
+  import { useTenantLabels } from '@/composables/useTenantLabels'
+  import { allUserTenants, useAuthStore } from '@/stores/auth'
 
-  const tenants = ref<string[]>([])
-  const selectedTenant = ref('earnlumens')
+  const authStore = useAuthStore()
+  const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
+  const { labelFor: tenantLabel } = useTenantLabels()
+
+  // Tenants the caller may legitimately configure. For a tenant owner that's
+  // strictly the tenants they own — moderators don't reach this page (sidebar
+  // gate) and even if they did, the backend would 403. The dropdown is
+  // restricted on the client too so users can't probe other tenant ids.
+  function ownedTenantIds (): string[] {
+    return authStore.user?.tenantAdminOf ?? []
+  }
+
+  // Backend distinct-tenants list, only loaded for SUPERADMIN.
+  const allTenantIds = ref<string[]>([])
+
+  function defaultTenant (): string {
+    if (authStore.activeTenantId) return authStore.activeTenantId
+    if (isSuperadmin.value) return 'earnlumens'
+    return ownedTenantIds()[0] ?? allUserTenants(authStore.user)[0] ?? 'earnlumens'
+  }
+
+  const selectedTenant = ref(defaultTenant())
   const loading = ref(true)
   const saving = ref(false)
   const config = ref<ModerationConfig | null>(null)
@@ -314,6 +338,23 @@
   const snackbarColor = ref('success')
 
   const hasChanges = computed(() => promptText.value !== savedPromptText.value)
+
+  // Tenants offered in the dropdown. SUPERADMIN sees every tenant present in
+  // the entries collection plus the root; everyone else sees only the tenants
+  // they own (defence-in-depth: the backend re-checks on every call).
+  const tenantOptions = computed(() => {
+    if (!isSuperadmin.value) {
+      return ownedTenantIds().map(t => ({ title: tenantLabel(t), value: t }))
+    }
+    const opts: Array<{ title: string, value: string }> = []
+    if (!allTenantIds.value.includes('earnlumens')) {
+      opts.push({ title: 'earnlumens (root)', value: 'earnlumens' })
+    }
+    for (const t of allTenantIds.value) {
+      opts.push({ title: tenantLabel(t), value: t })
+    }
+    return opts
+  })
 
   const responseFormatJson = `Analyze the submitted content and respond in JSON:
 {
@@ -337,13 +378,13 @@ RULES:
   }
 
   async function loadTenants () {
+    // Only superadmin needs the cross-tenant list; tenant owners use their
+    // JWT-derived tenantAdminOf set, which never goes to the network.
+    if (!isSuperadmin.value) return
     try {
-      tenants.value = await fetchTenantIds()
-      if (tenants.value.length > 0 && !tenants.value.includes(selectedTenant.value)) {
-        selectedTenant.value = tenants.value[0]
-      }
+      allTenantIds.value = await fetchTenantIds()
     } catch {
-      tenants.value = ['earnlumens']
+      allTenantIds.value = ['earnlumens']
     }
   }
 
@@ -383,6 +424,15 @@ RULES:
     snackbarColor.value = color
     snackbar.value = true
   }
+
+  // Mirror the global tenant context (top-right TenantSwitcher) into the
+  // in-page filter so the moderation rules screen always reflects the tenant
+  // currently selected globally.
+  watch(() => authStore.activeTenantId, newId => {
+    if (!newId || newId === selectedTenant.value) return
+    selectedTenant.value = newId
+    loadConfig()
+  })
 
   onMounted(async () => {
     await loadTenants()

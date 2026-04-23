@@ -76,7 +76,7 @@
             </template>
           </v-list-item>
           <v-list-item
-            v-if="isSuperadmin"
+            v-if="isSuperadmin || isTenantOwner"
             prepend-icon="mdi-tune-variant"
             title="Moderation Settings"
             to="/moderation-settings"
