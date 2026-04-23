@@ -25,6 +25,7 @@ export interface TenantSummary {
   logoR2Key: string | null
   ownerUsername: string
   ownerDisplayName: string
+  tenantWallet: string | null
   platformFeePercent: string
   tenantFeePercent: string
   status: TenantStatus
@@ -124,6 +125,39 @@ export async function listAllTenants (): Promise<TenantSummary[]> {
     credentials: 'include',
     headers: await authHeaders(),
   })
+  if (!res.ok) {
+    throw await parseError(res)
+  }
+  return res.json()
+}
+
+/** Payload for PATCH /api/tenants/me/{tenantId} — UpdateTenantSettingsRequest. */
+export interface UpdateTenantSettingsPayload {
+  title?: string
+  description?: string
+  logoR2Key?: string
+  tenantWallet?: string
+  tenantFeePercent?: string
+}
+
+/**
+ * PATCH /api/tenants/me/{tenantId} — owner-scoped settings update.
+ * The server re-verifies ownership against the database on every call,
+ * so a stale JWT cannot mutate a tenant the caller no longer owns.
+ */
+export async function updateMyTenant (
+  tenantId: string,
+  payload: UpdateTenantSettingsPayload,
+): Promise<TenantSummary> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/tenants/me/${encodeURIComponent(tenantId)}`,
+    {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: await authHeaders(),
+      body: JSON.stringify(payload),
+    },
+  )
   if (!res.ok) {
     throw await parseError(res)
   }

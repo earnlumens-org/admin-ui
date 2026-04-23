@@ -62,3 +62,63 @@ export async function revokeModerator (id: string): Promise<void> {
     throw new Error(body.error || 'Failed to revoke moderator')
   }
 }
+
+// =====================================================================
+//  Owner-scoped endpoints (TENANT_ADMIN). Server re-verifies tenant
+//  ownership against the database on every call, and revokeForTenant
+//  also asserts that the moderator record belongs to this tenant — so
+//  knowing a moderator id never lets the owner of tenant A touch a
+//  moderator of tenant B.
+// =====================================================================
+
+export async function fetchMyTenantModerators (tenantId: string): Promise<ModeratorDto[]> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/tenants/me/${encodeURIComponent(tenantId)}/moderators`,
+    {
+      credentials: 'include',
+      headers: await authHeaders(),
+    },
+  )
+  if (!res.ok) {
+    throw new Error('Failed to fetch moderators')
+  }
+  return res.json()
+}
+
+export async function inviteMyTenantModerator (
+  tenantId: string,
+  username: string,
+): Promise<ModeratorDto> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/tenants/me/${encodeURIComponent(tenantId)}/moderators`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: await authHeaders(),
+      body: JSON.stringify({ username }),
+    },
+  )
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || 'Failed to invite moderator')
+  }
+  return res.json()
+}
+
+export async function revokeMyTenantModerator (
+  tenantId: string,
+  moderatorId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/tenants/me/${encodeURIComponent(tenantId)}/moderators/${encodeURIComponent(moderatorId)}`,
+    {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: await authHeaders(),
+    },
+  )
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || 'Failed to revoke moderator')
+  }
+}

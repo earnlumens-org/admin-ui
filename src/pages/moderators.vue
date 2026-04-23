@@ -197,6 +197,7 @@
             variant="outlined"
           />
           <v-select
+            v-if="!isTenantOwner"
             v-model="inviteTenant"
             density="compact"
             hide-details
@@ -263,10 +264,20 @@
   import { fetchTenantIds } from '@/api/moderation'
   import {
     fetchModerators,
+    fetchMyTenantModerators,
     inviteModerator,
+    inviteMyTenantModerator,
     type ModeratorDto,
     revokeModerator,
+    revokeMyTenantModerator,
   } from '@/api/moderators'
+  import { useAuthStore } from '@/stores/auth'
+
+  const authStore = useAuthStore()
+  const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
+  /** First (and currently only) tenant the caller owns. */
+  const ownedTenantId = computed(() => authStore.user?.tenantAdminOf?.[0] ?? null)
+  const isTenantOwner = computed(() => !isSuperadmin.value && !!ownedTenantId.value)
 
   const tab = ref('active')
   const loading = ref(false)
@@ -325,12 +336,19 @@
   async function loadData () {
     loading.value = true
     try {
-      const [mods, tenants] = await Promise.all([
-        fetchModerators(),
-        fetchTenantIds(),
-      ])
-      moderators.value = mods
-      tenantIds.value = tenants
+      if (isTenantOwner.value && ownedTenantId.value) {
+        // Owner self-service: only the caller's own tenant; no /api/moderation list.
+        moderators.value = await fetchMyTenantModerators(ownedTenantId.value)
+        tenantIds.value = [ownedTenantId.value]
+        inviteTenant.value = ownedTenantId.value
+      } else {
+        const [mods, tenants] = await Promise.all([
+          fetchModerators(),
+          fetchTenantIds(),
+        ])
+        moderators.value = mods
+        tenantIds.value = tenants
+      }
     } catch {
       showSnackbar('Failed to load moderators', 'error')
     } finally {
@@ -341,7 +359,11 @@
   async function handleInvite () {
     inviteLoading.value = true
     try {
-      await inviteModerator(inviteTenant.value, inviteUsername.value.trim())
+      if (isTenantOwner.value && ownedTenantId.value) {
+        await inviteMyTenantModerator(ownedTenantId.value, inviteUsername.value.trim())
+      } else {
+        await inviteModerator(inviteTenant.value, inviteUsername.value.trim())
+      }
       showSnackbar(`Invitation sent to @${inviteUsername.value.trim()}`, 'success')
       inviteDialog.value = false
       inviteUsername.value = ''
@@ -362,7 +384,11 @@
     if (!revokeTarget.value) return
     revokeLoading.value = true
     try {
-      await revokeModerator(revokeTarget.value.id)
+      if (isTenantOwner.value && ownedTenantId.value) {
+        await revokeMyTenantModerator(ownedTenantId.value, revokeTarget.value.id)
+      } else {
+        await revokeModerator(revokeTarget.value.id)
+      }
       showSnackbar(`@${revokeTarget.value.username} revoked`, 'success')
       revokeDialog.value = false
       await loadData()

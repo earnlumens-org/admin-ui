@@ -95,7 +95,7 @@
             </template>
           </v-list-item>
           <v-list-item
-            v-if="isSuperadmin"
+            v-if="isSuperadmin || isTenantOwner"
             prepend-icon="mdi-account-badge-outline"
             title="Moderators"
             to="/moderators"
@@ -113,7 +113,7 @@
             to="/audit"
           />
           <v-list-item
-            v-if="isSuperadmin"
+            v-if="isSuperadmin || isTenantOwner"
             prepend-icon="mdi-cog-outline"
             title="Settings"
             to="/settings"
