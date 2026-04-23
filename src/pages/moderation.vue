@@ -72,25 +72,35 @@
 
     <!-- Stats chips -->
     <div v-if="stats" class="d-flex flex-wrap ga-2 mb-4">
-      <v-chip color="info" prepend-icon="mdi-robot-outline" size="small" variant="tonal">
+      <v-chip prepend-icon="mdi-robot-outline" size="small" variant="tonal">
         {{ stats.aiProcessing ?? 0 }} AI processing
       </v-chip>
-      <v-chip color="warning" prepend-icon="mdi-clock-outline" size="small" variant="tonal">
+      <v-chip
+        :color="(stats.inReview ?? 0) > 0 ? 'warning' : undefined"
+        prepend-icon="mdi-clock-outline"
+        size="small"
+        variant="tonal"
+      >
         {{ stats.inReview }} needs review
       </v-chip>
-      <v-chip color="success" prepend-icon="mdi-check-circle-outline" size="small" variant="tonal">
+      <v-chip prepend-icon="mdi-check-circle-outline" size="small" variant="tonal">
         {{ stats.published }} published
       </v-chip>
-      <v-chip color="deep-orange" prepend-icon="mdi-flag-outline" size="small" variant="tonal">
+      <v-chip
+        :color="(stats.openReports ?? 0) > 0 ? 'deep-orange' : undefined"
+        prepend-icon="mdi-flag-outline"
+        size="small"
+        variant="tonal"
+      >
         {{ stats.openReports ?? 0 }} open reports
       </v-chip>
-      <v-chip color="error" prepend-icon="mdi-cancel" size="small" variant="tonal">
+      <v-chip prepend-icon="mdi-cancel" size="small" variant="tonal">
         {{ stats.suspended }} suspended
       </v-chip>
       <v-chip prepend-icon="mdi-close-circle-outline" size="small" variant="tonal">
         {{ stats.rejected }} rejected
       </v-chip>
-      <v-chip color="grey" prepend-icon="mdi-archive-outline" size="small" variant="tonal">
+      <v-chip prepend-icon="mdi-archive-outline" size="small" variant="tonal">
         {{ stats.archived }} archived
       </v-chip>
     </div>
