@@ -4,7 +4,7 @@
       <v-btn
         v-bind="activator"
         append-icon="mdi-chevron-down"
-        class="text-none"
+        class="text-none me-2"
         :prepend-icon="tenants.length > 1 ? 'mdi-domain' : 'mdi-domain'"
         size="small"
         :title="$t('tenants.switcher.label')"

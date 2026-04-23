@@ -10,8 +10,8 @@
         </v-toolbar-title>
 
         <template #append>
-          <TenantSwitcher v-if="showSwitcher" class="hidden-sm-and-down mr-2" />
-          <v-chip class="hidden-sm-and-down mr-2" size="small" variant="tonal">{{ authStore.user?.username }}</v-chip>
+          <TenantSwitcher v-if="showSwitcher" />
+          <v-chip class="hidden-sm-and-down me-2" size="small" variant="tonal">{{ authStore.user?.username }}</v-chip>
           <v-menu>
             <template #activator="{ props }">
               <v-btn
