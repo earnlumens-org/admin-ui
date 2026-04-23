@@ -249,11 +249,20 @@
   } from '@/api/moderation'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
   import { CDN_BASE_URL } from '@/config/env'
+  import { allUserTenants, useAuthStore } from '@/stores/auth'
 
   const router = useRouter()
   const { refresh: refreshBadges } = useSidebarBadges()
+  const authStore = useAuthStore()
+  const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
 
-  const selectedTenant = ref('earnlumens')
+  function defaultTenant (): string {
+    if (authStore.user?.role === 'SUPERADMIN') return 'earnlumens'
+    const accessible = allUserTenants(authStore.user)
+    return accessible[0] ?? 'earnlumens'
+  }
+
+  const selectedTenant = ref(defaultTenant())
   const tenantIds = ref<string[]>([])
   const tab = ref('OPEN')
   const loading = ref(false)
@@ -311,6 +320,14 @@
   const confirmMeta = computed(() => RESOLUTION_META[confirmResolution.value] ?? RESOLUTION_META.DISMISSED)
 
   const tenantOptions = computed(() => {
+    if (!isSuperadmin.value) {
+      const accessible = allUserTenants(authStore.user)
+      return accessible.map(t => ({
+        title: t === 'earnlumens' ? 'earnlumens (root)' : t,
+        value: t,
+      }))
+    }
+
     const opts = [{ title: 'All tenants', value: '_all' }]
     for (const t of tenantIds.value) {
       opts.push({ title: t === 'earnlumens' ? 'earnlumens (root)' : t, value: t })

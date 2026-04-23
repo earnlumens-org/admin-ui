@@ -953,6 +953,7 @@
 <script lang="ts" setup>
   import { computed, onMounted, onUnmounted, ref } from 'vue'
   import { useRoute } from 'vue-router'
+  import { allUserTenants, useAuthStore } from '@/stores/auth'
   import {
     approveEntry,
     type AssetDto,
@@ -1023,9 +1024,21 @@
 
   const reportConfirmMeta = computed(() => RESOLUTION_META[reportConfirmResolution.value] ?? RESOLUTION_META.DISMISSED)
 
+  const authStore = useAuthStore()
+  const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
+
+  // Initial tenant: superadmin keeps the legacy 'earnlumens' default. Anyone
+  // else lands on the first tenant their JWT actually grants access to, so the
+  // first API call doesn't 403 against a tenant they can't see.
+  function defaultTenant (): string {
+    if (authStore.user?.role === 'SUPERADMIN') return 'earnlumens'
+    const accessible = allUserTenants(authStore.user)
+    return accessible[0] ?? 'earnlumens'
+  }
+
   // State
   const tab = ref('in-review')
-  const selectedTenant = ref('earnlumens')
+  const selectedTenant = ref(defaultTenant())
   const tenantIds = ref<string[]>([])
   const entries = ref<EntryDto[]>([])
   const stats = ref<ModerationStats | null>(null)
@@ -1089,6 +1102,17 @@
   ]
 
   const tenantOptions = computed(() => {
+    // Non-superadmin (tenant owner / moderator): restrict the dropdown to the
+    // tenants the JWT actually grants access to. Hide the "All tenants" pseudo
+    // option entirely so they can't try to query content they don't own/moderate.
+    if (!isSuperadmin.value) {
+      const accessible = allUserTenants(authStore.user)
+      return accessible.map(t => ({
+        title: t === 'earnlumens' ? 'earnlumens (root)' : t,
+        value: t,
+      }))
+    }
+
     const opts = [{ title: 'All tenants', value: '_all' }]
     for (const t of tenantIds.value) {
       opts.push({ title: t === 'earnlumens' ? 'earnlumens (root)' : t, value: t })

@@ -4,7 +4,7 @@ import { onUnmounted, ref } from 'vue'
 
 import { fetchMyInvitations } from '@/api/invitations'
 import { fetchModerationStats } from '@/api/moderation'
-import { useAuthStore } from '@/stores/auth'
+import { allUserTenants, useAuthStore } from '@/stores/auth'
 
 const inReviewCount = ref(0)
 const openReportsCount = ref(0)
@@ -19,12 +19,25 @@ async function refresh () {
     return
   }
 
-  try {
-    const stats: ModerationStats = await fetchModerationStats('earnlumens')
-    inReviewCount.value = stats.inReview ?? 0
-    openReportsCount.value = stats.openReports ?? 0
-  } catch {
-    // silent — sidebar badges are best-effort
+  // Pick a tenant the caller can actually query stats for. Superadmin keeps
+  // the legacy 'earnlumens' default; everyone else uses the first tenant the
+  // JWT grants access to (so a moderator of `anime` sees anime's badges and
+  // doesn't 403 against 'earnlumens').
+  const tenantForStats = authStore.user?.role === 'SUPERADMIN'
+    ? 'earnlumens'
+    : (allUserTenants(authStore.user)[0] ?? null)
+
+  if (tenantForStats) {
+    try {
+      const stats: ModerationStats = await fetchModerationStats(tenantForStats)
+      inReviewCount.value = stats.inReview ?? 0
+      openReportsCount.value = stats.openReports ?? 0
+    } catch {
+      // silent — sidebar badges are best-effort
+    }
+  } else {
+    inReviewCount.value = 0
+    openReportsCount.value = 0
   }
 
   try {
