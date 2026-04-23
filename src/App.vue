@@ -113,6 +113,20 @@
             to="/audit"
           />
           <v-list-item
+            v-if="pendingInvitationsCount > 0"
+            prepend-icon="mdi-email-outline"
+            to="/moderation/invitations"
+          >
+            <v-list-item-title>Invitations</v-list-item-title>
+            <template #append>
+              <v-badge
+                color="warning"
+                :content="pendingInvitationsCount"
+                inline
+              />
+            </template>
+          </v-list-item>
+          <v-list-item
             v-if="isSuperadmin || isTenantOwner"
             prepend-icon="mdi-cog-outline"
             title="Settings"
@@ -162,7 +176,7 @@
   const router = useRouter()
   const theme = useTheme()
   const { mdAndUp } = useDisplay()
-  const { inReviewCount, openReportsCount } = useSidebarBadges()
+  const { inReviewCount, openReportsCount, pendingInvitationsCount } = useSidebarBadges()
 
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
   const isTenantOwner = computed(() => (authStore.user?.tenantAdminOf?.length ?? 0) > 0)

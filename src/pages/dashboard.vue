@@ -10,6 +10,27 @@
     <v-divider class="mb-4" />
 
     <v-alert
+      v-if="pendingInvitationsCount > 0"
+      class="mb-4"
+      color="warning"
+      icon="mdi-email-alert-outline"
+      prominent
+      variant="tonal"
+    >
+      <div class="text-subtitle-1 font-weight-medium">
+        You have {{ pendingInvitationsCount }} pending moderator
+        {{ pendingInvitationsCount === 1 ? 'invitation' : 'invitations' }}
+      </div>
+      <div class="text-body-2 mb-2">
+        A tenant owner has invited you to moderate their content. Review and accept (or reject) from the invitations
+        inbox.
+      </div>
+      <v-btn color="warning" :to="'/moderation/invitations'" variant="flat">
+        Review invitations
+      </v-btn>
+    </v-alert>
+
+    <v-alert
       v-if="showCreateTenantReminder"
       class="mb-4"
       closable
@@ -142,9 +163,11 @@
 
 <script lang="ts" setup>
   import { computed } from 'vue'
+  import { useSidebarBadges } from '@/composables/useSidebarBadges'
   import { useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
+  const { pendingInvitationsCount } = useSidebarBadges()
 
   const showCreateTenantReminder = computed(() => {
     const u = authStore.user
