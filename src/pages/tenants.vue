@@ -165,7 +165,8 @@
   import { useI18n } from 'vue-i18n'
   import { getMyTenant, listAllTenants, TenantApiError, type TenantSummary } from '@/api/tenants'
   import TenantWizard from '@/components/TenantWizard.vue'
-  import { useAuthStore } from '@/stores/auth'
+  import { refreshToken } from '@/services/tokenWorkerClient'
+  import { parseUserFromToken, useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
   const { t } = useI18n()
@@ -205,8 +206,19 @@
     }
   }
 
-  function onCreated (tenant: TenantSummary) {
+  async function onCreated (tenant: TenantSummary) {
     myTenant.value = tenant
+    // Refresh the JWT so the new tenantAdminOf claim arrives and the
+    // "Set up your tenant" reminder on the dashboard disappears.
+    try {
+      const result = await refreshToken()
+      if (result.success && result.accessToken) {
+        const profile = parseUserFromToken(result.accessToken)
+        if (profile) authStore.setUser(profile)
+      }
+    } catch {
+      // Non-fatal: the next scheduled refresh will pick the new claims up.
+    }
   }
 
   onMounted(refresh)
