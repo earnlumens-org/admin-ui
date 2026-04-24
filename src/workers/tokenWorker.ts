@@ -19,9 +19,9 @@ function resolveApiBaseUrl (): string {
     return 'http://localhost:8082'
   }
   if (hostname === 'admin-dev.earnlumens.org') {
-    return 'https://admin-api-dev.earnlumens.org'
+    return 'https://api.admin-dev.earnlumens.org'
   }
-  return 'https://admin-api.earnlumens.org'
+  return 'https://api.admin.earnlumens.org'
 }
 
 function apiUrl (path: string): string {
