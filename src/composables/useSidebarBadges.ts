@@ -23,10 +23,19 @@ let subscriberCount = 0
  * Falls back to 'earnlumens' for SUPERADMIN (legacy root tenant) and to the
  * first JWT-granted tenant for everyone else, so the badge still works on
  * the very first render before the switcher has hydrated activeTenantId.
+ *
+ * Returns null for users who hold no moderation membership anywhere — those
+ * users don't see the Moderation/Reports nav entries at all, so there is
+ * nothing to badge and any stats call would be a guaranteed 403 against a
+ * tenant they don't belong to.
  */
 function resolveTenantForStats (authStore: ReturnType<typeof useAuthStore>): string | null {
-  if (authStore.activeTenantId) return authStore.activeTenantId
-  if (authStore.user?.role === 'SUPERADMIN') return 'earnlumens'
+  if (authStore.activeTenantId) {
+    return authStore.activeTenantId
+  }
+  if (authStore.user?.role === 'SUPERADMIN') {
+    return 'earnlumens'
+  }
   return allUserTenants(authStore.user)[0] ?? null
 }
 

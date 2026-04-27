@@ -2,199 +2,215 @@
   <v-container class="pa-4 pa-sm-6" fluid>
     <v-breadcrumbs class="px-0 pt-0" :items="[{ title: 'earnlumens', disabled: true }, { title: 'reports', disabled: true }]" />
 
-    <div class="d-flex flex-column flex-sm-row align-sm-center justify-space-between mb-4">
-      <div>
-        <div class="text-h6">Reports</div>
-        <div class="text-body-2 text-medium-emphasis mb-4 mb-sm-0">
-          User-submitted content reports — ordered by priority
-        </div>
+    <!-- Users with no moderation membership land here on a deep link or stale
+         tab — render an explicit empty state instead of querying the root
+         tenant on their behalf. -->
+    <v-card v-if="!hasModerationAccess" class="pa-8 text-center" variant="tonal">
+      <v-icon class="mb-3" color="medium-emphasis" size="48">mdi-shield-lock-outline</v-icon>
+      <div class="text-h6 mb-1">Reports aren't available yet</div>
+      <div class="text-body-2 text-medium-emphasis mb-4">
+        You'll see content reports once you create your own tenant or accept a moderation invitation.
       </div>
-      <v-select
-        v-model="selectedTenant"
-        class="tenant-select"
-        density="compact"
-        hide-details
-        item-title="title"
-        item-value="value"
-        :items="tenantOptions"
-        variant="outlined"
-        @update:model-value="loadReports"
-      />
-    </div>
+      <v-btn v-if="canCreateTenant" color="primary" to="/tenants" variant="flat">
+        Go to tenants
+      </v-btn>
+    </v-card>
 
-    <!-- Filter tabs -->
-    <v-tabs v-model="tab" class="mb-4" density="compact" @update:model-value="loadReports">
-      <v-tab value="OPEN">
-        Open
-        <v-badge
-          v-if="openCount > 0"
-          class="ml-2"
-          color="error"
-          :content="openCount"
-          inline
-        />
-      </v-tab>
-      <v-tab value="ALL">All</v-tab>
-    </v-tabs>
-
-    <!-- Loading -->
-    <v-progress-linear v-if="loading" class="mb-4" indeterminate />
-
-    <!-- Report list -->
-    <div v-if="reports.length > 0" class="d-flex flex-column ga-2">
-      <v-card v-for="report in reports" :key="report.id" class="report-card" variant="outlined">
-        <div class="d-flex flex-column flex-sm-row">
-          <!-- Media -->
-          <div class="report-media flex-shrink-0">
-            <v-img
-              v-if="report.snapshot?.thumbnailR2Key"
-              :aspect-ratio="16/9"
-              class="fill-height rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0"
-              cover
-              :src="cdnUrl(report.snapshot.thumbnailR2Key)"
-            >
-              <template #placeholder>
-                <div class="d-flex align-center justify-center fill-height bg-surface-light">
-                  <v-icon color="medium-emphasis">mdi-image-outline</v-icon>
-                </div>
-              </template>
-            </v-img>
-            <div v-else class="d-flex flex-column align-center justify-center fill-height bg-surface-light rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0">
-              <v-icon color="medium-emphasis" size="36">mdi-file-document-outline</v-icon>
-            </div>
-          </div>
-
-          <!-- Content -->
-          <div class="flex-grow-1 pa-3 d-flex flex-column" style="min-width: 0">
-            <!-- Row 1: title + actions menu -->
-            <div class="d-flex align-start justify-space-between ga-2">
-              <div style="min-width: 0; flex: 1">
-                <div class="text-body-2 font-weight-medium text-truncate">
-                  {{ report.snapshot?.title || report.entryId }}
-                </div>
-                <div class="d-flex align-center flex-wrap ga-1 mt-1">
-                  <v-chip
-                    :color="severityColor(report.severity)"
-                    label
-                    size="x-small"
-                    variant="flat"
-                  >
-                    {{ report.severity }}
-                  </v-chip>
-                  <v-chip label size="x-small" variant="tonal">
-                    {{ report.reason }}
-                  </v-chip>
-                  <v-chip
-                    :color="resolutionColor(report.resolution)"
-                    label
-                    size="x-small"
-                    variant="tonal"
-                  >
-                    {{ report.resolution }}
-                  </v-chip>
-                  <span class="text-caption text-disabled">
-                    P{{ report.priorityScore }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- Actions menu for open reports -->
-              <v-menu v-if="report.resolution === 'OPEN'">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    density="compact"
-                    icon="mdi-dots-vertical"
-                    size="x-small"
-                    variant="text"
-                  />
-                </template>
-                <v-list density="compact">
-                  <v-list-item
-                    prepend-icon="mdi-close-circle-outline"
-                    title="Dismiss"
-                    @click="openConfirm(report, 'DISMISSED')"
-                  />
-                  <v-list-item
-                    class="text-warning"
-                    prepend-icon="mdi-alert-outline"
-                    title="Sanction"
-                    @click="openConfirm(report, 'SANCTIONED')"
-                  />
-                  <v-list-item
-                    class="text-error"
-                    prepend-icon="mdi-delete-outline"
-                    title="Remove"
-                    @click="openConfirm(report, 'REMOVED')"
-                  />
-                  <v-divider />
-                  <v-list-item
-                    prepend-icon="mdi-arrow-right"
-                    title="View in Moderation"
-                    @click="goToEntry(report)"
-                  />
-                </v-list>
-              </v-menu>
-            </div>
-
-            <!-- Reporter note -->
-            <div
-              v-if="report.comment"
-              class="note-indicator d-flex align-start ga-2 mt-2"
-            >
-              <v-icon class="flex-shrink-0 mt-px" color="medium-emphasis" size="14">mdi-message-text-outline</v-icon>
-              <div
-                class="text-caption text-medium-emphasis note-text"
-                :class="{ 'note-clamped': !expandedNotes.has(report.id) }"
-                @click.stop="toggleNote(report.id)"
-              >
-                {{ report.comment }}
-              </div>
-            </div>
-
-            <!-- Meta row -->
-            <div class="d-flex align-center flex-wrap ga-2 mt-auto pt-2">
-              <span class="text-caption text-medium-emphasis">
-                by <strong>{{ report.reporterUsername || report.reporterUserId }}</strong>
-              </span>
-              <span v-if="report.snapshot?.authorUsername" class="text-caption text-medium-emphasis">
-                · re: @{{ report.snapshot.authorUsername }}
-              </span>
-              <span class="text-caption text-disabled">
-                · {{ formatDate(report.createdAt) }}
-              </span>
-              <span v-if="report.resolvedBy" class="text-caption text-disabled">
-                · {{ report.resolvedBy }}
-              </span>
-            </div>
+    <template v-else>
+      <div class="d-flex flex-column flex-sm-row align-sm-center justify-space-between mb-4">
+        <div>
+          <div class="text-h6">Reports</div>
+          <div class="text-body-2 text-medium-emphasis mb-4 mb-sm-0">
+            User-submitted content reports — ordered by priority
           </div>
         </div>
-      </v-card>
-
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="d-flex justify-center mt-4">
-        <v-pagination
-          v-model="currentPage"
+        <v-select
+          v-model="selectedTenant"
+          class="tenant-select"
           density="compact"
-          :length="totalPages"
-          :total-visible="5"
+          hide-details
+          item-title="title"
+          item-value="value"
+          :items="tenantOptions"
+          variant="outlined"
           @update:model-value="loadReports"
         />
       </div>
-    </div>
 
-    <!-- Empty state -->
-    <v-card v-else-if="!loading" class="text-center pa-8" variant="tonal">
-      <v-icon class="mb-3" color="success" size="48">
-        {{ tab === 'OPEN' ? 'mdi-check-circle-outline' : 'mdi-flag-off-outline' }}
-      </v-icon>
-      <div class="text-body-1 font-weight-medium">
-        {{ tab === 'OPEN' ? 'No open reports' : 'No reports yet' }}
+      <!-- Filter tabs -->
+      <v-tabs v-model="tab" class="mb-4" density="compact" @update:model-value="loadReports">
+        <v-tab value="OPEN">
+          Open
+          <v-badge
+            v-if="openCount > 0"
+            class="ml-2"
+            color="error"
+            :content="openCount"
+            inline
+          />
+        </v-tab>
+        <v-tab value="ALL">All</v-tab>
+      </v-tabs>
+
+      <!-- Loading -->
+      <v-progress-linear v-if="loading" class="mb-4" indeterminate />
+
+      <!-- Report list -->
+      <div v-if="reports.length > 0" class="d-flex flex-column ga-2">
+        <v-card v-for="report in reports" :key="report.id" class="report-card" variant="outlined">
+          <div class="d-flex flex-column flex-sm-row">
+            <!-- Media -->
+            <div class="report-media flex-shrink-0">
+              <v-img
+                v-if="report.snapshot?.thumbnailR2Key"
+                :aspect-ratio="16/9"
+                class="fill-height rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0"
+                cover
+                :src="cdnUrl(report.snapshot.thumbnailR2Key)"
+              >
+                <template #placeholder>
+                  <div class="d-flex align-center justify-center fill-height bg-surface-light">
+                    <v-icon color="medium-emphasis">mdi-image-outline</v-icon>
+                  </div>
+                </template>
+              </v-img>
+              <div v-else class="d-flex flex-column align-center justify-center fill-height bg-surface-light rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0">
+                <v-icon color="medium-emphasis" size="36">mdi-file-document-outline</v-icon>
+              </div>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-grow-1 pa-3 d-flex flex-column" style="min-width: 0">
+              <!-- Row 1: title + actions menu -->
+              <div class="d-flex align-start justify-space-between ga-2">
+                <div style="min-width: 0; flex: 1">
+                  <div class="text-body-2 font-weight-medium text-truncate">
+                    {{ report.snapshot?.title || report.entryId }}
+                  </div>
+                  <div class="d-flex align-center flex-wrap ga-1 mt-1">
+                    <v-chip
+                      :color="severityColor(report.severity)"
+                      label
+                      size="x-small"
+                      variant="flat"
+                    >
+                      {{ report.severity }}
+                    </v-chip>
+                    <v-chip label size="x-small" variant="tonal">
+                      {{ report.reason }}
+                    </v-chip>
+                    <v-chip
+                      :color="resolutionColor(report.resolution)"
+                      label
+                      size="x-small"
+                      variant="tonal"
+                    >
+                      {{ report.resolution }}
+                    </v-chip>
+                    <span class="text-caption text-disabled">
+                      P{{ report.priorityScore }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Actions menu for open reports -->
+                <v-menu v-if="report.resolution === 'OPEN'">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      density="compact"
+                      icon="mdi-dots-vertical"
+                      size="x-small"
+                      variant="text"
+                    />
+                  </template>
+                  <v-list density="compact">
+                    <v-list-item
+                      prepend-icon="mdi-close-circle-outline"
+                      title="Dismiss"
+                      @click="openConfirm(report, 'DISMISSED')"
+                    />
+                    <v-list-item
+                      class="text-warning"
+                      prepend-icon="mdi-alert-outline"
+                      title="Sanction"
+                      @click="openConfirm(report, 'SANCTIONED')"
+                    />
+                    <v-list-item
+                      class="text-error"
+                      prepend-icon="mdi-delete-outline"
+                      title="Remove"
+                      @click="openConfirm(report, 'REMOVED')"
+                    />
+                    <v-divider />
+                    <v-list-item
+                      prepend-icon="mdi-arrow-right"
+                      title="View in Moderation"
+                      @click="goToEntry(report)"
+                    />
+                  </v-list>
+                </v-menu>
+              </div>
+
+              <!-- Reporter note -->
+              <div
+                v-if="report.comment"
+                class="note-indicator d-flex align-start ga-2 mt-2"
+              >
+                <v-icon class="flex-shrink-0 mt-px" color="medium-emphasis" size="14">mdi-message-text-outline</v-icon>
+                <div
+                  class="text-caption text-medium-emphasis note-text"
+                  :class="{ 'note-clamped': !expandedNotes.has(report.id) }"
+                  @click.stop="toggleNote(report.id)"
+                >
+                  {{ report.comment }}
+                </div>
+              </div>
+
+              <!-- Meta row -->
+              <div class="d-flex align-center flex-wrap ga-2 mt-auto pt-2">
+                <span class="text-caption text-medium-emphasis">
+                  by <strong>{{ report.reporterUsername || report.reporterUserId }}</strong>
+                </span>
+                <span v-if="report.snapshot?.authorUsername" class="text-caption text-medium-emphasis">
+                  · re: @{{ report.snapshot.authorUsername }}
+                </span>
+                <span class="text-caption text-disabled">
+                  · {{ formatDate(report.createdAt) }}
+                </span>
+                <span v-if="report.resolvedBy" class="text-caption text-disabled">
+                  · {{ report.resolvedBy }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </v-card>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="d-flex justify-center mt-4">
+          <v-pagination
+            v-model="currentPage"
+            density="compact"
+            :length="totalPages"
+            :total-visible="5"
+            @update:model-value="loadReports"
+          />
+        </div>
       </div>
-      <div class="text-body-2 text-medium-emphasis mt-1">
-        {{ tab === 'OPEN' ? 'All user reports have been resolved.' : 'No content has been reported by users.' }}
-      </div>
-    </v-card>
+
+      <!-- Empty state -->
+      <v-card v-else-if="!loading" class="text-center pa-8" variant="tonal">
+        <v-icon class="mb-3" color="success" size="48">
+          {{ tab === 'OPEN' ? 'mdi-check-circle-outline' : 'mdi-flag-off-outline' }}
+        </v-icon>
+        <div class="text-body-1 font-weight-medium">
+          {{ tab === 'OPEN' ? 'No open reports' : 'No reports yet' }}
+        </div>
+        <div class="text-body-2 text-medium-emphasis mt-1">
+          {{ tab === 'OPEN' ? 'All user reports have been resolved.' : 'No content has been reported by users.' }}
+        </div>
+      </v-card>
+    </template>
   </v-container>
 
   <!-- Confirmation dialog -->
@@ -256,13 +272,22 @@
   const { refresh: refreshBadges } = useSidebarBadges()
   const authStore = useAuthStore()
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
+  const isTenantOwner = computed(() => (authStore.user?.tenantAdminOf?.length ?? 0) > 0)
+  const isModerator = computed(() => (authStore.user?.moderatorOf?.length ?? 0) > 0)
+  const canCreateTenant = computed(() => authStore.user?.canCreateTenant === true)
+  const hasModerationAccess = computed(
+    () => isSuperadmin.value || isTenantOwner.value || isModerator.value,
+  )
   const { labelFor: tenantLabel } = useTenantLabels()
 
   function defaultTenant (): string {
     if (authStore.activeTenantId) return authStore.activeTenantId
     if (authStore.user?.role === 'SUPERADMIN') return 'earnlumens'
     const accessible = allUserTenants(authStore.user)
-    return accessible[0] ?? 'earnlumens'
+    // Empty string is fine: the page is gated by hasModerationAccess, so no
+    // request is ever issued in this branch. We deliberately do NOT fall
+    // back to 'earnlumens' here — that was the source of a privilege bug.
+    return accessible[0] ?? ''
   }
 
   const selectedTenant = ref(defaultTenant())
@@ -373,6 +398,7 @@
   }
 
   async function loadReports () {
+    if (!hasModerationAccess.value || !selectedTenant.value) return
     loading.value = true
     try {
       const resolution = tab.value === 'OPEN' ? 'OPEN' : null

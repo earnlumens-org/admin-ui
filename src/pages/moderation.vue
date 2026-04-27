@@ -2,969 +2,983 @@
   <v-container class="pa-4 pa-sm-6" fluid>
     <v-breadcrumbs class="px-0 pt-0" :items="[{ title: 'earnlumens', disabled: true }, { title: 'moderation', disabled: true }]" />
 
-    <div class="d-flex flex-column flex-sm-row align-sm-center justify-space-between mb-1">
-      <div>
-        <div class="text-h6">Moderation</div>
-        <div class="text-body-2 text-medium-emphasis mb-4 mb-sm-0">
-          Content moderation pipeline — AI first, then human review
-        </div>
+    <!-- Users with no moderation membership land here on a deep link or stale
+         tab — render an explicit empty state instead of querying the root
+         tenant on their behalf. -->
+    <v-card v-if="!hasModerationAccess" class="pa-8 text-center" variant="tonal">
+      <v-icon class="mb-3" color="medium-emphasis" size="48">mdi-shield-lock-outline</v-icon>
+      <div class="text-h6 mb-1">Moderation isn't available yet</div>
+      <div class="text-body-2 text-medium-emphasis mb-4">
+        You'll see this queue once you create your own tenant or accept a moderation invitation.
       </div>
-      <v-select
-        v-model="selectedTenant"
-        class="tenant-select"
-        density="compact"
-        hide-details
-        item-title="title"
-        item-value="value"
-        :items="tenantOptions"
-        variant="outlined"
-        @update:model-value="loadEntries"
-      />
-    </div>
-
-    <!-- Pipeline visualization -->
-    <v-card class="mb-4" color="surface-variant" variant="tonal">
-      <v-card-text class="py-3 px-4">
-        <div class="d-flex align-center justify-center flex-wrap ga-3 ga-sm-4">
-          <div class="d-flex align-center ga-1 text-body-2">
-            <v-icon color="medium-emphasis" size="18">mdi-upload</v-icon>
-            <span>New Upload</span>
-          </div>
-          <v-icon color="medium-emphasis" size="14">mdi-arrow-right</v-icon>
-          <div
-            class="d-flex align-center ga-1 text-body-2 pipeline-step cursor-pointer"
-            :class="{ 'pipeline-active': tab === 'ai-processing' }"
-            @click="switchTab('ai-processing')"
-          >
-            <v-progress-circular
-              v-if="(stats?.aiProcessing ?? 0) > 0"
-              color="info"
-              indeterminate
-              size="14"
-              width="2"
-            />
-            <v-icon v-else color="info" size="18">mdi-robot-outline</v-icon>
-            <span class="font-weight-medium">AI Analysis</span>
-            <v-chip color="info" size="x-small" variant="tonal">
-              {{ stats?.aiProcessing ?? 0 }}
-            </v-chip>
-          </div>
-          <v-icon color="medium-emphasis" size="14">mdi-arrow-right</v-icon>
-          <div
-            class="d-flex align-center ga-1 text-body-2 pipeline-step cursor-pointer"
-            :class="{ 'pipeline-active': tab === 'in-review' }"
-            @click="switchTab('in-review')"
-          >
-            <v-icon color="warning" size="18">mdi-account-eye-outline</v-icon>
-            <span class="font-weight-medium">Human Review</span>
-            <v-chip color="warning" size="x-small" variant="tonal">
-              {{ stats?.inReview ?? 0 }}
-            </v-chip>
-          </div>
-          <v-icon color="medium-emphasis" size="14">mdi-arrow-right</v-icon>
-          <div class="d-flex align-center ga-1 text-body-2">
-            <v-icon color="success" size="18">mdi-check-circle-outline</v-icon>
-            <span>Published</span>
-          </div>
-        </div>
-      </v-card-text>
+      <v-btn v-if="canCreateTenant" color="primary" to="/tenants" variant="flat">
+        Go to tenants
+      </v-btn>
     </v-card>
 
-    <!-- Stats chips -->
-    <div v-if="stats" class="d-flex flex-wrap ga-2 mb-4">
-      <v-chip prepend-icon="mdi-robot-outline" size="small" variant="tonal">
-        {{ stats.aiProcessing ?? 0 }} AI processing
-      </v-chip>
-      <v-chip
-        :color="(stats.inReview ?? 0) > 0 ? 'warning' : undefined"
-        prepend-icon="mdi-clock-outline"
-        size="small"
-        variant="tonal"
-      >
-        {{ stats.inReview }} needs review
-      </v-chip>
-      <v-chip prepend-icon="mdi-check-circle-outline" size="small" variant="tonal">
-        {{ stats.published }} published
-      </v-chip>
-      <v-chip
-        :color="(stats.openReports ?? 0) > 0 ? 'deep-orange' : undefined"
-        prepend-icon="mdi-flag-outline"
-        size="small"
-        variant="tonal"
-      >
-        {{ stats.openReports ?? 0 }} open reports
-      </v-chip>
-      <v-chip prepend-icon="mdi-cancel" size="small" variant="tonal">
-        {{ stats.suspended }} suspended
-      </v-chip>
-      <v-chip prepend-icon="mdi-close-circle-outline" size="small" variant="tonal">
-        {{ stats.rejected }} rejected
-      </v-chip>
-      <v-chip prepend-icon="mdi-archive-outline" size="small" variant="tonal">
-        {{ stats.archived }} archived
-      </v-chip>
-    </div>
-
-    <v-divider class="mb-4" />
-
-    <v-tabs v-model="tab" class="mb-4" @update:model-value="onTabChange">
-      <v-tab value="ai-processing">
-        <v-icon class="mr-1" size="16">mdi-robot-outline</v-icon>
-        AI Processing
-        <v-badge
-          v-if="stats && (stats.aiProcessing ?? 0) > 0"
-          class="ml-1"
-          color="info"
-          :content="stats.aiProcessing"
-          inline
-        />
-      </v-tab>
-      <v-tab value="in-review">
-        <v-icon class="mr-1" size="16">mdi-account-eye-outline</v-icon>
-        Human Queue
-        <v-badge
-          v-if="stats && stats.inReview > 0"
-          class="ml-1"
-          color="warning"
-          :content="stats.inReview"
-          inline
-        />
-      </v-tab>
-      <v-tab value="all">All Entries</v-tab>
-    </v-tabs>
-
-    <!-- Tab contextual banners -->
-    <v-alert
-      v-if="tab === 'ai-processing'"
-      class="mb-4"
-      color="info"
-      density="compact"
-      icon="mdi-shield-lock-outline"
-      variant="tonal"
-    >
-      These entries are being analyzed by the automated moderation system. No human action is possible until AI processing completes.
-    </v-alert>
-    <v-alert
-      v-if="tab === 'in-review'"
-      class="mb-4"
-      color="warning"
-      density="compact"
-      icon="mdi-alert-outline"
-      variant="tonal"
-    >
-      These entries were flagged by the AI system and require human review.
-    </v-alert>
-
-    <!-- Status filter for "All Entries" tab -->
-    <div v-if="tab === 'all'" class="d-flex flex-wrap ga-2 mb-4">
-      <v-chip
-        v-for="s in statusFilters"
-        :key="s.value"
-        :color="s.color"
-        size="small"
-        :variant="statusFilter === s.value ? 'flat' : 'outlined'"
-        @click="statusFilter = s.value; loadEntries()"
-      >
-        {{ s.label }}
-      </v-chip>
-    </div>
-
-    <!-- Loading -->
-    <div v-if="loading" class="d-flex justify-center py-12">
-      <v-progress-circular indeterminate />
-    </div>
-
-    <!-- Empty state -->
-    <v-card v-else-if="entries.length === 0" class="pa-8 text-center" variant="tonal">
-      <v-icon color="medium-emphasis" size="48">
-        {{ tab === 'ai-processing' ? 'mdi-robot-happy-outline' : tab === 'in-review' ? 'mdi-check-decagram-outline' : 'mdi-file-check-outline' }}
-      </v-icon>
-      <div class="text-body-1 mt-4">
-        {{ tab === 'ai-processing'
-          ? 'No entries in AI processing'
-          : tab === 'in-review'
-            ? 'No entries awaiting human review'
-            : 'No entries found'
-        }}
-      </div>
-      <div class="text-body-2 text-medium-emphasis mt-1">
-        {{ tab === 'ai-processing'
-          ? 'New uploads will appear here while the automated system analyzes them.'
-          : tab === 'in-review'
-            ? 'All flagged entries have been reviewed. Great work!'
-            : 'Try changing the status filter or tenant.'
-        }}
-      </div>
-    </v-card>
-
-    <!-- Entry list -->
-    <div v-else class="d-flex flex-column ga-3">
-      <v-card
-        v-for="entry in entries"
-        :key="entry.id"
-        class="entry-card"
-        :class="{ 'entry-card-locked': tab === 'ai-processing' }"
-        variant="outlined"
-      >
-        <div class="d-flex flex-column flex-sm-row">
-          <!-- Media -->
-          <div class="entry-media flex-shrink-0 cursor-pointer" @click="openDetail(entry)">
-            <v-img
-              v-if="entry.thumbnailR2Key"
-              :aspect-ratio="16/9"
-              class="fill-height rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0"
-              cover
-              :src="cdnUrl(entry.thumbnailR2Key)"
-            >
-              <template #placeholder>
-                <div class="d-flex align-center justify-center fill-height bg-surface-light">
-                  <v-icon color="medium-emphasis">mdi-image-outline</v-icon>
-                </div>
-              </template>
-              <div v-if="entry.durationSec" class="entry-duration">
-                {{ formatDuration(entry.durationSec) }}
-              </div>
-              <div v-if="tab === 'ai-processing'" class="entry-processing-overlay d-flex align-center justify-center">
-                <v-progress-circular color="white" indeterminate size="24" width="2" />
-              </div>
-            </v-img>
-            <div v-else class="d-flex flex-column align-center justify-center fill-height bg-surface-light rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0">
-              <v-icon color="medium-emphasis" size="36">{{ typeIcon(entry.type) }}</v-icon>
-            </div>
+    <template v-else>
+      <div class="d-flex flex-column flex-sm-row align-sm-center justify-space-between mb-1">
+        <div>
+          <div class="text-h6">Moderation</div>
+          <div class="text-body-2 text-medium-emphasis mb-4 mb-sm-0">
+            Content moderation pipeline — AI first, then human review
           </div>
+        </div>
+        <v-select
+          v-model="selectedTenant"
+          class="tenant-select"
+          density="compact"
+          hide-details
+          item-title="title"
+          item-value="value"
+          :items="tenantOptions"
+          variant="outlined"
+          @update:model-value="loadEntries"
+        />
+      </div>
 
-          <!-- Content -->
-          <div class="flex-grow-1 pa-3 d-flex flex-column" style="min-width: 0">
-            <div class="d-flex align-start justify-space-between ga-2">
-              <div style="min-width: 0; flex: 1">
-                <div class="text-body-2 font-weight-medium text-truncate cursor-pointer" @click="openDetail(entry)">
-                  {{ entry.title }}
-                </div>
-                <div class="d-flex align-center flex-wrap ga-1 mt-1">
-                  <span class="text-caption text-medium-emphasis">
-                    @{{ entry.authorUsername || 'unknown' }}
-                  </span>
-                  <v-chip :color="typeColor(entry.type)" label size="x-small" variant="tonal">
-                    {{ entry.type }}
-                  </v-chip>
-                  <v-chip :color="statusColor(entry.status)" label size="x-small" variant="tonal">
-                    {{ entry.status }}
-                  </v-chip>
-                  <v-chip
-                    v-if="entry.paid"
-                    color="info"
-                    label
-                    size="x-small"
-                    variant="tonal"
-                  >
-                    {{ formatPrice(entry) }}
-                  </v-chip>
-                </div>
-              </div>
-
-              <!-- Actions menu -->
-              <v-menu v-if="tab !== 'ai-processing'">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    density="compact"
-                    icon="mdi-dots-vertical"
-                    size="x-small"
-                    variant="text"
-                  />
-                </template>
-                <v-list density="compact">
-                  <v-list-item
-                    prepend-icon="mdi-eye-outline"
-                    title="View details"
-                    @click="openDetail(entry)"
-                  />
-                  <v-list-item
-                    v-if="entry.moderationFeedback && (entry.status === 'REJECTED' || entry.status === 'SUSPENDED')"
-                    class="text-warning"
-                    prepend-icon="mdi-alert-circle-outline"
-                    title="View moderation feedback"
-                    @click="openDetail(entry)"
-                  />
-                  <v-list-item
-                    v-if="entry.status === 'IN_REVIEW'"
-                    prepend-icon="mdi-check"
-                    title="Approve"
-                    @click="handleApprove(entry)"
-                  />
-                  <v-list-item
-                    v-if="entry.status === 'IN_REVIEW'"
-                    prepend-icon="mdi-close"
-                    title="Reject..."
-                    @click="openRejectDialog(entry)"
-                  />
-                  <v-list-item
-                    v-if="entry.status === 'PUBLISHED' || entry.status === 'APPROVED'"
-                    prepend-icon="mdi-cancel"
-                    title="Suspend..."
-                    @click="openSuspendDialog(entry)"
-                  />
-                </v-list>
-              </v-menu>
-              <!-- Locked indicator for AI processing -->
-              <v-tooltip v-else location="top" text="Locked — AI is analyzing this entry">
-                <template #activator="{ props: tooltipProps }">
-                  <v-icon v-bind="tooltipProps" color="info" size="16">mdi-lock-outline</v-icon>
-                </template>
-              </v-tooltip>
+      <!-- Pipeline visualization -->
+      <v-card class="mb-4" color="surface-variant" variant="tonal">
+        <v-card-text class="py-3 px-4">
+          <div class="d-flex align-center justify-center flex-wrap ga-3 ga-sm-4">
+            <div class="d-flex align-center ga-1 text-body-2">
+              <v-icon color="medium-emphasis" size="18">mdi-upload</v-icon>
+              <span>New Upload</span>
             </div>
-
-            <!-- AI flag -->
+            <v-icon color="medium-emphasis" size="14">mdi-arrow-right</v-icon>
             <div
-              v-if="jobSummaries[entry.id]?.decision === 'MANUAL_QUEUE'"
-              class="flag-indicator flag-ai d-flex align-start ga-2 mt-2"
+              class="d-flex align-center ga-1 text-body-2 pipeline-step cursor-pointer"
+              :class="{ 'pipeline-active': tab === 'ai-processing' }"
+              @click="switchTab('ai-processing')"
             >
-              <v-icon class="flex-shrink-0 mt-px" color="error" size="14">mdi-alert-decagram</v-icon>
-              <div style="min-width: 0; flex: 1">
-                <span class="text-caption font-weight-medium">
-                  Flagged by {{ jobSummaries[entry.id].decidingStep || 'AI' }}
-                </span>
-                <span v-if="jobSummaries[entry.id].confidence != null" class="text-caption text-medium-emphasis">
-                  · {{ Math.round((jobSummaries[entry.id].confidence ?? 0) * 100) }}%
-                </span>
-                <div
-                  v-if="jobSummaries[entry.id].decisionReason"
-                  class="text-caption text-medium-emphasis reason-text"
-                  :class="{ 'reason-clamped': !expandedReasons.has(entry.id) }"
-                  @click.stop="toggleReason(entry.id)"
-                >
-                  {{ jobSummaries[entry.id].decisionReason }}
+              <v-progress-circular
+                v-if="(stats?.aiProcessing ?? 0) > 0"
+                color="info"
+                indeterminate
+                size="14"
+                width="2"
+              />
+              <v-icon v-else color="info" size="18">mdi-robot-outline</v-icon>
+              <span class="font-weight-medium">AI Analysis</span>
+              <v-chip color="info" size="x-small" variant="tonal">
+                {{ stats?.aiProcessing ?? 0 }}
+              </v-chip>
+            </div>
+            <v-icon color="medium-emphasis" size="14">mdi-arrow-right</v-icon>
+            <div
+              class="d-flex align-center ga-1 text-body-2 pipeline-step cursor-pointer"
+              :class="{ 'pipeline-active': tab === 'in-review' }"
+              @click="switchTab('in-review')"
+            >
+              <v-icon color="warning" size="18">mdi-account-eye-outline</v-icon>
+              <span class="font-weight-medium">Human Review</span>
+              <v-chip color="warning" size="x-small" variant="tonal">
+                {{ stats?.inReview ?? 0 }}
+              </v-chip>
+            </div>
+            <v-icon color="medium-emphasis" size="14">mdi-arrow-right</v-icon>
+            <div class="d-flex align-center ga-1 text-body-2">
+              <v-icon color="success" size="18">mdi-check-circle-outline</v-icon>
+              <span>Published</span>
+            </div>
+          </div>
+        </v-card-text>
+      </v-card>
+
+      <!-- Stats chips -->
+      <div v-if="stats" class="d-flex flex-wrap ga-2 mb-4">
+        <v-chip prepend-icon="mdi-robot-outline" size="small" variant="tonal">
+          {{ stats.aiProcessing ?? 0 }} AI processing
+        </v-chip>
+        <v-chip
+          :color="(stats.inReview ?? 0) > 0 ? 'warning' : undefined"
+          prepend-icon="mdi-clock-outline"
+          size="small"
+          variant="tonal"
+        >
+          {{ stats.inReview }} needs review
+        </v-chip>
+        <v-chip prepend-icon="mdi-check-circle-outline" size="small" variant="tonal">
+          {{ stats.published }} published
+        </v-chip>
+        <v-chip
+          :color="(stats.openReports ?? 0) > 0 ? 'deep-orange' : undefined"
+          prepend-icon="mdi-flag-outline"
+          size="small"
+          variant="tonal"
+        >
+          {{ stats.openReports ?? 0 }} open reports
+        </v-chip>
+        <v-chip prepend-icon="mdi-cancel" size="small" variant="tonal">
+          {{ stats.suspended }} suspended
+        </v-chip>
+        <v-chip prepend-icon="mdi-close-circle-outline" size="small" variant="tonal">
+          {{ stats.rejected }} rejected
+        </v-chip>
+        <v-chip prepend-icon="mdi-archive-outline" size="small" variant="tonal">
+          {{ stats.archived }} archived
+        </v-chip>
+      </div>
+
+      <v-divider class="mb-4" />
+
+      <v-tabs v-model="tab" class="mb-4" @update:model-value="onTabChange">
+        <v-tab value="ai-processing">
+          <v-icon class="mr-1" size="16">mdi-robot-outline</v-icon>
+          AI Processing
+          <v-badge
+            v-if="stats && (stats.aiProcessing ?? 0) > 0"
+            class="ml-1"
+            color="info"
+            :content="stats.aiProcessing"
+            inline
+          />
+        </v-tab>
+        <v-tab value="in-review">
+          <v-icon class="mr-1" size="16">mdi-account-eye-outline</v-icon>
+          Human Queue
+          <v-badge
+            v-if="stats && stats.inReview > 0"
+            class="ml-1"
+            color="warning"
+            :content="stats.inReview"
+            inline
+          />
+        </v-tab>
+        <v-tab value="all">All Entries</v-tab>
+      </v-tabs>
+
+      <!-- Tab contextual banners -->
+      <v-alert
+        v-if="tab === 'ai-processing'"
+        class="mb-4"
+        color="info"
+        density="compact"
+        icon="mdi-shield-lock-outline"
+        variant="tonal"
+      >
+        These entries are being analyzed by the automated moderation system. No human action is possible until AI processing completes.
+      </v-alert>
+      <v-alert
+        v-if="tab === 'in-review'"
+        class="mb-4"
+        color="warning"
+        density="compact"
+        icon="mdi-alert-outline"
+        variant="tonal"
+      >
+        These entries were flagged by the AI system and require human review.
+      </v-alert>
+
+      <!-- Status filter for "All Entries" tab -->
+      <div v-if="tab === 'all'" class="d-flex flex-wrap ga-2 mb-4">
+        <v-chip
+          v-for="s in statusFilters"
+          :key="s.value"
+          :color="s.color"
+          size="small"
+          :variant="statusFilter === s.value ? 'flat' : 'outlined'"
+          @click="statusFilter = s.value; loadEntries()"
+        >
+          {{ s.label }}
+        </v-chip>
+      </div>
+
+      <!-- Loading -->
+      <div v-if="loading" class="d-flex justify-center py-12">
+        <v-progress-circular indeterminate />
+      </div>
+
+      <!-- Empty state -->
+      <v-card v-else-if="entries.length === 0" class="pa-8 text-center" variant="tonal">
+        <v-icon color="medium-emphasis" size="48">
+          {{ tab === 'ai-processing' ? 'mdi-robot-happy-outline' : tab === 'in-review' ? 'mdi-check-decagram-outline' : 'mdi-file-check-outline' }}
+        </v-icon>
+        <div class="text-body-1 mt-4">
+          {{ tab === 'ai-processing'
+            ? 'No entries in AI processing'
+            : tab === 'in-review'
+              ? 'No entries awaiting human review'
+              : 'No entries found'
+          }}
+        </div>
+        <div class="text-body-2 text-medium-emphasis mt-1">
+          {{ tab === 'ai-processing'
+            ? 'New uploads will appear here while the automated system analyzes them.'
+            : tab === 'in-review'
+              ? 'All flagged entries have been reviewed. Great work!'
+              : 'Try changing the status filter or tenant.'
+          }}
+        </div>
+      </v-card>
+
+      <!-- Entry list -->
+      <div v-else class="d-flex flex-column ga-3">
+        <v-card
+          v-for="entry in entries"
+          :key="entry.id"
+          class="entry-card"
+          :class="{ 'entry-card-locked': tab === 'ai-processing' }"
+          variant="outlined"
+        >
+          <div class="d-flex flex-column flex-sm-row">
+            <!-- Media -->
+            <div class="entry-media flex-shrink-0 cursor-pointer" @click="openDetail(entry)">
+              <v-img
+                v-if="entry.thumbnailR2Key"
+                :aspect-ratio="16/9"
+                class="fill-height rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0"
+                cover
+                :src="cdnUrl(entry.thumbnailR2Key)"
+              >
+                <template #placeholder>
+                  <div class="d-flex align-center justify-center fill-height bg-surface-light">
+                    <v-icon color="medium-emphasis">mdi-image-outline</v-icon>
+                  </div>
+                </template>
+                <div v-if="entry.durationSec" class="entry-duration">
+                  {{ formatDuration(entry.durationSec) }}
                 </div>
-                <div v-if="(jobSummaries[entry.id].categoriesDetected?.length ?? 0) > 0" class="d-flex flex-wrap ga-1 mt-1">
+                <div v-if="tab === 'ai-processing'" class="entry-processing-overlay d-flex align-center justify-center">
+                  <v-progress-circular color="white" indeterminate size="24" width="2" />
+                </div>
+              </v-img>
+              <div v-else class="d-flex flex-column align-center justify-center fill-height bg-surface-light rounded-ts rounded-te rounded-sm-ts rounded-sm-bs rounded-sm-te-0">
+                <v-icon color="medium-emphasis" size="36">{{ typeIcon(entry.type) }}</v-icon>
+              </div>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-grow-1 pa-3 d-flex flex-column" style="min-width: 0">
+              <div class="d-flex align-start justify-space-between ga-2">
+                <div style="min-width: 0; flex: 1">
+                  <div class="text-body-2 font-weight-medium text-truncate cursor-pointer" @click="openDetail(entry)">
+                    {{ entry.title }}
+                  </div>
+                  <div class="d-flex align-center flex-wrap ga-1 mt-1">
+                    <span class="text-caption text-medium-emphasis">
+                      @{{ entry.authorUsername || 'unknown' }}
+                    </span>
+                    <v-chip :color="typeColor(entry.type)" label size="x-small" variant="tonal">
+                      {{ entry.type }}
+                    </v-chip>
+                    <v-chip :color="statusColor(entry.status)" label size="x-small" variant="tonal">
+                      {{ entry.status }}
+                    </v-chip>
+                    <v-chip
+                      v-if="entry.paid"
+                      color="info"
+                      label
+                      size="x-small"
+                      variant="tonal"
+                    >
+                      {{ formatPrice(entry) }}
+                    </v-chip>
+                  </div>
+                </div>
+
+                <!-- Actions menu -->
+                <v-menu v-if="tab !== 'ai-processing'">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      density="compact"
+                      icon="mdi-dots-vertical"
+                      size="x-small"
+                      variant="text"
+                    />
+                  </template>
+                  <v-list density="compact">
+                    <v-list-item
+                      prepend-icon="mdi-eye-outline"
+                      title="View details"
+                      @click="openDetail(entry)"
+                    />
+                    <v-list-item
+                      v-if="entry.moderationFeedback && (entry.status === 'REJECTED' || entry.status === 'SUSPENDED')"
+                      class="text-warning"
+                      prepend-icon="mdi-alert-circle-outline"
+                      title="View moderation feedback"
+                      @click="openDetail(entry)"
+                    />
+                    <v-list-item
+                      v-if="entry.status === 'IN_REVIEW'"
+                      prepend-icon="mdi-check"
+                      title="Approve"
+                      @click="handleApprove(entry)"
+                    />
+                    <v-list-item
+                      v-if="entry.status === 'IN_REVIEW'"
+                      prepend-icon="mdi-close"
+                      title="Reject..."
+                      @click="openRejectDialog(entry)"
+                    />
+                    <v-list-item
+                      v-if="entry.status === 'PUBLISHED' || entry.status === 'APPROVED'"
+                      prepend-icon="mdi-cancel"
+                      title="Suspend..."
+                      @click="openSuspendDialog(entry)"
+                    />
+                  </v-list>
+                </v-menu>
+                <!-- Locked indicator for AI processing -->
+                <v-tooltip v-else location="top" text="Locked — AI is analyzing this entry">
+                  <template #activator="{ props: tooltipProps }">
+                    <v-icon v-bind="tooltipProps" color="info" size="16">mdi-lock-outline</v-icon>
+                  </template>
+                </v-tooltip>
+              </div>
+
+              <!-- AI flag -->
+              <div
+                v-if="jobSummaries[entry.id]?.decision === 'MANUAL_QUEUE'"
+                class="flag-indicator flag-ai d-flex align-start ga-2 mt-2"
+              >
+                <v-icon class="flex-shrink-0 mt-px" color="error" size="14">mdi-alert-decagram</v-icon>
+                <div style="min-width: 0; flex: 1">
+                  <span class="text-caption font-weight-medium">
+                    Flagged by {{ jobSummaries[entry.id].decidingStep || 'AI' }}
+                  </span>
+                  <span v-if="jobSummaries[entry.id].confidence != null" class="text-caption text-medium-emphasis">
+                    · {{ Math.round((jobSummaries[entry.id].confidence ?? 0) * 100) }}%
+                  </span>
+                  <div
+                    v-if="jobSummaries[entry.id].decisionReason"
+                    class="text-caption text-medium-emphasis reason-text"
+                    :class="{ 'reason-clamped': !expandedReasons.has(entry.id) }"
+                    @click.stop="toggleReason(entry.id)"
+                  >
+                    {{ jobSummaries[entry.id].decisionReason }}
+                  </div>
+                  <div v-if="(jobSummaries[entry.id].categoriesDetected?.length ?? 0) > 0" class="d-flex flex-wrap ga-1 mt-1">
+                    <v-chip
+                      v-for="cat in jobSummaries[entry.id].categoriesDetected"
+                      :key="cat"
+                      color="error"
+                      size="x-small"
+                      variant="flat"
+                    >
+                      {{ cat }}
+                    </v-chip>
+                  </div>
+                </div>
+              </div>
+
+              <!-- User reports -->
+              <div
+                v-if="reportSummaries[entry.id]"
+                class="flag-indicator flag-report d-flex align-center ga-2 mt-2"
+              >
+                <v-icon class="flex-shrink-0" :color="severityColor(reportSummaries[entry.id].maxSeverity)" size="14">mdi-flag</v-icon>
+                <span class="text-caption font-weight-medium">
+                  {{ reportSummaries[entry.id].reportCount }} report{{ reportSummaries[entry.id].reportCount > 1 ? 's' : '' }}
+                  · P{{ reportSummaries[entry.id].maxPriority }}
+                </span>
+                <div v-if="reportSummaries[entry.id].reasons.length > 0" class="d-flex flex-wrap ga-1">
                   <v-chip
-                    v-for="cat in jobSummaries[entry.id].categoriesDetected"
-                    :key="cat"
-                    color="error"
+                    v-for="reason in reportSummaries[entry.id].reasons"
+                    :key="reason"
+                    :color="severityColor(reportSummaries[entry.id].maxSeverity)"
                     size="x-small"
                     variant="flat"
                   >
-                    {{ cat }}
+                    {{ reason }}
                   </v-chip>
                 </div>
               </div>
+
+              <!-- Meta row -->
+              <div class="d-flex align-center flex-wrap ga-2 mt-auto pt-2">
+                <span class="text-caption text-medium-emphasis">
+                  {{ formatDate(entry.createdAt) }}
+                </span>
+                <span v-if="entry.tenantId !== selectedTenant" class="text-caption text-medium-emphasis">
+                  · {{ entry.tenantId }}
+                </span>
+                <span v-if="entry.contentLanguage" class="text-caption text-medium-emphasis">
+                  · {{ entry.contentLanguage.toUpperCase() }}
+                </span>
+                <span class="text-caption text-medium-emphasis">
+                  · {{ entry.viewCount.toLocaleString() }} views
+                </span>
+                <v-spacer />
+                <!-- Moderation actor badge -->
+                <v-chip
+                  v-if="tab === 'ai-processing'"
+                  color="info"
+                  label
+                  size="x-small"
+                  variant="tonal"
+                >
+                  <v-progress-circular class="mr-1" indeterminate size="10" width="1" />
+                  AI analyzing
+                </v-chip>
+                <v-chip
+                  v-else-if="getActorInfo(entry).type !== 'unknown'"
+                  :color="getActorInfo(entry).color"
+                  label
+                  :prepend-icon="getActorInfo(entry).icon"
+                  size="x-small"
+                  variant="tonal"
+                >
+                  {{ getActorInfo(entry).label }}
+                </v-chip>
+              </div>
+            </div>
+          </div>
+        </v-card>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="d-flex justify-center mt-2">
+          <v-pagination
+            v-model="currentPage"
+            density="compact"
+            :length="totalPages"
+            :total-visible="5"
+            @update:model-value="loadEntries"
+          />
+        </div>
+      </div>
+
+      <!-- Detail drawer -->
+      <v-navigation-drawer
+        v-model="detailDrawer"
+        location="right"
+        temporary
+        :width="Math.min(480, windowWidth - 16)"
+      >
+        <template v-if="detailEntry">
+          <v-toolbar color="transparent" density="compact">
+            <v-toolbar-title class="text-body-1">Entry Details</v-toolbar-title>
+            <v-btn icon="mdi-close" variant="text" @click="detailDrawer = false" />
+          </v-toolbar>
+
+          <div class="pa-4">
+            <!-- Content player -->
+            <div class="mb-4">
+              <!-- Loading content URL -->
+              <div v-if="contentLoading" class="d-flex align-center justify-center bg-surface-light rounded" style="aspect-ratio: 16/9">
+                <v-progress-circular indeterminate size="28" />
+              </div>
+
+              <!-- Video player -->
+              <video
+                v-else-if="contentInfo?.hasContent && isVideoContent"
+                class="w-100 rounded"
+                controls
+                crossorigin="anonymous"
+                playsinline
+                :poster="detailEntry.thumbnailR2Key ? cdnUrl(detailEntry.thumbnailR2Key) : undefined"
+                :src="contentInfo.contentUrl"
+                style="max-height: 320px; background: #000"
+              />
+
+              <!-- Audio player -->
+              <div v-else-if="contentInfo?.hasContent && isAudioContent" class="rounded bg-surface-light pa-3">
+                <v-img
+                  v-if="detailEntry.thumbnailR2Key"
+                  :aspect-ratio="16/9"
+                  class="rounded mb-3"
+                  cover
+                  :src="cdnUrl(detailEntry.thumbnailR2Key)"
+                />
+                <audio
+                  class="w-100"
+                  controls
+                  crossorigin="anonymous"
+                  :src="contentInfo.contentUrl"
+                />
+              </div>
+
+              <!-- Image viewer -->
+              <v-img
+                v-else-if="contentInfo?.hasContent && isImageContent"
+                :aspect-ratio="16/9"
+                class="rounded bg-surface-light"
+                contain
+                :src="contentInfo.contentUrl"
+                style="max-height: 400px"
+              />
+
+              <!-- Resource content (rich text) -->
+              <div
+                v-else-if="detailEntry.type === 'RESOURCE' && detailEntry.resourceContent"
+                class="rounded bg-surface-light pa-4 resource-content"
+                style="max-height: 400px; overflow-y: auto"
+                v-html="detailEntry.resourceContent"
+              />
+
+              <!-- Fallback: thumbnail only -->
+              <v-img
+                v-else-if="detailEntry.thumbnailR2Key"
+                :aspect-ratio="16/9"
+                class="rounded"
+                cover
+                :src="cdnUrl(detailEntry.thumbnailR2Key)"
+              />
+
+              <!-- No content -->
+              <div
+                v-else
+                class="d-flex flex-column align-center justify-center bg-surface-light rounded pa-4"
+                style="aspect-ratio: 16/9"
+              >
+                <v-icon color="medium-emphasis" size="32">{{ typeIcon(detailEntry.type) }}</v-icon>
+                <span class="text-caption text-medium-emphasis mt-2">No preview available</span>
+              </div>
+
+              <!-- Content error -->
+              <div v-if="contentError" class="text-caption text-error mt-1">
+                {{ contentError }}
+              </div>
+
+              <!-- Download button — only for RESOURCE attachments, not for paid media -->
+              <v-btn
+                v-if="detailEntry?.type === 'RESOURCE' && contentInfo?.hasContent && contentInfo?.contentUrl"
+                class="mt-2"
+                :download="contentInfo.fileName || 'download'"
+                :href="contentInfo.contentUrl"
+                prepend-icon="mdi-download"
+                size="small"
+                target="_blank"
+                variant="tonal"
+              >
+                Download {{ contentInfo.fileName || 'file' }}
+              </v-btn>
             </div>
 
-            <!-- User reports -->
-            <div
-              v-if="reportSummaries[entry.id]"
-              class="flag-indicator flag-report d-flex align-center ga-2 mt-2"
+            <div class="text-h6 mb-2">{{ detailEntry.title }}</div>
+
+            <!-- Moderation actor highlight -->
+            <v-card
+              class="mb-4 pa-3"
+              :color="getActorInfo(detailEntry).type === 'ai' ? 'info' : getActorInfo(detailEntry).type === 'human' ? 'primary' : 'warning'"
+              density="compact"
+              variant="tonal"
             >
-              <v-icon class="flex-shrink-0" :color="severityColor(reportSummaries[entry.id].maxSeverity)" size="14">mdi-flag</v-icon>
-              <span class="text-caption font-weight-medium">
-                {{ reportSummaries[entry.id].reportCount }} report{{ reportSummaries[entry.id].reportCount > 1 ? 's' : '' }}
-                · P{{ reportSummaries[entry.id].maxPriority }}
-              </span>
-              <div v-if="reportSummaries[entry.id].reasons.length > 0" class="d-flex flex-wrap ga-1">
+              <div class="d-flex align-center ga-2">
+                <v-icon size="18">{{ getActorInfo(detailEntry).icon }}</v-icon>
+                <div>
+                  <div class="text-caption font-weight-medium">{{ getActorInfo(detailEntry).actionLabel }}</div>
+                  <div class="text-caption text-medium-emphasis">{{ getActorInfo(detailEntry).label }}</div>
+                </div>
+              </div>
+            </v-card>
+
+            <!-- Info table -->
+            <v-table class="mb-4" density="compact">
+              <tbody>
+                <tr><td class="text-medium-emphasis" style="width: 120px">Author</td><td>@{{ detailEntry.authorUsername || '—' }}</td></tr>
+                <tr><td class="text-medium-emphasis">Status</td><td><v-chip :color="statusColor(detailEntry.status)" label size="x-small" variant="tonal">{{ detailEntry.status }}</v-chip></td></tr>
+                <tr><td class="text-medium-emphasis">Type</td><td><v-chip :color="typeColor(detailEntry.type)" label size="x-small" variant="tonal">{{ detailEntry.type }}</v-chip></td></tr>
+                <tr><td class="text-medium-emphasis">Tenant</td><td>{{ detailEntry.tenantId }}</td></tr>
+                <tr><td class="text-medium-emphasis">Visibility</td><td>{{ detailEntry.visibility }}</td></tr>
+                <tr><td class="text-medium-emphasis">Created</td><td>{{ formatDate(detailEntry.createdAt) }}</td></tr>
+                <tr v-if="detailEntry.publishedAt"><td class="text-medium-emphasis">Published</td><td>{{ formatDate(detailEntry.publishedAt) }}</td></tr>
+                <tr><td class="text-medium-emphasis">Views</td><td>{{ detailEntry.viewCount.toLocaleString() }}</td></tr>
+                <tr v-if="detailEntry.durationSec"><td class="text-medium-emphasis">Duration</td><td>{{ formatDuration(detailEntry.durationSec) }}</td></tr>
+                <tr v-if="detailEntry.contentLanguage"><td class="text-medium-emphasis">Language</td><td>{{ detailEntry.contentLanguage.toUpperCase() }}</td></tr>
+                <tr v-if="detailEntry.paid"><td class="text-medium-emphasis">Price</td><td>{{ formatPrice(detailEntry) }}</td></tr>
+                <tr v-if="detailEntry.pricingMode"><td class="text-medium-emphasis">Pricing Mode</td><td>{{ detailEntry.pricingMode }}</td></tr>
+                <tr v-if="detailEntry.hlsReady"><td class="text-medium-emphasis">HLS</td><td><v-chip color="success" label size="x-small" variant="tonal">Ready</v-chip></td></tr>
+                <tr><td class="text-medium-emphasis">Entry ID</td><td class="text-caption" style="word-break: break-all">{{ detailEntry.id }}</td></tr>
+                <tr><td class="text-medium-emphasis">User ID</td><td class="text-caption" style="word-break: break-all">{{ detailEntry.userId }}</td></tr>
+              </tbody>
+            </v-table>
+
+            <!-- Tags -->
+            <div v-if="detailEntry.tags?.length" class="mb-4">
+              <div class="text-caption text-medium-emphasis mb-1">Tags</div>
+              <div class="d-flex flex-wrap ga-1">
                 <v-chip
-                  v-for="reason in reportSummaries[entry.id].reasons"
-                  :key="reason"
-                  :color="severityColor(reportSummaries[entry.id].maxSeverity)"
+                  v-for="t in detailEntry.tags"
+                  :key="t"
+                  label
                   size="x-small"
-                  variant="flat"
+                  variant="outlined"
                 >
-                  {{ reason }}
+                  {{ t }}
                 </v-chip>
               </div>
             </div>
 
-            <!-- Meta row -->
-            <div class="d-flex align-center flex-wrap ga-2 mt-auto pt-2">
-              <span class="text-caption text-medium-emphasis">
-                {{ formatDate(entry.createdAt) }}
-              </span>
-              <span v-if="entry.tenantId !== selectedTenant" class="text-caption text-medium-emphasis">
-                · {{ entry.tenantId }}
-              </span>
-              <span v-if="entry.contentLanguage" class="text-caption text-medium-emphasis">
-                · {{ entry.contentLanguage.toUpperCase() }}
-              </span>
-              <span class="text-caption text-medium-emphasis">
-                · {{ entry.viewCount.toLocaleString() }} views
-              </span>
-              <v-spacer />
-              <!-- Moderation actor badge -->
-              <v-chip
-                v-if="tab === 'ai-processing'"
-                color="info"
-                label
-                size="x-small"
-                variant="tonal"
-              >
-                <v-progress-circular class="mr-1" indeterminate size="10" width="1" />
-                AI analyzing
-              </v-chip>
-              <v-chip
-                v-else-if="getActorInfo(entry).type !== 'unknown'"
-                :color="getActorInfo(entry).color"
-                label
-                :prepend-icon="getActorInfo(entry).icon"
-                size="x-small"
-                variant="tonal"
-              >
-                {{ getActorInfo(entry).label }}
-              </v-chip>
-            </div>
-          </div>
-        </div>
-      </v-card>
-
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="d-flex justify-center mt-2">
-        <v-pagination
-          v-model="currentPage"
-          density="compact"
-          :length="totalPages"
-          :total-visible="5"
-          @update:model-value="loadEntries"
-        />
-      </div>
-    </div>
-
-    <!-- Detail drawer -->
-    <v-navigation-drawer
-      v-model="detailDrawer"
-      location="right"
-      temporary
-      :width="Math.min(480, windowWidth - 16)"
-    >
-      <template v-if="detailEntry">
-        <v-toolbar color="transparent" density="compact">
-          <v-toolbar-title class="text-body-1">Entry Details</v-toolbar-title>
-          <v-btn icon="mdi-close" variant="text" @click="detailDrawer = false" />
-        </v-toolbar>
-
-        <div class="pa-4">
-          <!-- Content player -->
-          <div class="mb-4">
-            <!-- Loading content URL -->
-            <div v-if="contentLoading" class="d-flex align-center justify-center bg-surface-light rounded" style="aspect-ratio: 16/9">
-              <v-progress-circular indeterminate size="28" />
+            <!-- Description -->
+            <div v-if="detailEntry.description" class="mb-4">
+              <div class="text-caption text-medium-emphasis mb-1">Description</div>
+              <div class="text-body-2">{{ detailEntry.description }}</div>
             </div>
 
-            <!-- Video player -->
-            <video
-              v-else-if="contentInfo?.hasContent && isVideoContent"
-              class="w-100 rounded"
-              controls
-              crossorigin="anonymous"
-              playsinline
-              :poster="detailEntry.thumbnailR2Key ? cdnUrl(detailEntry.thumbnailR2Key) : undefined"
-              :src="contentInfo.contentUrl"
-              style="max-height: 320px; background: #000"
-            />
-
-            <!-- Audio player -->
-            <div v-else-if="contentInfo?.hasContent && isAudioContent" class="rounded bg-surface-light pa-3">
-              <v-img
-                v-if="detailEntry.thumbnailR2Key"
-                :aspect-ratio="16/9"
-                class="rounded mb-3"
-                cover
-                :src="cdnUrl(detailEntry.thumbnailR2Key)"
-              />
-              <audio
-                class="w-100"
-                controls
-                crossorigin="anonymous"
-                :src="contentInfo.contentUrl"
-              />
-            </div>
-
-            <!-- Image viewer -->
-            <v-img
-              v-else-if="contentInfo?.hasContent && isImageContent"
-              :aspect-ratio="16/9"
-              class="rounded bg-surface-light"
-              contain
-              :src="contentInfo.contentUrl"
-              style="max-height: 400px"
-            />
-
-            <!-- Resource content (rich text) -->
-            <div
-              v-else-if="detailEntry.type === 'RESOURCE' && detailEntry.resourceContent"
-              class="rounded bg-surface-light pa-4 resource-content"
-              style="max-height: 400px; overflow-y: auto"
-              v-html="detailEntry.resourceContent"
-            />
-
-            <!-- Fallback: thumbnail only -->
-            <v-img
-              v-else-if="detailEntry.thumbnailR2Key"
-              :aspect-ratio="16/9"
-              class="rounded"
-              cover
-              :src="cdnUrl(detailEntry.thumbnailR2Key)"
-            />
-
-            <!-- No content -->
-            <div
-              v-else
-              class="d-flex flex-column align-center justify-center bg-surface-light rounded pa-4"
-              style="aspect-ratio: 16/9"
-            >
-              <v-icon color="medium-emphasis" size="32">{{ typeIcon(detailEntry.type) }}</v-icon>
-              <span class="text-caption text-medium-emphasis mt-2">No preview available</span>
-            </div>
-
-            <!-- Content error -->
-            <div v-if="contentError" class="text-caption text-error mt-1">
-              {{ contentError }}
-            </div>
-
-            <!-- Download button — only for RESOURCE attachments, not for paid media -->
-            <v-btn
-              v-if="detailEntry?.type === 'RESOURCE' && contentInfo?.hasContent && contentInfo?.contentUrl"
-              class="mt-2"
-              :download="contentInfo.fileName || 'download'"
-              :href="contentInfo.contentUrl"
-              prepend-icon="mdi-download"
-              size="small"
-              target="_blank"
+            <!-- Moderation feedback -->
+            <v-alert
+              v-if="detailEntry.moderationFeedback"
+              class="mb-4"
+              :color="detailEntry.status === 'SUSPENDED' ? 'warning' : 'error'"
+              density="compact"
+              :icon="detailEntry.status === 'SUSPENDED' ? 'mdi-alert-circle-outline' : 'mdi-close-circle-outline'"
+              :title="detailEntry.status === 'SUSPENDED' ? 'Suspension reason' : 'Rejection reason'"
               variant="tonal"
             >
-              Download {{ contentInfo.fileName || 'file' }}
-            </v-btn>
-          </div>
+              {{ detailEntry.moderationFeedback }}
+            </v-alert>
 
-          <div class="text-h6 mb-2">{{ detailEntry.title }}</div>
-
-          <!-- Moderation actor highlight -->
-          <v-card
-            class="mb-4 pa-3"
-            :color="getActorInfo(detailEntry).type === 'ai' ? 'info' : getActorInfo(detailEntry).type === 'human' ? 'primary' : 'warning'"
-            density="compact"
-            variant="tonal"
-          >
-            <div class="d-flex align-center ga-2">
-              <v-icon size="18">{{ getActorInfo(detailEntry).icon }}</v-icon>
-              <div>
-                <div class="text-caption font-weight-medium">{{ getActorInfo(detailEntry).actionLabel }}</div>
-                <div class="text-caption text-medium-emphasis">{{ getActorInfo(detailEntry).label }}</div>
-              </div>
-            </div>
-          </v-card>
-
-          <!-- Info table -->
-          <v-table class="mb-4" density="compact">
-            <tbody>
-              <tr><td class="text-medium-emphasis" style="width: 120px">Author</td><td>@{{ detailEntry.authorUsername || '—' }}</td></tr>
-              <tr><td class="text-medium-emphasis">Status</td><td><v-chip :color="statusColor(detailEntry.status)" label size="x-small" variant="tonal">{{ detailEntry.status }}</v-chip></td></tr>
-              <tr><td class="text-medium-emphasis">Type</td><td><v-chip :color="typeColor(detailEntry.type)" label size="x-small" variant="tonal">{{ detailEntry.type }}</v-chip></td></tr>
-              <tr><td class="text-medium-emphasis">Tenant</td><td>{{ detailEntry.tenantId }}</td></tr>
-              <tr><td class="text-medium-emphasis">Visibility</td><td>{{ detailEntry.visibility }}</td></tr>
-              <tr><td class="text-medium-emphasis">Created</td><td>{{ formatDate(detailEntry.createdAt) }}</td></tr>
-              <tr v-if="detailEntry.publishedAt"><td class="text-medium-emphasis">Published</td><td>{{ formatDate(detailEntry.publishedAt) }}</td></tr>
-              <tr><td class="text-medium-emphasis">Views</td><td>{{ detailEntry.viewCount.toLocaleString() }}</td></tr>
-              <tr v-if="detailEntry.durationSec"><td class="text-medium-emphasis">Duration</td><td>{{ formatDuration(detailEntry.durationSec) }}</td></tr>
-              <tr v-if="detailEntry.contentLanguage"><td class="text-medium-emphasis">Language</td><td>{{ detailEntry.contentLanguage.toUpperCase() }}</td></tr>
-              <tr v-if="detailEntry.paid"><td class="text-medium-emphasis">Price</td><td>{{ formatPrice(detailEntry) }}</td></tr>
-              <tr v-if="detailEntry.pricingMode"><td class="text-medium-emphasis">Pricing Mode</td><td>{{ detailEntry.pricingMode }}</td></tr>
-              <tr v-if="detailEntry.hlsReady"><td class="text-medium-emphasis">HLS</td><td><v-chip color="success" label size="x-small" variant="tonal">Ready</v-chip></td></tr>
-              <tr><td class="text-medium-emphasis">Entry ID</td><td class="text-caption" style="word-break: break-all">{{ detailEntry.id }}</td></tr>
-              <tr><td class="text-medium-emphasis">User ID</td><td class="text-caption" style="word-break: break-all">{{ detailEntry.userId }}</td></tr>
-            </tbody>
-          </v-table>
-
-          <!-- Tags -->
-          <div v-if="detailEntry.tags?.length" class="mb-4">
-            <div class="text-caption text-medium-emphasis mb-1">Tags</div>
-            <div class="d-flex flex-wrap ga-1">
-              <v-chip
-                v-for="t in detailEntry.tags"
-                :key="t"
-                label
-                size="x-small"
+            <!-- Attached Assets -->
+            <div v-if="entryAssets.length > 0" class="mb-4">
+              <div class="text-caption text-medium-emphasis mb-2">Attached Files ({{ entryAssets.length }})</div>
+              <v-card
+                v-for="asset in entryAssets"
+                :key="asset.id"
+                class="mb-2 pa-3"
+                density="compact"
                 variant="outlined"
               >
-                {{ t }}
-              </v-chip>
-            </div>
-          </div>
-
-          <!-- Description -->
-          <div v-if="detailEntry.description" class="mb-4">
-            <div class="text-caption text-medium-emphasis mb-1">Description</div>
-            <div class="text-body-2">{{ detailEntry.description }}</div>
-          </div>
-
-          <!-- Moderation feedback -->
-          <v-alert
-            v-if="detailEntry.moderationFeedback"
-            class="mb-4"
-            :color="detailEntry.status === 'SUSPENDED' ? 'warning' : 'error'"
-            density="compact"
-            :icon="detailEntry.status === 'SUSPENDED' ? 'mdi-alert-circle-outline' : 'mdi-close-circle-outline'"
-            :title="detailEntry.status === 'SUSPENDED' ? 'Suspension reason' : 'Rejection reason'"
-            variant="tonal"
-          >
-            {{ detailEntry.moderationFeedback }}
-          </v-alert>
-
-          <!-- Attached Assets -->
-          <div v-if="entryAssets.length > 0" class="mb-4">
-            <div class="text-caption text-medium-emphasis mb-2">Attached Files ({{ entryAssets.length }})</div>
-            <v-card
-              v-for="asset in entryAssets"
-              :key="asset.id"
-              class="mb-2 pa-3"
-              density="compact"
-              variant="outlined"
-            >
-              <div class="d-flex align-center ga-2">
-                <v-icon :color="assetKindColor(asset.kind)" size="18">{{ assetKindIcon(asset.kind) }}</v-icon>
-                <div class="flex-grow-1" style="min-width: 0">
-                  <div class="text-caption font-weight-medium text-truncate">{{ asset.fileName || asset.r2Key }}</div>
-                  <div class="text-caption text-medium-emphasis">
-                    {{ asset.kind }}
-                    <span v-if="asset.contentType"> · {{ asset.contentType }}</span>
-                    <span v-if="asset.fileSizeBytes"> · {{ formatFileSize(asset.fileSizeBytes) }}</span>
+                <div class="d-flex align-center ga-2">
+                  <v-icon :color="assetKindColor(asset.kind)" size="18">{{ assetKindIcon(asset.kind) }}</v-icon>
+                  <div class="flex-grow-1" style="min-width: 0">
+                    <div class="text-caption font-weight-medium text-truncate">{{ asset.fileName || asset.r2Key }}</div>
+                    <div class="text-caption text-medium-emphasis">
+                      {{ asset.kind }}
+                      <span v-if="asset.contentType"> · {{ asset.contentType }}</span>
+                      <span v-if="asset.fileSizeBytes"> · {{ formatFileSize(asset.fileSizeBytes) }}</span>
+                    </div>
                   </div>
+                  <v-chip :color="asset.status === 'READY' ? 'success' : 'warning'" label size="x-small" variant="tonal">{{ asset.status }}</v-chip>
                 </div>
-                <v-chip :color="asset.status === 'READY' ? 'success' : 'warning'" label size="x-small" variant="tonal">{{ asset.status }}</v-chip>
-              </div>
-            </v-card>
-          </div>
-
-          <!-- AI Moderation Jobs -->
-          <div v-if="moderationJobs.length > 0" class="mb-4">
-            <div class="text-caption text-medium-emphasis mb-2">AI Moderation History</div>
-            <v-card
-              v-for="job in moderationJobs"
-              :key="job.id"
-              class="mb-2"
-              density="compact"
-              variant="tonal"
-            >
-              <v-card-text class="pa-3">
-                <div class="d-flex align-center flex-wrap ga-2 mb-2">
-                  <v-chip
-                    :color="job.status === 'COMPLETED' ? (job.decision === 'APPROVE' ? 'success' : job.decision === 'REJECT' ? 'error' : 'warning') : job.status === 'DEAD' || job.status === 'FAILED' ? 'error' : 'info'"
-                    label
-                    size="x-small"
-                    variant="flat"
-                  >
-                    {{ job.status }}
-                  </v-chip>
-                  <v-chip
-                    v-if="job.decision"
-                    :color="job.decision === 'APPROVE' ? 'success' : job.decision === 'REJECT' ? 'error' : 'warning'"
-                    label
-                    size="x-small"
-                    variant="outlined"
-                  >
-                    {{ job.decision }}
-                  </v-chip>
-                  <v-chip
-                    v-if="job.confidence != null"
-                    label
-                    size="x-small"
-                    variant="outlined"
-                  >
-                    {{ (job.confidence * 100).toFixed(0) }}% confidence
-                  </v-chip>
-                </div>
-
-                <div v-if="job.decidingStep" class="text-caption mb-1">
-                  <span class="text-medium-emphasis">Pipeline step:</span> {{ job.decidingStep }}
-                </div>
-                <div v-if="job.decisionReason" class="text-caption mb-1">
-                  <span class="text-medium-emphasis">Reason:</span> {{ job.decisionReason }}
-                </div>
-                <div v-if="job.categoriesDetected?.length" class="d-flex flex-wrap ga-1 mb-1">
-                  <v-chip
-                    v-for="cat in job.categoriesDetected"
-                    :key="cat"
-                    color="deep-orange"
-                    label
-                    size="x-small"
-                    variant="tonal"
-                  >
-                    {{ cat }}
-                  </v-chip>
-                </div>
-                <div v-if="job.errorMessage" class="text-caption text-error mb-1">
-                  Error: {{ job.errorMessage }}
-                </div>
-                <div v-if="job.retryCount > 0" class="text-caption text-medium-emphasis mb-1">
-                  Retries: {{ job.retryCount }}/{{ job.maxRetries }}
-                </div>
-
-                <v-divider class="my-2" />
-                <div class="d-flex flex-wrap ga-3 text-caption text-medium-emphasis">
-                  <span>Created: {{ formatDate(job.createdAt) }}</span>
-                  <span v-if="job.dispatchedAt">Dispatched: {{ formatDate(job.dispatchedAt) }}</span>
-                  <span v-if="job.processingStartedAt">Started: {{ formatDate(job.processingStartedAt) }}</span>
-                  <span v-if="job.completedAt">Completed: {{ formatDate(job.completedAt) }}</span>
-                </div>
-              </v-card-text>
-            </v-card>
-          </div>
-
-          <!-- User Reports -->
-          <div v-if="detailReports.length > 0" class="mb-4">
-            <div class="text-caption text-medium-emphasis mb-2">
-              User Reports ({{ detailReports.length }})
+              </v-card>
             </div>
-            <v-card
-              v-for="report in detailReports"
-              :key="report.id"
-              class="mb-2"
-              density="compact"
-              variant="tonal"
-            >
-              <v-card-text class="pa-3">
-                <div class="d-flex align-center ga-2 mb-1">
-                  <v-chip
-                    :color="severityColor(report.severity)"
-                    label
-                    size="x-small"
-                    variant="flat"
-                  >
-                    {{ report.severity }}
-                  </v-chip>
-                  <v-chip label size="x-small" variant="tonal">
-                    {{ report.reason }}
-                  </v-chip>
-                  <v-chip
-                    :color="report.resolution === 'OPEN' ? 'warning' : report.resolution === 'DISMISSED' ? 'grey' : 'success'"
-                    label
-                    size="x-small"
-                    variant="tonal"
-                  >
-                    {{ report.resolution }}
-                  </v-chip>
-                  <span class="text-caption text-medium-emphasis">
-                    Priority {{ report.priorityScore }}
-                  </span>
-                </div>
-                <div class="text-caption">
-                  Reporter: <strong>{{ report.reporterUsername || report.reporterUserId }}</strong>
-                </div>
-                <div v-if="report.comment" class="text-caption text-medium-emphasis mt-1" style="max-width: 380px">
-                  {{ report.comment }}
-                </div>
-                <div class="text-caption text-disabled mt-1">
-                  {{ formatDate(report.createdAt) }}
-                  <span v-if="report.resolvedBy"> · Resolved by {{ report.resolvedBy }}</span>
-                </div>
-                <!-- Resolve actions for open reports -->
-                <div v-if="report.resolution === 'OPEN'" class="d-flex ga-2 mt-3">
-                  <v-btn
-                    color="grey"
-                    prepend-icon="mdi-close-circle-outline"
-                    size="small"
-                    variant="tonal"
-                    @click="openReportConfirm(report, 'DISMISSED')"
-                  >
-                    Dismiss
-                  </v-btn>
-                  <v-btn
-                    color="warning"
-                    prepend-icon="mdi-alert-outline"
-                    size="small"
-                    variant="flat"
-                    @click="openReportConfirm(report, 'SANCTIONED')"
-                  >
-                    Sanction
-                  </v-btn>
-                  <v-btn
-                    color="error"
-                    prepend-icon="mdi-delete-outline"
-                    size="small"
-                    variant="flat"
-                    @click="openReportConfirm(report, 'REMOVED')"
-                  >
-                    Remove
-                  </v-btn>
-                </div>
-              </v-card-text>
-            </v-card>
-          </div>
 
-          <!-- Status History -->
-          <div v-if="detailEntry.statusHistory?.length" class="mb-4">
-            <div class="text-caption text-medium-emphasis mb-2">Status History</div>
-            <v-timeline density="compact" side="end">
-              <v-timeline-item
-                v-for="(record, idx) in detailEntry.statusHistory"
-                :key="idx"
-                :dot-color="statusColor(record.toStatus) || 'grey'"
-                size="x-small"
+            <!-- AI Moderation Jobs -->
+            <div v-if="moderationJobs.length > 0" class="mb-4">
+              <div class="text-caption text-medium-emphasis mb-2">AI Moderation History</div>
+              <v-card
+                v-for="job in moderationJobs"
+                :key="job.id"
+                class="mb-2"
+                density="compact"
+                variant="tonal"
               >
-                <div class="text-caption">
-                  <v-chip :color="statusColor(record.fromStatus)" label size="x-small" variant="tonal">{{ record.fromStatus }}</v-chip>
-                  <v-icon class="mx-1" size="x-small">mdi-arrow-right</v-icon>
-                  <v-chip :color="statusColor(record.toStatus)" label size="x-small" variant="tonal">{{ record.toStatus }}</v-chip>
-                  <span v-if="record.actor" class="text-medium-emphasis ml-2">by {{ record.actor }}</span>
-                </div>
-                <div v-if="record.reason" class="text-caption text-medium-emphasis mt-1" style="max-width: 340px">
-                  {{ record.reason }}
-                </div>
-                <div class="text-caption text-disabled mt-1">
-                  {{ formatDate(record.timestamp) }}
-                </div>
-              </v-timeline-item>
-            </v-timeline>
-          </div>
+                <v-card-text class="pa-3">
+                  <div class="d-flex align-center flex-wrap ga-2 mb-2">
+                    <v-chip
+                      :color="job.status === 'COMPLETED' ? (job.decision === 'APPROVE' ? 'success' : job.decision === 'REJECT' ? 'error' : 'warning') : job.status === 'DEAD' || job.status === 'FAILED' ? 'error' : 'info'"
+                      label
+                      size="x-small"
+                      variant="flat"
+                    >
+                      {{ job.status }}
+                    </v-chip>
+                    <v-chip
+                      v-if="job.decision"
+                      :color="job.decision === 'APPROVE' ? 'success' : job.decision === 'REJECT' ? 'error' : 'warning'"
+                      label
+                      size="x-small"
+                      variant="outlined"
+                    >
+                      {{ job.decision }}
+                    </v-chip>
+                    <v-chip
+                      v-if="job.confidence != null"
+                      label
+                      size="x-small"
+                      variant="outlined"
+                    >
+                      {{ (job.confidence * 100).toFixed(0) }}% confidence
+                    </v-chip>
+                  </div>
 
-          <!-- Actions -->
-          <div class="d-flex flex-wrap ga-2 mt-4">
-            <v-btn
-              v-if="detailEntry.status === 'IN_REVIEW'"
-              color="success"
-              :loading="actionLoading"
-              prepend-icon="mdi-check"
-              variant="flat"
-              @click="handleApprove(detailEntry)"
-            >
-              Approve
-            </v-btn>
-            <v-btn
-              v-if="detailEntry.status === 'IN_REVIEW'"
-              color="error"
-              prepend-icon="mdi-close"
+                  <div v-if="job.decidingStep" class="text-caption mb-1">
+                    <span class="text-medium-emphasis">Pipeline step:</span> {{ job.decidingStep }}
+                  </div>
+                  <div v-if="job.decisionReason" class="text-caption mb-1">
+                    <span class="text-medium-emphasis">Reason:</span> {{ job.decisionReason }}
+                  </div>
+                  <div v-if="job.categoriesDetected?.length" class="d-flex flex-wrap ga-1 mb-1">
+                    <v-chip
+                      v-for="cat in job.categoriesDetected"
+                      :key="cat"
+                      color="deep-orange"
+                      label
+                      size="x-small"
+                      variant="tonal"
+                    >
+                      {{ cat }}
+                    </v-chip>
+                  </div>
+                  <div v-if="job.errorMessage" class="text-caption text-error mb-1">
+                    Error: {{ job.errorMessage }}
+                  </div>
+                  <div v-if="job.retryCount > 0" class="text-caption text-medium-emphasis mb-1">
+                    Retries: {{ job.retryCount }}/{{ job.maxRetries }}
+                  </div>
+
+                  <v-divider class="my-2" />
+                  <div class="d-flex flex-wrap ga-3 text-caption text-medium-emphasis">
+                    <span>Created: {{ formatDate(job.createdAt) }}</span>
+                    <span v-if="job.dispatchedAt">Dispatched: {{ formatDate(job.dispatchedAt) }}</span>
+                    <span v-if="job.processingStartedAt">Started: {{ formatDate(job.processingStartedAt) }}</span>
+                    <span v-if="job.completedAt">Completed: {{ formatDate(job.completedAt) }}</span>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </div>
+
+            <!-- User Reports -->
+            <div v-if="detailReports.length > 0" class="mb-4">
+              <div class="text-caption text-medium-emphasis mb-2">
+                User Reports ({{ detailReports.length }})
+              </div>
+              <v-card
+                v-for="report in detailReports"
+                :key="report.id"
+                class="mb-2"
+                density="compact"
+                variant="tonal"
+              >
+                <v-card-text class="pa-3">
+                  <div class="d-flex align-center ga-2 mb-1">
+                    <v-chip
+                      :color="severityColor(report.severity)"
+                      label
+                      size="x-small"
+                      variant="flat"
+                    >
+                      {{ report.severity }}
+                    </v-chip>
+                    <v-chip label size="x-small" variant="tonal">
+                      {{ report.reason }}
+                    </v-chip>
+                    <v-chip
+                      :color="report.resolution === 'OPEN' ? 'warning' : report.resolution === 'DISMISSED' ? 'grey' : 'success'"
+                      label
+                      size="x-small"
+                      variant="tonal"
+                    >
+                      {{ report.resolution }}
+                    </v-chip>
+                    <span class="text-caption text-medium-emphasis">
+                      Priority {{ report.priorityScore }}
+                    </span>
+                  </div>
+                  <div class="text-caption">
+                    Reporter: <strong>{{ report.reporterUsername || report.reporterUserId }}</strong>
+                  </div>
+                  <div v-if="report.comment" class="text-caption text-medium-emphasis mt-1" style="max-width: 380px">
+                    {{ report.comment }}
+                  </div>
+                  <div class="text-caption text-disabled mt-1">
+                    {{ formatDate(report.createdAt) }}
+                    <span v-if="report.resolvedBy"> · Resolved by {{ report.resolvedBy }}</span>
+                  </div>
+                  <!-- Resolve actions for open reports -->
+                  <div v-if="report.resolution === 'OPEN'" class="d-flex ga-2 mt-3">
+                    <v-btn
+                      color="grey"
+                      prepend-icon="mdi-close-circle-outline"
+                      size="small"
+                      variant="tonal"
+                      @click="openReportConfirm(report, 'DISMISSED')"
+                    >
+                      Dismiss
+                    </v-btn>
+                    <v-btn
+                      color="warning"
+                      prepend-icon="mdi-alert-outline"
+                      size="small"
+                      variant="flat"
+                      @click="openReportConfirm(report, 'SANCTIONED')"
+                    >
+                      Sanction
+                    </v-btn>
+                    <v-btn
+                      color="error"
+                      prepend-icon="mdi-delete-outline"
+                      size="small"
+                      variant="flat"
+                      @click="openReportConfirm(report, 'REMOVED')"
+                    >
+                      Remove
+                    </v-btn>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </div>
+
+            <!-- Status History -->
+            <div v-if="detailEntry.statusHistory?.length" class="mb-4">
+              <div class="text-caption text-medium-emphasis mb-2">Status History</div>
+              <v-timeline density="compact" side="end">
+                <v-timeline-item
+                  v-for="(record, idx) in detailEntry.statusHistory"
+                  :key="idx"
+                  :dot-color="statusColor(record.toStatus) || 'grey'"
+                  size="x-small"
+                >
+                  <div class="text-caption">
+                    <v-chip :color="statusColor(record.fromStatus)" label size="x-small" variant="tonal">{{ record.fromStatus }}</v-chip>
+                    <v-icon class="mx-1" size="x-small">mdi-arrow-right</v-icon>
+                    <v-chip :color="statusColor(record.toStatus)" label size="x-small" variant="tonal">{{ record.toStatus }}</v-chip>
+                    <span v-if="record.actor" class="text-medium-emphasis ml-2">by {{ record.actor }}</span>
+                  </div>
+                  <div v-if="record.reason" class="text-caption text-medium-emphasis mt-1" style="max-width: 340px">
+                    {{ record.reason }}
+                  </div>
+                  <div class="text-caption text-disabled mt-1">
+                    {{ formatDate(record.timestamp) }}
+                  </div>
+                </v-timeline-item>
+              </v-timeline>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex flex-wrap ga-2 mt-4">
+              <v-btn
+                v-if="detailEntry.status === 'IN_REVIEW'"
+                color="success"
+                :loading="actionLoading"
+                prepend-icon="mdi-check"
+                variant="flat"
+                @click="handleApprove(detailEntry)"
+              >
+                Approve
+              </v-btn>
+              <v-btn
+                v-if="detailEntry.status === 'IN_REVIEW'"
+                color="error"
+                prepend-icon="mdi-close"
+                variant="outlined"
+                @click="openRejectDialog(detailEntry)"
+              >
+                Reject
+              </v-btn>
+              <v-btn
+                v-if="detailEntry.status === 'PUBLISHED' || detailEntry.status === 'APPROVED'"
+                color="warning"
+                prepend-icon="mdi-cancel"
+                variant="outlined"
+                @click="openSuspendDialog(detailEntry)"
+              >
+                Suspend
+              </v-btn>
+            </div>
+          </div>
+        </template>
+      </v-navigation-drawer>
+
+      <!-- Reject dialog -->
+      <v-dialog v-model="rejectDialog" max-width="440">
+        <v-card>
+          <v-card-title class="text-h6">Reject Entry</v-card-title>
+          <v-card-text>
+            <div class="text-body-2 text-medium-emphasis mb-3">
+              Provide a reason for rejecting "{{ actionTarget?.title }}".
+              The creator will see this justification.
+            </div>
+            <v-textarea
+              v-model="justification"
+              counter
+              label="Justification"
+              rows="3"
+              :rules="[v => !!v?.trim() || 'Justification is required']"
               variant="outlined"
-              @click="openRejectDialog(detailEntry)"
+            />
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="rejectDialog = false">Cancel</v-btn>
+            <v-btn
+              color="error"
+              :disabled="!justification?.trim()"
+              :loading="actionLoading"
+              variant="flat"
+              @click="handleReject"
             >
               Reject
             </v-btn>
-            <v-btn
-              v-if="detailEntry.status === 'PUBLISHED' || detailEntry.status === 'APPROVED'"
-              color="warning"
-              prepend-icon="mdi-cancel"
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <!-- Suspend dialog -->
+      <v-dialog v-model="suspendDialog" max-width="440">
+        <v-card>
+          <v-card-title class="text-h6">Suspend Entry</v-card-title>
+          <v-card-text>
+            <div class="text-body-2 text-medium-emphasis mb-3">
+              Provide a reason for suspending "{{ actionTarget?.title }}".
+              This will remove it from public visibility.
+            </div>
+            <v-textarea
+              v-model="justification"
+              counter
+              label="Justification"
+              rows="3"
+              :rules="[v => !!v?.trim() || 'Justification is required']"
               variant="outlined"
-              @click="openSuspendDialog(detailEntry)"
+            />
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="suspendDialog = false">Cancel</v-btn>
+            <v-btn
+              color="warning"
+              :disabled="!justification?.trim()"
+              :loading="actionLoading"
+              variant="flat"
+              @click="handleSuspend"
             >
               Suspend
             </v-btn>
-          </div>
-        </div>
-      </template>
-    </v-navigation-drawer>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
-    <!-- Reject dialog -->
-    <v-dialog v-model="rejectDialog" max-width="440">
-      <v-card>
-        <v-card-title class="text-h6">Reject Entry</v-card-title>
-        <v-card-text>
-          <div class="text-body-2 text-medium-emphasis mb-3">
-            Provide a reason for rejecting "{{ actionTarget?.title }}".
-            The creator will see this justification.
-          </div>
-          <v-textarea
-            v-model="justification"
-            counter
-            label="Justification"
-            rows="3"
-            :rules="[v => !!v?.trim() || 'Justification is required']"
-            variant="outlined"
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="rejectDialog = false">Cancel</v-btn>
-          <v-btn
-            color="error"
-            :disabled="!justification?.trim()"
-            :loading="actionLoading"
-            variant="flat"
-            @click="handleReject"
-          >
-            Reject
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+      <!-- Report resolve confirmation -->
+      <v-dialog v-model="reportConfirmDialog" max-width="480" persistent>
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon :color="reportConfirmMeta.color" :icon="reportConfirmMeta.icon" />
+            {{ reportConfirmMeta.title }}
+          </v-card-title>
+          <v-card-text>
+            <div class="text-body-2 mb-3">{{ reportConfirmMeta.description }}</div>
+            <v-alert
+              class="mb-3"
+              color="warning"
+              density="compact"
+              icon="mdi-account-eye"
+              variant="tonal"
+            >
+              This action will be recorded under your admin username.
+            </v-alert>
+            <div v-if="reportConfirmTarget" class="text-caption text-medium-emphasis">
+              Reason: <strong>{{ reportConfirmTarget.reason }}</strong> · Priority: <strong>{{ reportConfirmTarget.priorityScore }}</strong>
+            </div>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="reportConfirmDialog = false">Cancel</v-btn>
+            <v-btn
+              :color="reportConfirmMeta.color"
+              :loading="resolveLoading !== null"
+              variant="flat"
+              @click="executeResolveReport"
+            >
+              {{ reportConfirmMeta.action }}
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
-    <!-- Suspend dialog -->
-    <v-dialog v-model="suspendDialog" max-width="440">
-      <v-card>
-        <v-card-title class="text-h6">Suspend Entry</v-card-title>
-        <v-card-text>
-          <div class="text-body-2 text-medium-emphasis mb-3">
-            Provide a reason for suspending "{{ actionTarget?.title }}".
-            This will remove it from public visibility.
-          </div>
-          <v-textarea
-            v-model="justification"
-            counter
-            label="Justification"
-            rows="3"
-            :rules="[v => !!v?.trim() || 'Justification is required']"
-            variant="outlined"
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="suspendDialog = false">Cancel</v-btn>
-          <v-btn
-            color="warning"
-            :disabled="!justification?.trim()"
-            :loading="actionLoading"
-            variant="flat"
-            @click="handleSuspend"
-          >
-            Suspend
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Report resolve confirmation -->
-    <v-dialog v-model="reportConfirmDialog" max-width="480" persistent>
-      <v-card>
-        <v-card-title class="d-flex align-center ga-2">
-          <v-icon :color="reportConfirmMeta.color" :icon="reportConfirmMeta.icon" />
-          {{ reportConfirmMeta.title }}
-        </v-card-title>
-        <v-card-text>
-          <div class="text-body-2 mb-3">{{ reportConfirmMeta.description }}</div>
-          <v-alert
-            class="mb-3"
-            color="warning"
-            density="compact"
-            icon="mdi-account-eye"
-            variant="tonal"
-          >
-            This action will be recorded under your admin username.
-          </v-alert>
-          <div v-if="reportConfirmTarget" class="text-caption text-medium-emphasis">
-            Reason: <strong>{{ reportConfirmTarget.reason }}</strong> · Priority: <strong>{{ reportConfirmTarget.priorityScore }}</strong>
-          </div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="reportConfirmDialog = false">Cancel</v-btn>
-          <v-btn
-            :color="reportConfirmMeta.color"
-            :loading="resolveLoading !== null"
-            variant="flat"
-            @click="executeResolveReport"
-          >
-            {{ reportConfirmMeta.action }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Snackbar -->
-    <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
-      {{ snackbarText }}
-    </v-snackbar>
+      <!-- Snackbar -->
+      <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
+        {{ snackbarText }}
+      </v-snackbar>
+    </template>
   </v-container>
 </template>
 
 <script lang="ts" setup>
   import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRoute } from 'vue-router'
-  import { useTenantLabels } from '@/composables/useTenantLabels'
-  import { allUserTenants, useAuthStore } from '@/stores/auth'
   import {
     approveEntry,
     type AssetDto,
@@ -989,8 +1003,10 @@
     suspendEntry,
   } from '@/api/moderation'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
+  import { useTenantLabels } from '@/composables/useTenantLabels'
   import { useWindowSize } from '@/composables/useWindowSize'
   import { CDN_BASE_URL } from '@/config/env'
+  import { allUserTenants, useAuthStore } from '@/stores/auth'
 
   const { width: windowWidth } = useWindowSize()
   const { refresh: refreshBadges } = useSidebarBadges()
@@ -1037,6 +1053,15 @@
 
   const authStore = useAuthStore()
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
+  const isTenantOwner = computed(() => (authStore.user?.tenantAdminOf?.length ?? 0) > 0)
+  const isModerator = computed(() => (authStore.user?.moderatorOf?.length ?? 0) > 0)
+  const canCreateTenant = computed(() => authStore.user?.canCreateTenant === true)
+  // Gate the whole page: blue-credential creators that haven't created a
+  // tenant yet have no business hitting any tenant's moderation queue, and
+  // defaulting them to 'earnlumens' would silently leak the root tenant.
+  const hasModerationAccess = computed(
+    () => isSuperadmin.value || isTenantOwner.value || isModerator.value,
+  )
   const { labelFor: tenantLabel } = useTenantLabels()
 
   // Initial tenant: respect the central tenant context (top-right switcher)
@@ -1047,7 +1072,10 @@
     if (authStore.activeTenantId) return authStore.activeTenantId
     if (authStore.user?.role === 'SUPERADMIN') return 'earnlumens'
     const accessible = allUserTenants(authStore.user)
-    return accessible[0] ?? 'earnlumens'
+    // Empty string is fine: the page is gated by hasModerationAccess, so no
+    // request is ever issued in this branch. We deliberately do NOT fall
+    // back to 'earnlumens' here — that was the source of a privilege bug.
+    return accessible[0] ?? ''
   }
 
   // State
@@ -1306,6 +1334,7 @@
   }
 
   async function loadEntries () {
+    if (!hasModerationAccess.value || !selectedTenant.value) return
     loading.value = true
     try {
       const [pageData, statsData] = await Promise.all([
@@ -1326,7 +1355,7 @@
       if (tab.value === 'in-review' && pageData.content.length > 0) {
         try {
           const ids = pageData.content.map(e => e.id)
-          jobSummaries.value = await fetchJobSummaries(ids)
+          jobSummaries.value = await fetchJobSummaries(selectedTenant.value, ids)
         } catch {
           jobSummaries.value = {}
         }
@@ -1338,7 +1367,7 @@
       if (pageData.content.length > 0) {
         try {
           const ids = pageData.content.map(e => e.id)
-          reportSummaries.value = await fetchReportSummaries(ids)
+          reportSummaries.value = await fetchReportSummaries(selectedTenant.value, ids)
         } catch {
           reportSummaries.value = {}
         }

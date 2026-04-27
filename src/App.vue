@@ -63,6 +63,7 @@
             to="/supervisors"
           />
           <v-list-item
+            v-if="hasModerationAccess"
             prepend-icon="mdi-file-check-outline"
             to="/moderation"
           >
@@ -82,6 +83,7 @@
             to="/moderation-settings"
           />
           <v-list-item
+            v-if="hasModerationAccess"
             prepend-icon="mdi-flag-outline"
             to="/reports"
           >
@@ -180,8 +182,17 @@
 
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
   const isTenantOwner = computed(() => (authStore.user?.tenantAdminOf?.length ?? 0) > 0)
+  const isModerator = computed(() => (authStore.user?.moderatorOf?.length ?? 0) > 0)
   const canCreateTenant = computed(() => authStore.user?.canCreateTenant === true)
   const showSwitcher = computed(() => allUserTenants(authStore.user).length >= 2)
+  // Hide moderation surfaces (queue, reports, moderators, settings) for users who
+  // have no moderation membership anywhere — e.g. blue-credential creators that
+  // haven't created a tenant yet. Otherwise the sidebar entries would land them
+  // on a 403'd root-tenant view, which both leaks the existence of the root
+  // tenant and is confusing UX.
+  const hasModerationAccess = computed(
+    () => isSuperadmin.value || isTenantOwner.value || isModerator.value,
+  )
 
   const authRoutes = new Set(['/', '/oauth2/callback'])
 

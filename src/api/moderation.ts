@@ -235,8 +235,8 @@ export async function fetchModerationJobs (tenantId: string, entryId: string): P
   return res.json()
 }
 
-export async function fetchJobSummaries (entryIds: string[]): Promise<Record<string, ModerationJobDto>> {
-  const params = new URLSearchParams()
+export async function fetchJobSummaries (tenantId: string, entryIds: string[]): Promise<Record<string, ModerationJobDto>> {
+  const params = new URLSearchParams({ tenantId })
   entryIds.forEach(id => params.append('entryIds', id))
   const res = await fetch(`${API_BASE_URL}/api/moderation/job-summaries?${params}`, {
     credentials: 'include',
@@ -336,8 +336,8 @@ export async function fetchEntryReports (tenantId: string, entryId: string): Pro
   return res.json()
 }
 
-export async function fetchReportSummaries (entryIds: string[]): Promise<Record<string, ReportSummary>> {
-  const params = new URLSearchParams()
+export async function fetchReportSummaries (tenantId: string, entryIds: string[]): Promise<Record<string, ReportSummary>> {
+  const params = new URLSearchParams({ tenantId })
   entryIds.forEach(id => params.append('entryIds', id))
   const res = await fetch(`${API_BASE_URL}/api/moderation/report-summaries?${params}`, {
     credentials: 'include',
