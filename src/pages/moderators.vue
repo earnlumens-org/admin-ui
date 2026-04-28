@@ -359,11 +359,7 @@
   async function handleInvite () {
     inviteLoading.value = true
     try {
-      if (isTenantOwner.value && ownedTenantId.value) {
-        await inviteMyTenantModerator(ownedTenantId.value, inviteUsername.value.trim())
-      } else {
-        await inviteModerator(inviteTenant.value, inviteUsername.value.trim())
-      }
+      await (isTenantOwner.value && ownedTenantId.value ? inviteMyTenantModerator(ownedTenantId.value, inviteUsername.value.trim()) : inviteModerator(inviteTenant.value, inviteUsername.value.trim()))
       showSnackbar(`Invitation sent to @${inviteUsername.value.trim()}`, 'success')
       inviteDialog.value = false
       inviteUsername.value = ''
@@ -384,11 +380,7 @@
     if (!revokeTarget.value) return
     revokeLoading.value = true
     try {
-      if (isTenantOwner.value && ownedTenantId.value) {
-        await revokeMyTenantModerator(ownedTenantId.value, revokeTarget.value.id)
-      } else {
-        await revokeModerator(revokeTarget.value.id)
-      }
+      await (isTenantOwner.value && ownedTenantId.value ? revokeMyTenantModerator(ownedTenantId.value, revokeTarget.value.id) : revokeModerator(revokeTarget.value.id))
       showSnackbar(`@${revokeTarget.value.username} revoked`, 'success')
       revokeDialog.value = false
       await loadData()

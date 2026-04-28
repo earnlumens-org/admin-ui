@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSession, logout } from '@/api/auth'
 
 const fetchMock = vi.fn()
@@ -28,7 +28,7 @@ describe('auth API', () => {
         expect.objectContaining({
           method: 'POST',
           credentials: 'include',
-          headers: { UUID: '550e8400-e29b-41d4-a716-446655440000', 'X-Requested-With': 'XMLHttpRequest' },
+          headers: { 'UUID': '550e8400-e29b-41d4-a716-446655440000', 'X-Requested-With': 'XMLHttpRequest' },
         }),
       )
       expect(result.accessToken).toBe('test-access-token')

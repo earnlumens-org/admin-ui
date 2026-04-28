@@ -237,7 +237,9 @@ export async function fetchModerationJobs (tenantId: string, entryId: string): P
 
 export async function fetchJobSummaries (tenantId: string, entryIds: string[]): Promise<Record<string, ModerationJobDto>> {
   const params = new URLSearchParams({ tenantId })
-  entryIds.forEach(id => params.append('entryIds', id))
+  for (const id of entryIds) {
+    params.append('entryIds', id)
+  }
   const res = await fetch(`${API_BASE_URL}/api/moderation/job-summaries?${params}`, {
     credentials: 'include',
     headers: await authHeaders(),
@@ -258,8 +260,8 @@ export interface AssetDto {
   contentType: string | null
   fileName: string | null
   fileSizeBytes: number | null
-  kind: string       // THUMBNAIL, PREVIEW, FULL
-  status: string     // UPLOADED, READY
+  kind: string // THUMBNAIL, PREVIEW, FULL
+  status: string // UPLOADED, READY
 }
 
 export async function fetchEntryAssets (tenantId: string, entryId: string): Promise<AssetDto[]> {
@@ -315,12 +317,16 @@ export async function fetchReports (
   size: number,
 ): Promise<PageResponse<ReportDto>> {
   const params = new URLSearchParams({ tenantId, page: String(page), size: String(size) })
-  if (resolution) params.set('resolution', resolution)
+  if (resolution) {
+    params.set('resolution', resolution)
+  }
   const res = await fetch(`${API_BASE_URL}/api/moderation/reports?${params}`, {
     credentials: 'include',
     headers: await authHeaders(),
   })
-  if (!res.ok) throw new Error('Failed to fetch reports')
+  if (!res.ok) {
+    throw new Error('Failed to fetch reports')
+  }
   return res.json()
 }
 
@@ -338,7 +344,9 @@ export async function fetchEntryReports (tenantId: string, entryId: string): Pro
 
 export async function fetchReportSummaries (tenantId: string, entryIds: string[]): Promise<Record<string, ReportSummary>> {
   const params = new URLSearchParams({ tenantId })
-  entryIds.forEach(id => params.append('entryIds', id))
+  for (const id of entryIds) {
+    params.append('entryIds', id)
+  }
   const res = await fetch(`${API_BASE_URL}/api/moderation/report-summaries?${params}`, {
     credentials: 'include',
     headers: await authHeaders(),

@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 // We can't use window.location in tests easily, so test the logic directly
 describe('env resolution logic', () => {
-  function resolveApiBaseUrl(hostname: string): string {
+  function resolveApiBaseUrl (hostname: string): string {
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:8082'
     }

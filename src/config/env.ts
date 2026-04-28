@@ -3,7 +3,7 @@ const hostname = window.location.hostname
 // Admin API now lives under the admin host (api.admin.earnlumens.org)
 // so cookies can be scoped to *.admin.earnlumens.org and never travel to
 // tenant subdomains under *.earnlumens.org.
-function resolveApiBaseUrl(): string {
+function resolveApiBaseUrl (): string {
   if (hostname === 'localhost.dv') {
     return 'http://localhost.dv:8082'
   }
@@ -16,7 +16,7 @@ function resolveApiBaseUrl(): string {
   return 'https://api.admin.earnlumens.org'
 }
 
-function resolveCdnBaseUrl(): string {
+function resolveCdnBaseUrl (): string {
   if (hostname === 'localhost.dv' || hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'https://cdn-dev.earnlumens.org'
   }

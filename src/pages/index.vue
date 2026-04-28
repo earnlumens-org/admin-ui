@@ -1,7 +1,7 @@
 <template>
   <v-container class="fill-height" fluid>
     <v-row align="center" justify="center">
-      <v-col cols="12" sm="8" md="5" lg="3">
+      <v-col cols="12" lg="3" md="5" sm="8">
         <v-card class="pa-8">
           <div class="text-center mb-6">
             <div class="text-h6 font-weight-bold mb-1">EARNLUMENS</div>
@@ -12,14 +12,14 @@
 
           <v-btn
             block
-            size="large"
             color="surface-variant"
-            variant="flat"
             :loading="loading"
+            size="large"
+            variant="flat"
             @click="loginWithX"
           >
             <template #prepend>
-              <svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor">
+              <svg fill="currentColor" height="18" viewBox="0 0 32 32" width="18">
                 <path d="M 4.0175781 4 L 13.091797 17.609375 L 4.3359375 28 L 6.9511719 28 L 14.246094 19.34375 L 20.017578 28 L 20.552734 28 L 28.015625 28 L 18.712891 14.042969 L 27.175781 4 L 24.560547 4 L 17.558594 12.310547 L 12.017578 4 L 4.0175781 4 z M 7.7558594 6 L 10.947266 6 L 24.279297 26 L 21.087891 26 L 7.7558594 6 z" />
               </svg>
             </template>
@@ -33,23 +33,23 @@
 
         <div class="text-center mt-4">
           <v-btn
-            variant="text"
-            size="small"
             class="text-caption text-medium-emphasis"
             href="https://earnlumens.org/terms"
-            target="_blank"
             rel="noopener noreferrer"
+            size="small"
+            target="_blank"
+            variant="text"
           >
             Legal Notice
           </v-btn>
           <span class="text-medium-emphasis mx-1">|</span>
           <v-btn
-            variant="text"
-            size="small"
             class="text-caption text-medium-emphasis"
             href="https://earnlumens.org/terms"
-            target="_blank"
             rel="noopener noreferrer"
+            size="small"
+            target="_blank"
+            variant="text"
           >
             Privacy Policy
           </v-btn>
@@ -60,10 +60,10 @@
 </template>
 
 <script lang="ts" setup>
-  import { ref, onMounted } from 'vue'
+  import { onMounted, ref } from 'vue'
   import { useRouter } from 'vue-router'
-  import { useAuthStore } from '@/stores/auth'
   import { API_BASE_URL } from '@/config/env'
+  import { useAuthStore } from '@/stores/auth'
 
   const router = useRouter()
   const authStore = useAuthStore()
@@ -75,7 +75,7 @@
     }
   })
 
-  function loginWithX() {
+  function loginWithX () {
     loading.value = true
     window.location.href = `${API_BASE_URL}/oauth2/authorization/x`
   }

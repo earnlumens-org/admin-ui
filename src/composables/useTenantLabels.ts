@@ -15,10 +15,16 @@ const loaded = ref(false)
 let inflight: Promise<void> | null = null
 
 async function load (): Promise<void> {
-  if (loaded.value) return
-  if (inflight) return inflight
+  if (loaded.value) {
+    return
+  }
+  if (inflight) {
+    return inflight
+  }
   const auth = useAuthStore()
-  if (!auth.isAuthenticated) return
+  if (!auth.isAuthenticated) {
+    return
+  }
 
   inflight = fetchAccessibleTenants()
     .then(rows => {
@@ -41,12 +47,23 @@ function clear () {
 }
 
 function labelFor (tenantId: string): string {
-  if (tenantId === 'earnlumens') return 'earnlumens (root)'
+  if (tenantId === 'earnlumens') {
+    return 'earnlumens (root)'
+  }
   const match = tenants.value.find(t => t.id === tenantId)
-  return match?.title ? match.title : tenantId
+  return match?.title || tenantId
 }
 
 export function useTenantLabels () {
   void load()
-  return { tenants, loaded, labelFor, refresh: () => { loaded.value = false; return load() }, clear }
+  return {
+    tenants,
+    loaded,
+    labelFor,
+    refresh: () => {
+      loaded.value = false
+      return load()
+    },
+    clear,
+  }
 }

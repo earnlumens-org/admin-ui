@@ -7,10 +7,10 @@
 
 import { createApp } from 'vue'
 import { registerPlugins } from '@/plugins'
+import { broadcastAuthEvent, initAuthBroadcast, onAuthBroadcast } from '@/services/authBroadcast'
+import { clearToken, initTokenWorker, onSessionExpired, refreshToken } from '@/services/tokenWorkerClient'
+import { parseUserFromToken, useAuthStore } from '@/stores/auth'
 import App from './App.vue'
-import { useAuthStore, parseUserFromToken } from '@/stores/auth'
-import { initTokenWorker, refreshToken, clearToken, onSessionExpired } from '@/services/tokenWorkerClient'
-import { initAuthBroadcast, broadcastAuthEvent, onAuthBroadcast } from '@/services/authBroadcast'
 
 import 'unfonts.css'
 
@@ -22,7 +22,7 @@ registerPlugins(app)
  * Attempts to refresh access token using HttpOnly cookie via the Web Worker.
  * MUST complete before router navigation to protected routes.
  */
-async function rehydrateSession(): Promise<void> {
+async function rehydrateSession (): Promise<void> {
   const authStore = useAuthStore()
 
   try {
@@ -49,7 +49,9 @@ async function rehydrateSession(): Promise<void> {
 // Handle session expiration from the worker (refresh cookie expired/invalid)
 onSessionExpired(async () => {
   const authStore = useAuthStore()
-  if (!authStore.isAuthenticated) return
+  if (!authStore.isAuthenticated) {
+    return
+  }
 
   await clearToken()
   broadcastAuthEvent('SESSION_EXPIRED')
@@ -59,13 +61,15 @@ onSessionExpired(async () => {
 // Handle auth events from other tabs (logout or session expired)
 onAuthBroadcast(async () => {
   const authStore = useAuthStore()
-  if (!authStore.isAuthenticated) return
+  if (!authStore.isAuthenticated) {
+    return
+  }
 
   await clearToken()
   window.location.assign('/')
 })
 
-async function initApp() {
+async function initApp () {
   initAuthBroadcast()
   await rehydrateSession()
   app.mount('#app')

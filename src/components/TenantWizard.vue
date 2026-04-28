@@ -269,10 +269,10 @@
   }
 
   const isStep3Valid = computed(() =>
-    form.confirmIrreversible &&
-    form.subdomain.length >= 3 &&
-    form.subdomain.length <= 30 &&
-    SUBDOMAIN_RE.test(form.subdomain),
+    form.confirmIrreversible
+    && form.subdomain.length >= 3
+    && form.subdomain.length <= 30
+    && SUBDOMAIN_RE.test(form.subdomain),
   )
 
   function normalizeSubdomain () {

@@ -14,10 +14,12 @@ const router = createRouter({
   routes,
 })
 
-const publicPaths = ['/', '/oauth2/callback']
+const publicPaths = new Set(['/', '/oauth2/callback'])
 
 function waitForAuthReady (authStore: ReturnType<typeof useAuthStore>): Promise<void> {
-  if (authStore.isAuthReady) return Promise.resolve()
+  if (authStore.isAuthReady) {
+    return Promise.resolve()
+  }
   return new Promise(resolve => {
     const unsubscribe = authStore.$subscribe((_mutation, state) => {
       if (state.isAuthReady) {
@@ -29,12 +31,16 @@ function waitForAuthReady (authStore: ReturnType<typeof useAuthStore>): Promise<
 }
 
 router.beforeEach(async to => {
-  if (publicPaths.includes(to.path)) return true
+  if (publicPaths.has(to.path)) {
+    return true
+  }
 
   const authStore = useAuthStore()
   await waitForAuthReady(authStore)
 
-  if (!authStore.isAuthenticated) return '/'
+  if (!authStore.isAuthenticated) {
+    return '/'
+  }
   return true
 })
 
@@ -45,7 +51,9 @@ router.beforeEach(async to => {
 // subsequent click on the same route would silently fail. Force a hard
 // reload so the next request picks up fresh module URLs.
 function isDynamicImportError (err: unknown): boolean {
-  if (!(err instanceof Error)) return false
+  if (!(err instanceof Error)) {
+    return false
+  }
   const msg = err.message || ''
   return /Failed to fetch dynamically imported module/i.test(msg)
     || /error loading dynamically imported module/i.test(msg)
@@ -53,7 +61,9 @@ function isDynamicImportError (err: unknown): boolean {
 }
 
 router.onError((err, to) => {
-  if (!isDynamicImportError(err)) return
+  if (!isDynamicImportError(err)) {
+    return
+  }
   // Avoid an infinite reload loop if the same route keeps failing.
   const key = 'el_chunk_reload'
   const last = sessionStorage.getItem(key)

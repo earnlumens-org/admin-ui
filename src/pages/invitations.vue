@@ -17,7 +17,13 @@
 
     <div class="d-flex align-center mb-1">
       <div class="text-h6">Moderator invitations</div>
-      <v-chip v-if="invitations.length > 0" class="ml-3" color="warning" size="small" variant="tonal">
+      <v-chip
+        v-if="invitations.length > 0"
+        class="ml-3"
+        color="warning"
+        size="small"
+        variant="tonal"
+      >
         {{ invitations.length }} pending
       </v-chip>
     </div>
@@ -78,8 +84,8 @@
           <v-btn
             class="mr-2"
             color="error"
-            :loading="busyId === invite.invitationId && busyAction === 'reject'"
             :disabled="!!busyId"
+            :loading="busyId === invite.invitationId && busyAction === 'reject'"
             variant="text"
             @click="onReject(invite)"
           >
@@ -87,8 +93,8 @@
           </v-btn>
           <v-btn
             color="primary"
-            :loading="busyId === invite.invitationId && busyAction === 'accept'"
             :disabled="!!busyId"
+            :loading="busyId === invite.invitationId && busyAction === 'accept'"
             variant="flat"
             @click="onAccept(invite)"
           >

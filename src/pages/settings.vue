@@ -192,8 +192,8 @@
   import { computed, onMounted, reactive, ref } from 'vue'
   import {
     getMyTenant,
-    type TenantSummary,
     TenantApiError,
+    type TenantSummary,
     updateMyTenant,
   } from '@/api/tenants'
 

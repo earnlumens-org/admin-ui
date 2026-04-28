@@ -94,7 +94,7 @@ async function handleRefresh (): Promise<boolean> {
       const response = await fetch(apiUrl('/api/auth/refresh'), {
         method: 'POST',
         credentials: 'include',
-        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       })
 
       if (!response.ok) {
