@@ -462,10 +462,14 @@
   })
 
   onMounted(async () => {
-    try {
-      tenantIds.value = await fetchTenantIds()
-    } catch {
-      // fallback
+    // Only superadmin needs the cross-tenant list — tenant admins and moderators
+    // are scoped to their own tenant(s) and the backend 403s this endpoint for them.
+    if (isSuperadmin.value) {
+      try {
+        tenantIds.value = await fetchTenantIds()
+      } catch {
+        // fallback
+      }
     }
     await loadReports()
     pollId = setInterval(loadReports, 30_000)

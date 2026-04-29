@@ -342,9 +342,12 @@
         tenantIds.value = [ownedTenantId.value]
         inviteTenant.value = ownedTenantId.value
       } else {
+        // fetchTenantIds is SUPERADMIN-only on the backend; only call it
+        // when we already know the caller is superadmin (this branch is the
+        // superadmin/cross-tenant view).
         const [mods, tenants] = await Promise.all([
           fetchModerators(),
-          fetchTenantIds(),
+          isSuperadmin.value ? fetchTenantIds() : Promise.resolve([] as string[]),
         ])
         moderators.value = mods
         tenantIds.value = tenants

@@ -1550,10 +1550,15 @@
   })
 
   onMounted(async () => {
-    try {
-      tenantIds.value = await fetchTenantIds()
-    } catch {
-      // If tenants fail to load, we still default to earnlumens
+    // Only superadmin needs the cross-tenant list — everyone else either has
+    // a single owned tenant (TENANT_ADMIN) or a fixed moderator scope, so the
+    // backend deliberately 403s the all-tenants endpoint for them.
+    if (isSuperadmin.value) {
+      try {
+        tenantIds.value = await fetchTenantIds()
+      } catch {
+        // If tenants fail to load, we still default to earnlumens
+      }
     }
 
     // Deep link: /moderation?tab=all&entryId=xxx&tenantId=yyy
