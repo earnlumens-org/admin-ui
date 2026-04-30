@@ -154,7 +154,18 @@
               </v-card-title>
               <v-card-subtitle style="white-space: normal">
                 Shown verbatim to all visitors on the storefront's
-                <code>/guidelines</code> page, under "Tenant-specific rules".
+                <a
+                  :href="tenantPreviewUrl"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                  class="text-primary"
+                  style="text-decoration: underline"
+                >/guidelines#tenant-specific-rules<v-icon
+                  class="ml-1"
+                  icon="mdi-open-in-new"
+                  size="x-small"
+                /></a>
+                page, under "Tenant-specific rules".
                 Use it to describe what is specific to <strong>your</strong>
                 marketplace: which topics you focus on, expected tone, formats
                 you accept. Do <strong>not</strong> repeat the platform-wide
@@ -440,6 +451,25 @@
     promptText.value !== savedPromptText.value
     || notesText.value !== savedNotesText.value
   )
+
+  // Public URL where these notes are rendered. We anchor on
+  // #tenant-specific-rules (defined in media-store-ui/src/pages/Guidelines.vue)
+  // so the owner lands directly on the section instead of having to scroll
+  // past the platform-wide rules. The base host is derived from the admin
+  // hostname:
+  //   admin.earnlumens.org      → *.earnlumens.org      (root tenant: earnlumens.org)
+  //   admin-dev.earnlumens.org  → *.app-dev.earnlumens.org
+  //   localhost                 → *.earnlumens.org      (local fallback to prod)
+  const tenantPreviewUrl = computed(() => {
+    const adminHost = typeof window === 'undefined' ? '' : window.location.hostname
+    const isDev = adminHost.includes('admin-dev')
+    const tenantBase = isDev ? 'app-dev.earnlumens.org' : 'earnlumens.org'
+    const sub = selectedTenant.value
+    // Root tenant lives at the apex (no subdomain prefix); every other tenant
+    // lives at {sub}.{tenantBase}.
+    const host = sub === 'earnlumens' ? tenantBase : `${sub}.${tenantBase}`
+    return `https://${host}/guidelines#tenant-specific-rules`
+  })
 
   // Tenants offered in the dropdown. SUPERADMIN sees every tenant present in
   // the entries collection plus the root; everyone else sees only the tenants
