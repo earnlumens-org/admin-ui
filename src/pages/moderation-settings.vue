@@ -63,6 +63,9 @@
                   <li><strong>Music copyright</strong> — automatic detection against the global ACRCloud catalog.</li>
                   <li><strong>NSFW / pornography / explicit nudity / child sexual abuse material.</strong></li>
                   <li><strong>Graphic violence, gore, extreme hate.</strong></li>
+                  <li><strong>Self-harm &amp; suicide</strong> — glorification, instructions, methods, pro-anorexia / pro-bulimia content. Educational and recovery-oriented framing is allowed.</li>
+                  <li><strong>Phishing &amp; wallet drainers</strong> — seed-phrase requests, fake airdrops, look-alike domains of Freighter / xBull / LOBSTR / SDF / exchanges, malicious "connect-your-wallet" flows.</li>
+                  <li><strong>Impersonation &amp; deepfakes</strong> — synthesized media of public figures (Musk, McCaleb, SDF, exchange CEOs) endorsing tokens, misuse of official Stellar / EarnLumens branding.</li>
                   <li><strong>Low-quality spam</strong> — gibberish titles, auto-generated or empty content, blank video.</li>
                   <li><strong>Financial scams</strong> — pump-and-dump, Ponzi, guaranteed-return promises, get-rich-quick schemes.</li>
                   <li><strong>Hate speech</strong> — slurs, calls for violence against groups.</li>
@@ -415,8 +418,9 @@ GUIDING PRINCIPLE: lean toward APPROVE. Reject what is harmful or fraudulent, no
 ALWAYS REJECT:
 - Ponzi / pyramid / pump & dump / rug pulls / guaranteed-return promises
 - Paid trading signals, personalized buy/sell calls with specific amounts, personalized financial advice
-- Phishing, fake airdrops, requests for private keys / seed phrases / credentials
-- Impersonation of public figures, projects, EarnLumens or the Stellar Development Foundation
+- Phishing, fake airdrops, requests for private keys / seed phrases / credentials, wallet drainers, look-alike wallet/exchange domains
+- Impersonation / deepfakes of public figures, projects, EarnLumens or the Stellar Development Foundation
+- Glorification of suicide or self-harm, pro-anorexia/bulimia content, methods or instructions for self-injury (educational and recovery-oriented framing is allowed)
 - Hate speech, harassment, discrimination, incitement to violence
 - Explicit sexual content, graphic violence, content involving minors
 - Clearly copyrighted material reuploaded without authorization
