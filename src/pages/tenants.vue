@@ -165,8 +165,7 @@
   import { useI18n } from 'vue-i18n'
   import { getMyTenant, listAllTenants, TenantApiError, type TenantSummary } from '@/api/tenants'
   import TenantWizard from '@/components/TenantWizard.vue'
-  import { refreshToken } from '@/services/tokenWorkerClient'
-  import { parseUserFromToken, useAuthStore } from '@/stores/auth'
+  import { useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
   const { t } = useI18n()
@@ -207,18 +206,12 @@
   }
 
   async function onCreated (tenant: TenantSummary) {
+    // The wizard owns the post-creation UX from here: it shows a
+    // persistent session-restart dialog and forces a sign-out so the
+    // next session is issued with the new tenantAdminOf claim. We just
+    // mirror the new tenant locally for any UI that re-renders before
+    // logout completes.
     myTenant.value = tenant
-    // Refresh the JWT so the new tenantAdminOf claim arrives and the
-    // "Set up your tenant" reminder on the dashboard disappears.
-    try {
-      const result = await refreshToken()
-      if (result.success && result.accessToken) {
-        const profile = parseUserFromToken(result.accessToken)
-        if (profile) authStore.setUser(profile)
-      }
-    } catch {
-      // Non-fatal: the next scheduled refresh will pick the new claims up.
-    }
   }
 
   onMounted(refresh)

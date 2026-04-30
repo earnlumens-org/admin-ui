@@ -67,6 +67,33 @@
                 :rules="[rules.required, rules.walletFormat]"
                 variant="outlined"
               />
+              <!--
+                Generic wallet alert covering both "badly formatted" and
+                "valid format but not yet on the Stellar ledger". Mirrors
+                the unfunded-wallet banner used by media-store-ui's Wallet
+                page, including the same Stellar docs link.
+              -->
+              <v-alert
+                v-if="isWalletErrorCode(serverError)"
+                border="start"
+                class="mt-2"
+                density="compact"
+                icon="mdi-alert-circle-outline"
+                type="warning"
+                variant="tonal"
+              >
+                <div class="text-body-2">
+                  {{ $t('tenants.errors.wallet_invalid') }}
+                  <a
+                    class="text-primary font-weight-medium"
+                    href="https://developers.stellar.org/docs/build/guides/transactions/create-account#create-an-account-1"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    {{ $t('common.learn_more') }}
+                  </a>
+                </div>
+              </v-alert>
               <v-text-field
                 v-model.trim="form.tenantFeePercent"
                 class="mt-2"
@@ -178,11 +205,12 @@
         <v-btn
           v-if="step < 4"
           color="primary"
-          :disabled="loading || (step === 3 && !isStep3Valid)"
+          :disabled="loading || checkingWallet || (step === 3 && !isStep3Valid)"
+          :loading="checkingWallet"
           variant="flat"
           @click="handleNext"
         >
-          {{ $t('common.next') }}
+          {{ checkingWallet ? $t('common.checking') : $t('common.next') }}
         </v-btn>
         <v-btn
           v-else
@@ -197,12 +225,59 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <!--
+    Post-creation session-restart dialog.
+    The current JWT was issued before the user owned a tenant, so it
+    has no `tenantAdminOf` claim and the sidebar / route guards still
+    treat them as TENANT_PROSPECT. The only sanctioned way out is a
+    fresh login — hence persistent + no close button + a single
+    "Sign out and continue" CTA.
+  -->
+  <v-dialog
+    v-model="sessionRestartOpen"
+    max-width="520"
+    persistent
+  >
+    <v-card>
+      <v-card-title class="d-flex align-center">
+        <v-icon class="mr-2" color="success" icon="mdi-check-circle" />
+        <span>{{ $t('tenants.wizard.session_restart.title') }}</span>
+      </v-card-title>
+      <v-divider />
+      <v-card-text class="pt-4">
+        <p class="text-body-2">
+          {{ $t('tenants.wizard.session_restart.body', {
+            title: createdTenant?.title ?? '',
+            subdomain: createdTenant?.subdomain ?? '',
+            root: rootDomain,
+          }) }}
+        </p>
+      </v-card-text>
+      <v-divider />
+      <v-card-actions class="pa-4">
+        <v-spacer />
+        <v-btn
+          color="primary"
+          :loading="signingOut"
+          prepend-icon="mdi-logout"
+          variant="flat"
+          @click="handleSessionRestartLogout"
+        >
+          {{ $t('tenants.wizard.session_restart.sign_out') }}
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script lang="ts" setup>
   import { computed, reactive, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
   import { createMyTenant, type CreateTenantPayload, TenantApiError, type TenantSummary } from '@/api/tenants'
+  import { accountExists } from '@/services/stellar'
+  import { useAuthStore } from '@/stores/auth'
 
   const props = defineProps<{
     modelValue: boolean
@@ -215,6 +290,8 @@
   }>()
 
   const { t } = useI18n()
+  const authStore = useAuthStore()
+  const router = useRouter()
 
   const dialog = computed({
     get: () => props.modelValue,
@@ -233,6 +310,15 @@
   const step = ref(1)
   const loading = ref(false)
   const serverError = ref<string | null>(null)
+  const checkingWallet = ref(false)
+  // Persistent session-restart dialog shown after a successful tenant
+  // creation. The current JWT was minted before the user owned a tenant
+  // so its `tenantAdminOf` claim is empty; the only way to obtain a
+  // fresh token with the correct claims is to sign out and sign back
+  // in. Logout is the dialog's only exit.
+  const sessionRestartOpen = ref(false)
+  const createdTenant = ref<TenantSummary | null>(null)
+  const signingOut = ref(false)
 
   const form = reactive({
     title: '',
@@ -255,7 +341,7 @@
   const SUBDOMAIN_RE = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])$/
 
   const rules = {
-    required: (v: string) => (v && v.trim().length > 0) || t('tenants.errors.subdomain_required'),
+    required: (v: string) => (v && v.trim().length > 0) || t('common.field_required'),
     titleLength: (v: string) => (v && v.length >= 2 && v.length <= 80) || t('tenants.errors.unknown_error'),
     descLength: (v: string) => !v || v.length <= 280 || t('tenants.errors.unknown_error'),
     walletFormat: (v: string) => WALLET_RE.test(v) || t('tenants.errors.wallet_format'),
@@ -283,6 +369,10 @@
   const subdomainHint = computed(() =>
     t('tenants.wizard.fields.subdomain_hint', { host: form.subdomain || 'your-handle' }),
   )
+
+  function isWalletErrorCode (code: string | null): boolean {
+    return code === 'wallet_invalid' || code === 'wallet_format'
+  }
 
   const localisedServerError = computed(() => {
     if (!serverError.value) return ''
@@ -312,6 +402,25 @@
     if (!currentForm) return
     const { valid } = await currentForm.validate()
     if (!valid) return
+    // Step 2 has an extra async check: the wallet must already exist
+    // (be funded) on the Stellar ledger. Otherwise every payout the
+    // tenant ever issues will fail at settlement time. Mirrors the
+    // accountExists() guard the storefront uses on entry sales.
+    if (step.value === 2) {
+      checkingWallet.value = true
+      try {
+        const exists = await accountExists(form.tenantWallet)
+        if (!exists) {
+          serverError.value = 'wallet_invalid'
+          return
+        }
+      } catch {
+        serverError.value = 'wallet_invalid'
+        return
+      } finally {
+        checkingWallet.value = false
+      }
+    }
     if (step.value === 3 && !form.confirmIrreversible) {
       serverError.value = 'confirmation_required'
       return
@@ -337,14 +446,19 @@
     try {
       const tenant = await createMyTenant(payload)
       emit('created', tenant)
-      resetForm()
+      // Keep the wizard mounted but hidden behind the persistent
+      // session-restart dialog: the user's only path forward from
+      // here is to sign out and sign back in to pick up the new
+      // tenantAdminOf claim. resetForm() is deferred until logout.
+      createdTenant.value = tenant
       dialog.value = false
+      sessionRestartOpen.value = true
     } catch (error) {
       if (error instanceof TenantApiError) {
         serverError.value = error.code
         // Jump back to the most relevant step so the user can fix it.
         if (error.code.startsWith('subdomain_')) step.value = 3
-        else if (error.code === 'wallet_format' || error.code === 'tenant_fee_range') step.value = 2
+        else if (error.code === 'wallet_format' || error.code === 'wallet_invalid' || error.code === 'tenant_fee_range') step.value = 2
       } else {
         serverError.value = 'unknown_error'
       }
@@ -373,4 +487,17 @@
   watch(dialog, open => {
     if (!open) resetForm()
   })
+
+  async function handleSessionRestartLogout () {
+    if (signingOut.value) return
+    signingOut.value = true
+    try {
+      await authStore.logout()
+    } finally {
+      signingOut.value = false
+      sessionRestartOpen.value = false
+      createdTenant.value = null
+      router.push('/')
+    }
+  }
 </script>

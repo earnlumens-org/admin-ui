@@ -17,6 +17,10 @@ const messages = {
       loading: 'Loading…',
       retry: 'Retry',
       close: 'Close',
+      field_required: 'This field is required.',
+      checking: 'Checking…',
+      sign_out: 'Sign out',
+      learn_more: 'Learn more',
     },
     tenants: {
       page: {
@@ -59,6 +63,11 @@ const messages = {
           url_preview: 'Your URL will be',
           fee_suffix: '% per sale',
         },
+        session_restart: {
+          title: 'Almost there — please sign in again',
+          body: 'Your tenant {title} ({subdomain}.{root}) is live. Your current session was issued before you owned a tenant, so it does not yet carry your tenant-admin permissions. Sign out and sign back in to refresh them.',
+          sign_out: 'Sign out and continue',
+        },
       },
       errors: {
         not_verified: 'You need a Blue Credential (U1) before you can open a tenant.',
@@ -70,6 +79,7 @@ const messages = {
         subdomain_reserved: 'That subdomain is reserved. Please pick another.',
         subdomain_taken: 'That subdomain is already taken.',
         wallet_format: 'Invalid Stellar address. It must start with G and be 56 characters long.',
+        wallet_invalid: 'The wallet must be a valid and active Stellar address. Send at least 1 XLM to this address to activate it on the network before continuing.',
         tenant_fee_range: 'Your fee must be between 0 and 30, with at most two decimals.',
         confirmation_required: 'You must confirm before creating the tenant.',
         forbidden: 'You are not allowed to perform this action.',
@@ -87,6 +97,10 @@ const messages = {
       loading: '読み込み中…',
       retry: '再試行',
       close: '閉じる',
+      field_required: 'この項目は必須です。',
+      checking: '確認中…',
+      sign_out: 'サインアウト',
+      learn_more: '詳細',
     },
     tenants: {
       page: {
@@ -129,6 +143,11 @@ const messages = {
           url_preview: 'URLは次のようになります',
           fee_suffix: '% / 販売',
         },
+        session_restart: {
+          title: 'もう少しです — もう一度サインインしてください',
+          body: 'テナント {title} ({subdomain}.{root}) が公開されました。現在のセッションはテナントを所有する前に発行されたため、テナント管理者の権限がまだ含まれていません。サインアウトして再度サインインし、権限を更新してください。',
+          sign_out: 'サインアウトして続行',
+        },
       },
       errors: {
         not_verified: 'テナントを開設するには Blue Credential (U1) が必要です。',
@@ -140,6 +159,7 @@ const messages = {
         subdomain_reserved: 'そのサブドメインは予約済みです。別のものを選んでください。',
         subdomain_taken: 'そのサブドメインは既に使用されています。',
         wallet_format: 'Stellarアドレスが無効です。Gで始まる56文字である必要があります。',
+        wallet_invalid: 'ウォレットは有効かつアクティブなStellarアドレスである必要があります。続行する前にネットワーク上でアクティブ化するため、このアドレスに少なくとも 1 XLM を送金してください。',
         tenant_fee_range: '手数料は0〜30、小数点以下2桁までで入力してください。',
         confirmation_required: 'テナントを作成する前に確認が必要です。',
         forbidden: 'この操作は許可されていません。',

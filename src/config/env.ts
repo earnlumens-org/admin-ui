@@ -26,5 +26,24 @@ function resolveCdnBaseUrl (): string {
   return 'https://cdn.earnlumens.org'
 }
 
+/**
+ * Stellar Horizon URL — testnet for any non-production host (local + dev
+ * tunnel), public network for production. Mirrors the policy used by
+ * media-store-ui so both surfaces validate addresses against the same
+ * ledger their payments will eventually settle on.
+ */
+function resolveStellarHorizonUrl (): string {
+  if (
+    hostname === 'admin.earnlumens.org'
+  ) {
+    return 'https://horizon.stellar.org'
+  }
+  return 'https://horizon-testnet.stellar.org'
+}
+
 export const API_BASE_URL = resolveApiBaseUrl()
 export const CDN_BASE_URL = resolveCdnBaseUrl()
+
+export function getStellarHorizonUrl (): string {
+  return resolveStellarHorizonUrl()
+}
