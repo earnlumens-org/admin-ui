@@ -115,14 +115,14 @@
               <div class="d-flex align-center ga-2 mt-2">
                 <v-btn
                   color="primary"
-                  :disabled="!hasChanges || saving"
+                  :disabled="!promptHasChanges || saving"
                   :loading="saving"
                   @click="saveConfig"
                 >
                   Save prompt
                 </v-btn>
                 <v-btn
-                  :disabled="!hasChanges || saving"
+                  :disabled="!promptHasChanges || saving"
                   variant="text"
                   @click="resetPrompt"
                 >
@@ -188,10 +188,28 @@
                 variant="outlined"
               />
 
-              <p class="text-caption text-medium-emphasis mt-1 mb-0">
+              <p class="text-caption text-medium-emphasis mt-1 mb-3">
                 Leave empty to hide the tenant-specific section on the public
                 guidelines page.
               </p>
+
+              <div class="d-flex align-center ga-2">
+                <v-btn
+                  color="primary"
+                  :disabled="!notesHasChanges || saving"
+                  :loading="saving"
+                  @click="saveNotes"
+                >
+                  Save notes
+                </v-btn>
+                <v-btn
+                  :disabled="!notesHasChanges || saving"
+                  variant="text"
+                  @click="resetNotes"
+                >
+                  Discard changes
+                </v-btn>
+              </div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -451,6 +469,8 @@
     promptText.value !== savedPromptText.value
     || notesText.value !== savedNotesText.value
   )
+  const promptHasChanges = computed(() => promptText.value !== savedPromptText.value)
+  const notesHasChanges = computed(() => notesText.value !== savedNotesText.value)
 
   // Public URL where these notes are rendered. We anchor on
   // #tenant-specific-rules (defined in media-store-ui/src/pages/Guidelines.vue)
@@ -575,6 +595,32 @@ Notes:
     } finally {
       saving.value = false
     }
+  }
+
+  // Saves only the public publishing notes. We resend the saved prompt
+  // unchanged because the backend requires businessRulesPrompt on every
+  // PUT (validated as @NotBlank); passing the same value is a server-side
+  // no-op for the prompt field.
+  async function saveNotes () {
+    saving.value = true
+    try {
+      config.value = await updateModerationConfig(
+        selectedTenant.value,
+        savedPromptText.value,
+        notesText.value,
+      )
+      savedNotesText.value = notesText.value
+      showSnackbar('Tenant publishing notes saved', 'success')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to save'
+      showSnackbar(message, 'error')
+    } finally {
+      saving.value = false
+    }
+  }
+
+  function resetNotes () {
+    notesText.value = savedNotesText.value
   }
 
   function resetPrompt () {
