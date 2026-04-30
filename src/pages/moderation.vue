@@ -33,7 +33,7 @@
           item-value="value"
           :items="tenantOptions"
           variant="outlined"
-          @update:model-value="loadEntries"
+          @update:model-value="() => loadEntries()"
         />
       </div>
 
@@ -329,17 +329,29 @@
                 </v-tooltip>
               </div>
 
-              <!-- AI flag -->
+              <!-- AI flag / AI unavailable -->
               <div
                 v-if="jobSummaries[entry.id]?.decision === 'MANUAL_QUEUE'"
-                class="flag-indicator flag-ai d-flex align-start ga-2 mt-2"
+                class="flag-indicator d-flex align-start ga-2 mt-2"
+                :class="isAiUnavailable(jobSummaries[entry.id].categoriesDetected) ? 'flag-unavailable' : 'flag-ai'"
               >
-                <v-icon class="flex-shrink-0 mt-px" color="error" size="14">mdi-alert-decagram</v-icon>
+                <v-icon
+                  class="flex-shrink-0 mt-px"
+                  :color="isAiUnavailable(jobSummaries[entry.id].categoriesDetected) ? 'warning' : 'error'"
+                  size="14"
+                >
+                  {{ isAiUnavailable(jobSummaries[entry.id].categoriesDetected) ? 'mdi-cloud-off-outline' : 'mdi-alert-decagram' }}
+                </v-icon>
                 <div style="min-width: 0; flex: 1">
                   <span class="text-caption font-weight-medium">
-                    Flagged by {{ jobSummaries[entry.id].decidingStep || 'AI' }}
+                    {{ isAiUnavailable(jobSummaries[entry.id].categoriesDetected)
+                      ? 'AI unavailable — needs human review'
+                      : `Flagged by ${jobSummaries[entry.id].decidingStep || 'AI'}` }}
                   </span>
-                  <span v-if="jobSummaries[entry.id].confidence != null" class="text-caption text-medium-emphasis">
+                  <span
+                    v-if="jobSummaries[entry.id].confidence != null && !isAiUnavailable(jobSummaries[entry.id].categoriesDetected)"
+                    class="text-caption text-medium-emphasis"
+                  >
                     · {{ Math.round((jobSummaries[entry.id].confidence ?? 0) * 100) }}%
                   </span>
                   <div
@@ -354,7 +366,7 @@
                     <v-chip
                       v-for="cat in jobSummaries[entry.id].categoriesDetected"
                       :key="cat"
-                      color="error"
+                      :color="isAiUnavailable([cat]) ? 'warning' : 'error'"
                       size="x-small"
                       variant="flat"
                     >
@@ -435,7 +447,7 @@
             density="compact"
             :length="totalPages"
             :total-visible="5"
-            @update:model-value="loadEntries"
+            @update:model-value="() => loadEntries()"
           />
         </div>
       </div>
@@ -1273,10 +1285,29 @@
     actionLabel: string
   }
 
+  // GEMINI_UNAVAILABLE (current) / GEMINI_ERROR (legacy) mean the AI
+  // provider itself was down or errored — the content was never actually
+  // evaluated, so we MUST NOT label it "flagged by AI". Surfacing them as
+  // a distinct "AI unavailable" state stops moderators from assuming the
+  // model has an opinion when it doesn't.
+  function isAiUnavailable (categories: string[] | null | undefined): boolean {
+    if (!categories || categories.length === 0) return false
+    return categories.some(c => c === 'GEMINI_UNAVAILABLE' || c === 'GEMINI_ERROR')
+  }
+
   function getActorInfo (entry: EntryDto): ActorInfo {
     if (entry.status === 'IN_REVIEW') {
       const job = jobSummaries.value[entry.id]
       if (job?.decision === 'MANUAL_QUEUE') {
+        if (isAiUnavailable(job.categoriesDetected)) {
+          return {
+            type: 'pending',
+            label: 'AI unavailable — awaiting human review',
+            icon: 'mdi-cloud-off-outline',
+            color: 'warning',
+            actionLabel: 'AI Unavailable',
+          }
+        }
         const categories = job.categoriesDetected?.join(', ') || ''
         const label = categories
           ? `AI flagged: ${categories}`
@@ -1637,6 +1668,10 @@
 
   .flag-ai {
     background: rgba(var(--v-theme-error), 0.08);
+  }
+
+  .flag-unavailable {
+    background: rgba(var(--v-theme-warning), 0.08);
   }
 
   .flag-report {

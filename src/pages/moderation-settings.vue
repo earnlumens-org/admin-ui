@@ -38,6 +38,50 @@
     </div>
 
     <template v-else>
+      <!--
+        Baseline-coverage helper: makes it explicit which categories
+        the platform already enforces for every tenant, regardless of
+        their custom prompt. Reduces duplicated rules in the textarea
+        below and points tenant admins at what they SHOULD focus on.
+      -->
+      <v-row class="mb-2">
+        <v-col cols="12">
+          <v-expansion-panels variant="accordion">
+            <v-expansion-panel>
+              <v-expansion-panel-title>
+                <v-icon class="mr-3" color="info" icon="mdi-shield-check-outline" />
+                <span class="font-weight-medium">What EarnLumens already moderates by default</span>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <p class="text-body-2 mb-3">
+                  EarnLumens applies a mandatory baseline moderation layer to every entry
+                  published in any tenant — you do <strong>not</strong> need to write rules
+                  for these. They are enforced before and on top of your business-rules
+                  prompt below.
+                </p>
+                <ul class="text-body-2 mb-3 ps-4">
+                  <li><strong>Music copyright</strong> — automatic detection against the global ACRCloud catalog.</li>
+                  <li><strong>NSFW / pornography / explicit nudity / child sexual abuse material.</strong></li>
+                  <li><strong>Graphic violence, gore, extreme hate.</strong></li>
+                  <li><strong>Low-quality spam</strong> — gibberish titles, auto-generated or empty content, blank video.</li>
+                  <li><strong>Financial scams</strong> — pump-and-dump, Ponzi, guaranteed-return promises, get-rich-quick schemes.</li>
+                  <li><strong>Hate speech</strong> — slurs, calls for violence against groups.</li>
+                  <li><strong>Personal information leaks</strong> — phone numbers, emails, private keys.</li>
+                  <li><strong>Multimodal analysis</strong> — audio, images, PDFs and rich text are reviewed with the same rigor as the title and description.</li>
+                </ul>
+                <p class="text-body-2 mb-0">
+                  Your <strong>Business Rules</strong> prompt below should focus
+                  <em>only</em> on what is specific to your business model: which topics you
+                  allow, the tone and format you expect, the kind of offer that fits your
+                  vertical. Don't repeat the general rules above — they are already covered,
+                  and duplicating them can create conflicts in the model's decision.
+                </p>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </v-col>
+      </v-row>
+
       <!-- Editable: Business Rules Prompt -->
       <v-row class="mb-2">
         <v-col cols="12">

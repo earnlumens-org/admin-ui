@@ -33,12 +33,12 @@
           item-value="value"
           :items="tenantOptions"
           variant="outlined"
-          @update:model-value="loadReports"
+          @update:model-value="() => loadReports()"
         />
       </div>
 
       <!-- Filter tabs -->
-      <v-tabs v-model="tab" class="mb-4" density="compact" @update:model-value="loadReports">
+      <v-tabs v-model="tab" class="mb-4" density="compact" @update:model-value="() => loadReports()">
         <v-tab value="OPEN">
           Open
           <v-badge
@@ -193,7 +193,7 @@
             density="compact"
             :length="totalPages"
             :total-visible="5"
-            @update:model-value="loadReports"
+            @update:model-value="() => loadReports()"
           />
         </div>
       </div>
