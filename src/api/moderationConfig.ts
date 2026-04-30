@@ -17,6 +17,8 @@ export interface ModerationConfig {
   id: string | null
   tenantId: string
   businessRulesPrompt: string
+  /** English-only public-facing publishing notes for the tenant. Optional. */
+  tenantPublishingNotes: string | null
   createdAt: string | null
   updatedAt: string | null
   updatedBy: string | null
@@ -33,12 +35,18 @@ export async function fetchModerationConfig (tenantId: string): Promise<Moderati
   return res.json()
 }
 
-export async function updateModerationConfig (tenantId: string, businessRulesPrompt: string): Promise<ModerationConfig> {
+export async function updateModerationConfig (
+  tenantId: string,
+  businessRulesPrompt: string,
+  tenantPublishingNotes: string | null = null,
+): Promise<ModerationConfig> {
   const res = await fetch(`${API_BASE_URL}/api/moderation/config/${encodeURIComponent(tenantId)}`, {
     method: 'PUT',
     credentials: 'include',
     headers: await authHeaders(),
-    body: JSON.stringify({ businessRulesPrompt }),
+    // null tenantPublishingNotes means "do not touch this field"; pass an
+    // empty string to clear an existing value on the server.
+    body: JSON.stringify({ businessRulesPrompt, tenantPublishingNotes }),
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))

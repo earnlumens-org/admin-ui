@@ -139,6 +139,53 @@
         </v-col>
       </v-row>
 
+      <!-- Editable: Tenant Publishing Notes (public-facing) -->
+      <v-row class="mb-2">
+        <v-col cols="12">
+          <v-card>
+            <v-card-item>
+              <template #prepend>
+                <v-icon color="secondary" icon="mdi-note-text-outline" />
+              </template>
+              <v-card-title class="d-flex align-center ga-2 flex-wrap">
+                <span>Tenant Publishing Notes</span>
+                <v-chip color="info" label size="x-small" variant="tonal">Public</v-chip>
+                <v-chip color="warning" label size="x-small" variant="tonal">English only</v-chip>
+              </v-card-title>
+              <v-card-subtitle style="white-space: normal">
+                Shown verbatim to all visitors on the storefront's
+                <code>/guidelines</code> page, under "Tenant-specific rules".
+                Use it to describe what is specific to <strong>your</strong>
+                marketplace: which topics you focus on, expected tone, formats
+                you accept. Do <strong>not</strong> repeat the platform-wide
+                rules above &mdash; they are already shown.
+                <br>
+                <span class="text-warning">Must be written in English.</span>
+                We don't auto-translate this text; it is displayed identically
+                to every visitor regardless of their selected language.
+              </v-card-subtitle>
+            </v-card-item>
+
+            <v-card-text>
+              <v-textarea
+                v-model="notesText"
+                auto-grow
+                counter="5000"
+                :maxlength="5000"
+                placeholder="Example:&#10;&#10;This marketplace focuses on long-form, hands-on Soroban tutorials. We prefer code-first content over high-level explainers.&#10;&#10;- Posts must include at least one runnable code block or a link to a public repo.&#10;- Sponsored content is allowed but must be tagged in the title with [sponsored].&#10;- Off-topic finance content (general budgeting, non-Stellar trading) belongs on other tenants."
+                rows="8"
+                variant="outlined"
+              />
+
+              <p class="text-caption text-medium-emphasis mt-1 mb-0">
+                Leave empty to hide the tenant-specific section on the public
+                guidelines page.
+              </p>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+
       <!-- Fixed Parameters (read-only) -->
       <div class="text-subtitle-1 font-weight-medium mt-6 mb-3">Fixed Moderation Parameters</div>
       <div class="text-body-2 text-medium-emphasis mb-4">
@@ -379,12 +426,20 @@
   const config = ref<ModerationConfig | null>(null)
   const promptText = ref('')
   const savedPromptText = ref('')
+  // Tenant-facing public publishing notes (English only). Independent from
+  // the Gemini business rules prompt above; this string is shown verbatim on
+  // the storefront's /guidelines page.
+  const notesText = ref('')
+  const savedNotesText = ref('')
 
   const snackbar = ref(false)
   const snackbarText = ref('')
   const snackbarColor = ref('success')
 
-  const hasChanges = computed(() => promptText.value !== savedPromptText.value)
+  const hasChanges = computed(() =>
+    promptText.value !== savedPromptText.value
+    || notesText.value !== savedNotesText.value
+  )
 
   // Tenants offered in the dropdown. SUPERADMIN sees every tenant present in
   // the entries collection plus the root; everyone else sees only the tenants
@@ -464,6 +519,8 @@ Notes:
       config.value = await fetchModerationConfig(selectedTenant.value)
       promptText.value = config.value.businessRulesPrompt || ''
       savedPromptText.value = promptText.value
+      notesText.value = config.value.tenantPublishingNotes || ''
+      savedNotesText.value = notesText.value
     } catch {
       showSnackbar('Failed to load moderation config', 'error')
     } finally {
@@ -474,8 +531,13 @@ Notes:
   async function saveConfig () {
     saving.value = true
     try {
-      config.value = await updateModerationConfig(selectedTenant.value, promptText.value)
+      config.value = await updateModerationConfig(
+        selectedTenant.value,
+        promptText.value,
+        notesText.value,
+      )
       savedPromptText.value = promptText.value
+      savedNotesText.value = notesText.value
       showSnackbar('Moderation prompt saved', 'success')
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to save'
@@ -487,6 +549,7 @@ Notes:
 
   function resetPrompt () {
     promptText.value = savedPromptText.value
+    notesText.value = savedNotesText.value
   }
 
   function showSnackbar (text: string, color: string) {
