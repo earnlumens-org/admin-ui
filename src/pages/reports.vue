@@ -397,9 +397,13 @@
     })
   }
 
-  async function loadReports () {
+  async function loadReports (silent = false) {
     if (!hasModerationAccess.value || !selectedTenant.value) return
-    loading.value = true
+    // Silent refreshes (background polling) intentionally skip the
+    // top progress bar so a moderator who is reading a report is not
+    // visually interrupted every 30 seconds. The list is replaced
+    // atomically when the new page arrives.
+    if (!silent) loading.value = true
     try {
       const resolution = tab.value === 'OPEN' ? 'OPEN' : null
       const res = await fetchReports(selectedTenant.value, resolution, currentPage.value - 1, 20)
@@ -420,7 +424,7 @@
     } catch {
       reports.value = []
     } finally {
-      loading.value = false
+      if (!silent) loading.value = false
     }
   }
 
@@ -472,7 +476,7 @@
       }
     }
     await loadReports()
-    pollId = setInterval(loadReports, 30_000)
+    pollId = setInterval(() => loadReports(true), 30_000)
   })
 
   onUnmounted(() => {

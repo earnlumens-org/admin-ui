@@ -1333,9 +1333,13 @@
     snackbar.value = true
   }
 
-  async function loadEntries () {
+  async function loadEntries (silent = false) {
     if (!hasModerationAccess.value || !selectedTenant.value) return
-    loading.value = true
+    // Silent refreshes (background polling) intentionally skip the
+    // full-screen spinner so a moderator who is reviewing an entry is
+    // not bounced back to a loading state every 30 seconds. The list
+    // is replaced atomically when the new page arrives.
+    if (!silent) loading.value = true
     try {
       const [pageData, statsData] = await Promise.all([
         fetchEntries(
@@ -1377,7 +1381,7 @@
     } catch {
       showSnackbar('Failed to load entries', 'error')
     } finally {
-      loading.value = false
+      if (!silent) loading.value = false
     }
   }
 
@@ -1580,7 +1584,7 @@
       }
     }
 
-    pollId = setInterval(loadEntries, 30_000)
+    pollId = setInterval(() => loadEntries(true), 30_000)
   })
 
   onUnmounted(() => {
