@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Baseline security headers. Strict CSP and HSTS are enforced at
+         the Cloudflare Pages edge (see DEPLOY.md); these meta tags are
+         the in-document fallback for environments that don't honour
+         the edge config (local dev, file:// previews). -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>EARNLUMENS Admin Panel</title>
     <meta property="og:image" content="/meta/earnlumens-admin-meta-image-v1.jpg" />
     <meta property="og:image:width" content="1344" />
