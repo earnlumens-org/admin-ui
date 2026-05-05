@@ -1153,6 +1153,7 @@
     { value: 'SUSPENDED', label: 'Suspended', color: 'error' },
     { value: 'UNLISTED', label: 'Unlisted', color: 'blue-grey' },
     { value: 'ARCHIVED', label: 'Archived', color: 'grey' },
+    { value: 'DELETED', label: 'Deleted', color: 'error' },
   ]
 
   const tenantOptions = computed(() => {
@@ -1223,6 +1224,8 @@
       case 'UNLISTED': { return 'blue-grey'
       }
       case 'ARCHIVED': { return 'grey'
+      }
+      case 'DELETED': { return 'error'
       }
       default: { return undefined
       }
