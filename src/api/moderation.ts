@@ -94,6 +94,7 @@ export interface ModerationStats {
   suspended: number
   rejected: number
   archived: number
+  deleted: number
   openReports?: number
 }
 

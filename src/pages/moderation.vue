@@ -118,6 +118,9 @@
         <v-chip prepend-icon="mdi-archive-outline" size="small" variant="tonal">
           {{ stats.archived }} archived
         </v-chip>
+        <v-chip prepend-icon="mdi-trash-can-outline" size="small" variant="tonal" color="error">
+          {{ stats.deleted ?? 0 }} deleted
+        </v-chip>
       </div>
 
       <v-divider class="mb-4" />
