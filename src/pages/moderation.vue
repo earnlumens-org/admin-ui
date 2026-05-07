@@ -515,12 +515,14 @@
                 style="max-height: 400px"
               />
 
-              <!-- Resource content (rich text) -->
+              <!-- Resource content (rich text) — HTML-escaped server-side text
+                   formatted with <p>/<br> only. NEVER bind raw user content
+                   to v-html (XSS). See `safeResourceContent` below. -->
               <div
                 v-else-if="detailEntry.type === 'RESOURCE' && detailEntry.resourceContent"
                 class="rounded bg-surface-light pa-4 resource-content"
                 style="max-height: 400px; overflow-y: auto"
-                v-html="detailEntry.resourceContent"
+                v-html="safeResourceContent"
               />
 
               <!-- Fallback: thumbnail only -->
@@ -1134,6 +1136,22 @@
   const isImageContent = computed(() =>
     contentInfo.value?.contentType?.startsWith('image/') || contentInfo.value?.type === 'IMAGE',
   )
+
+  // Sanitised resource content for v-html: HTML-escape user input first,
+  // then convert newlines to <br>/<p> so basic formatting survives. Mirrors
+  // the pattern in media-store-ui's read/[id].vue. Critical: never v-html
+  // raw `detailEntry.resourceContent` — moderators view attacker-supplied
+  // text and would otherwise execute <script> in the admin context.
+  const safeResourceContent = computed(() => {
+    const raw = detailEntry.value?.resourceContent ?? ''
+    const escaped = raw
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+    return escaped.replace(/\n\n/g, '</p><p class="mt-4">').replace(/\n/g, '<br>')
+  })
 
   // Action dialogs
   const rejectDialog = ref(false)

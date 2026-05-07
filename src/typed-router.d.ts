@@ -97,6 +97,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/spaces': RouteRecordInfo<
+      '/spaces',
+      '/spaces',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/supervisors': RouteRecordInfo<
       '/supervisors',
       '/supervisors',
@@ -188,6 +195,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/settings.vue': {
       routes:
         | '/settings'
+      views:
+        | never
+    }
+    'src/pages/spaces.vue': {
+      routes:
+        | '/spaces'
       views:
         | never
     }

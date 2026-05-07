@@ -103,6 +103,12 @@
             to="/moderators"
           />
           <v-list-item
+            v-if="isSuperadmin || isTenantOwner"
+            prepend-icon="mdi-shape-outline"
+            title="Spaces"
+            to="/spaces"
+          />
+          <v-list-item
             v-if="isSuperadmin"
             prepend-icon="mdi-account-group-outline"
             title="Users"
