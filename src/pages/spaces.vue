@@ -200,10 +200,11 @@
           <v-text-field
             v-model.trim="form.baseName"
             autofocus
-            class="mb-3"
+            class="mb-1"
             :counter="40"
             hint="English name (1–40 characters). AI translations are generated from this."
-            label="Name"
+            :label="nameCheckLoading ? 'Name (checking…)' : 'Name'"
+            :loading="nameCheckLoading ? 'primary' : false"
             persistent-hint
             :rules="[
               v => !!v?.trim() || 'Required',
@@ -211,6 +212,61 @@
             ]"
             variant="outlined"
           />
+
+          <!-- AI says: not English. Offer one-click swap to suggested English. -->
+          <v-alert
+            v-if="showNameSuggestion"
+            class="mb-3 mt-1"
+            color="warning"
+            density="comfortable"
+            icon="mdi-translate"
+            variant="tonal"
+          >
+            <div class="text-body-2">
+              That looks like
+              <strong>{{ nameCheck?.detectedLanguageName || 'another language' }}</strong>.
+              Space names must be in English so AI can translate them for every
+              storefront language.
+            </div>
+            <div class="text-body-2 mt-1">
+              Suggested English name:
+              <strong>“{{ nameCheck?.englishSuggestion }}”</strong>
+            </div>
+            <template #append>
+              <div class="d-flex flex-column ga-1">
+                <v-btn
+                  color="warning"
+                  density="comfortable"
+                  prepend-icon="mdi-check"
+                  size="small"
+                  variant="flat"
+                  @click="applyNameSuggestion"
+                >
+                  Use “{{ nameCheck?.englishSuggestion }}”
+                </v-btn>
+                <v-btn
+                  density="comfortable"
+                  size="small"
+                  variant="text"
+                  @click="dismissNameSuggestion"
+                >
+                  Keep my text
+                </v-btn>
+              </div>
+            </template>
+          </v-alert>
+
+          <!-- AI-confirmed English: tiny confirmation, no buttons. -->
+          <div
+            v-else-if="showNameOk"
+            class="d-flex align-center text-success text-caption mb-3 mt-1"
+          >
+            <v-icon class="me-1" size="16">mdi-check-circle</v-icon>
+            English looks good — ready to translate.
+          </div>
+
+          <!-- Spacer so the dialog doesn't jump when the alert appears. -->
+          <div v-else class="mb-3" />
 
           <v-text-field
             v-model.trim="form.icon"
@@ -408,13 +464,14 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, onMounted, reactive, ref } from 'vue'
+  import { computed, onMounted, reactive, ref, watch } from 'vue'
   import {
     archiveSpace,
     type CreateSpacePayload,
     createSpace,
     listEnabledLanguages,
     listSpaces,
+    type NameValidationResult,
     regenerateTranslations,
     reorderSpaces,
     restoreSpace,
@@ -425,6 +482,7 @@
     type SupportedLanguage,
     type UpdateSpacePayload,
     updateSpace,
+    validateSpaceName,
   } from '@/api/spaces'
   import { useTenantLabels } from '@/composables/useTenantLabels'
   import { useAuthStore } from '@/stores/auth'
@@ -571,6 +629,82 @@
     && /^mdi-[a-z0-9-]{1,40}$/.test(form.icon ?? ''),
   )
 
+  // ---------------------------------------------------------- AI name check
+  // Real-time language hint for the name field. Debounced + abortable so a
+  // fast typist generates at most one in-flight request.
+  const nameCheck = ref<NameValidationResult | null>(null)
+  const nameCheckLoading = ref(false)
+  const nameCheckIgnored = ref(false) // admin clicked "Use anyway"
+  let nameCheckTimer: ReturnType<typeof setTimeout> | null = null
+  let nameCheckCtrl: AbortController | null = null
+
+  function resetNameCheck () {
+    if (nameCheckTimer) { clearTimeout(nameCheckTimer); nameCheckTimer = null }
+    if (nameCheckCtrl) { nameCheckCtrl.abort(); nameCheckCtrl = null }
+    nameCheck.value = null
+    nameCheckLoading.value = false
+    nameCheckIgnored.value = false
+  }
+
+  function scheduleNameCheck (raw: string) {
+    const text = (raw ?? '').trim()
+    if (nameCheckTimer) clearTimeout(nameCheckTimer)
+    if (nameCheckCtrl) nameCheckCtrl.abort()
+    nameCheck.value = null
+    nameCheckLoading.value = false
+    if (!text || text.length < 2 || !selectedTenant.value) return
+    nameCheckTimer = setTimeout(async () => {
+      const ctrl = new AbortController()
+      nameCheckCtrl = ctrl
+      nameCheckLoading.value = true
+      try {
+        const r = await validateSpaceName(selectedTenant.value, text, ctrl.signal)
+        if (!ctrl.signal.aborted) nameCheck.value = r
+      } catch (e) {
+        // Silently degrade — hint only.
+        if (!(e instanceof DOMException && e.name === 'AbortError')) {
+          nameCheck.value = null
+        }
+      } finally {
+        if (nameCheckCtrl === ctrl) nameCheckCtrl = null
+        nameCheckLoading.value = false
+      }
+    }, 600)
+  }
+
+  watch(() => form.baseName, v => {
+    nameCheckIgnored.value = false
+    scheduleNameCheck(v)
+  })
+
+  function applyNameSuggestion () {
+    const s = nameCheck.value?.englishSuggestion
+    if (!s) return
+    form.baseName = s
+    // The watcher will re-trigger; mark as not-yet-ignored so success state shows.
+    nameCheckIgnored.value = false
+  }
+
+  function dismissNameSuggestion () {
+    nameCheckIgnored.value = true
+  }
+
+  // Visible only when AI is confident the name is NOT English AND the admin
+  // has not yet applied or dismissed the suggestion.
+  const showNameSuggestion = computed(() => {
+    const r = nameCheck.value
+    return !!r
+      && r.english === false
+      && !!r.englishSuggestion
+      && !nameCheckIgnored.value
+  })
+
+  // Visible after AI confirms the name is English (positive feedback).
+  const showNameOk = computed(() => {
+    const r = nameCheck.value
+    return !!r && r.english === true && (form.baseName?.trim().length ?? 0) >= 2
+  })
+
   function openCreate () {
     formMode.value = 'create'
     editingId.value = null
@@ -580,6 +714,7 @@
     form.showInSidebar = true
     form.allowPublishing = true
     formError.value = null
+    resetNameCheck()
     formDialog.value = true
   }
 
@@ -592,6 +727,7 @@
     form.showInSidebar = s.showInSidebar
     form.allowPublishing = s.allowPublishing
     formError.value = null
+    resetNameCheck()
     formDialog.value = true
   }
 

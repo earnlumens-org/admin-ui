@@ -148,6 +148,38 @@ export async function createSpace (tenantId: string, payload: CreateSpacePayload
   return res.json()
 }
 
+/**
+ * Real-time AI language hint used by the create/edit dialog while the
+ * admin is typing a name.
+ *
+ * <p>{@code english=null} means "the AI couldn't decide" (typically:
+ * Gemini disabled or call failed). The UI should NOT block the form on
+ * this — it's purely advisory; the server still validates on submit.
+ */
+export interface NameValidationResult {
+  english: boolean | null
+  detectedLanguageCode: string | null
+  detectedLanguageName: string | null
+  englishSuggestion: string | null
+  confidence: number
+}
+
+export async function validateSpaceName (
+  tenantId: string,
+  name: string,
+  signal?: AbortSignal,
+): Promise<NameValidationResult> {
+  const res = await fetch(`${base(tenantId)}/validate-name`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: await authHeaders(),
+    body: JSON.stringify({ name }),
+    signal,
+  })
+  if (!res.ok) throw await parseError(res)
+  return res.json()
+}
+
 export async function updateSpace (
   tenantId: string,
   spaceId: string,
