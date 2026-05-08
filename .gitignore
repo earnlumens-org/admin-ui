@@ -6,7 +6,7 @@ node_modules
 /dist-ssr
 
 # Local smoke/adhoc scripts (not committed)
-/scripts
+/scripts/*
 # Build-time scripts that ARE committed
 !/scripts/gen-mdi-names.mjs
 
