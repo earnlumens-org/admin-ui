@@ -338,7 +338,8 @@
             variant="outlined"
           />
 
-          <!-- AI says: not English. Offer one-click swap to suggested English. -->
+          <!-- AI says: not English. Default action will swap to the suggested
+               English on submit unless the admin explicitly keeps their text. -->
           <v-alert
             v-if="showNameSuggestion"
             class="mb-3 mt-1"
@@ -350,12 +351,9 @@
             <div class="text-body-2">
               That looks like
               <strong>{{ nameCheck?.detectedLanguageName || 'another language' }}</strong>.
-              Space names must be in English so AI can translate them for every
-              storefront language.
-            </div>
-            <div class="text-body-2 mt-1">
-              Suggested English name:
+              We'll save it as
               <strong>“{{ nameCheck?.englishSuggestion }}”</strong>
+              (English) so the storefront can translate it for every language.
             </div>
             <template #append>
               <div class="d-flex flex-column ga-1">
@@ -367,7 +365,7 @@
                   variant="flat"
                   @click="applyNameSuggestion"
                 >
-                  Use “{{ nameCheck?.englishSuggestion }}”
+                  Use “{{ nameCheck?.englishSuggestion }}” now
                 </v-btn>
                 <v-btn
                   density="comfortable"
@@ -375,11 +373,21 @@
                   variant="text"
                   @click="dismissNameSuggestion"
                 >
-                  Keep my text
+                  Keep my text instead
                 </v-btn>
               </div>
             </template>
           </v-alert>
+
+          <!-- 'Keep my text' was clicked: tiny acknowledgement so admins
+               know their original input will be sent as-is. -->
+          <div
+            v-else-if="nameCheck && nameCheck.english === false && nameCheckIgnored"
+            class="d-flex align-center text-medium-emphasis text-caption mb-3 mt-1"
+          >
+            <v-icon class="me-1" size="16">mdi-information-outline</v-icon>
+            Saving as you typed it. Translations will be generated from this text.
+          </div>
 
           <!-- AI-confirmed English: tiny confirmation, no buttons. -->
           <div
@@ -1129,6 +1137,21 @@
   async function submitForm () {
     submitting.value = true
     formError.value = null
+
+    // UX: if the AI offered an English suggestion and the admin did NOT
+    // explicitly choose 'Keep my text', auto-apply it on submit. This is
+    // the safest default for non-technical users typing in their own
+    // language — the rest of the storefront will then translate correctly.
+    // Admins can still override per-locale from the Translations dialog.
+    if (
+      nameCheck.value
+      && nameCheck.value.english === false
+      && nameCheck.value.englishSuggestion
+      && !nameCheckIgnored.value
+    ) {
+      form.baseName = nameCheck.value.englishSuggestion
+    }
+
     const iconToSend = (form.icon?.trim() || DEFAULT_ICON)
     try {
       if (formMode.value === 'create') {
