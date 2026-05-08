@@ -102,6 +102,21 @@
             </v-card-item>
 
             <v-card-text>
+              <v-alert
+                border="start"
+                class="mb-3"
+                density="compact"
+                type="warning"
+                variant="tonal"
+              >
+                <strong>The text shown when the field is empty is just an example</strong>
+                for a fictional <em>“AI for Work”</em> tenant. Do <strong>not</strong>
+                save it verbatim — it does not match your business and the platform
+                already enforces every baseline rule listed above. Replace it with
+                rules that describe <strong>what is specific to your tenant</strong>
+                (allowed topics, tone, formats, edge cases). Saving an empty prompt
+                is fine: the baseline moderation still applies.
+              </v-alert>
               <v-textarea
                 v-model="promptText"
                 auto-grow
@@ -183,7 +198,7 @@
                 auto-grow
                 counter="5000"
                 :maxlength="5000"
-                placeholder="Example:&#10;&#10;This marketplace focuses on long-form, hands-on Soroban tutorials. We prefer code-first content over high-level explainers.&#10;&#10;- Posts must include at least one runnable code block or a link to a public repo.&#10;- Sponsored content is allowed but must be tagged in the title with [sponsored].&#10;- Off-topic finance content (general budgeting, non-Stellar trading) belongs on other tenants."
+                placeholder="EXAMPLE — DO NOT SAVE VERBATIM. Replace with notes that match YOUR tenant. The text below is written for a fictional &quot;AI for Work&quot; tenant.&#10;&#10;This marketplace is for practical, hands-on AI usage at work. We publish actionable prompts, workflows, templates and tutorials that knowledge workers, freelancers and small-business operators can apply the same day.&#10;&#10;- Posts must include at least one concrete artefact: a runnable prompt, a template, a screenshot of a real workflow, or a step-by-step procedure.&#10;- Sponsored content is allowed but must be tagged in the title with [sponsored] and disclose the tool you are paid to promote.&#10;- Generic AI hype, hobbyist art generation and personal-life prompts belong on other tenants — they are off-topic here.&#10;- AI-generated images, voices or videos of real people require explicit consent and a visible &quot;AI-generated&quot; label."
                 rows="8"
                 variant="outlined"
               />
@@ -516,37 +531,46 @@
   "reason": "string"
 }`
 
-  const defaultPromptPlaceholder = `You are the content moderator for EarnLumens, an educational finance platform focused on the Stellar ecosystem.
+  const defaultPromptPlaceholder = `EXAMPLE — DO NOT SAVE VERBATIM. Replace with rules that match YOUR tenant.
+This sample is written for a fictional tenant called “AI for Work” — a marketplace focused on practical, ethical AI usage for professional work, productivity and business operations. Use it as a template for the structure (Approve / Reject / Manual review), not as actual content.
 
-GUIDING PRINCIPLE: lean toward APPROVE. Reject what is harmful or fraudulent, not what is merely unconventional, opinionated, or outside Stellar. Creators are free to discuss general personal finance, other blockchains, and to express opinions clearly labelled as such.
+TENANT FOCUS
+This tenant publishes content that teaches people how to use AI to do their job better. Audience: knowledge workers, freelancers, small-business operators, professional educators. Out of scope: personal-life prompts, generic AI hype, hobbyist art generation.
 
-ALWAYS REJECT:
-- Ponzi / pyramid / pump & dump / rug pulls / guaranteed-return promises
-- Paid trading signals, personalized buy/sell calls with specific amounts, personalized financial advice
-- Phishing, fake airdrops, requests for private keys / seed phrases / credentials, wallet drainers, look-alike wallet/exchange domains
-- Impersonation / deepfakes of public figures, projects, EarnLumens or the Stellar Development Foundation
-- Glorification of suicide or self-harm, pro-anorexia/bulimia content, methods or instructions for self-injury (educational and recovery-oriented framing is allowed)
-- Hate speech, harassment, discrimination, incitement to violence
-- Explicit sexual content, graphic violence, content involving minors
-- Clearly copyrighted material reuploaded without authorization
-- Personal data of third parties without consent
+APPROVE when the content delivers concrete, hands-on guidance for legitimate professional use of AI in any of:
+- writing, editing, summarising work documents
+- spreadsheets, data cleaning and lightweight analysis
+- customer support workflows and templated replies
+- marketing operations: SEO, ad copy, content calendars
+- coding assistance, code review, refactoring, test generation
+- business automation: Zapier / Make / Power Automate / n8n flows
+- project management, meeting notes, status reports
+- prompt engineering and prompt libraries for professional tasks
+- no-code / low-code AI tools used inside companies
+- professional education: courses, tutorials, walkthroughs, templates with clear takeaways
 
-MANUAL_QUEUE (do not auto-reject):
-- Mentions of specific tokens / cryptocurrencies without clear educational context
-- Promotion of own products / services that may need a "sponsored" label
-- Past-performance claims without a verifiable source
-- Very short or borderline-low-quality submissions where intent is unclear
+Reward content that includes runnable prompts, before/after examples, screenshots of real workflows, repeatable steps, or reusable templates.
 
-APPROVE:
-- Stellar / Soroban / SCP / SDK / anchors / DEX education
-- General personal finance (saving, budgeting, debt, responsible investing, taxes)
-- Tutorials, code demos, wallet/dApp walkthroughs
-- Honest comparisons between networks, wallets or protocols (including non-Stellar ones)
-- Opinions and analysis clearly identified as personal opinion
+REJECT when the content teaches, promotes, packages or sells techniques to:
+- phishing, scams, impersonation or social engineering of any kind
+- fabricating job applications, résumés, references, credentials or professional identities
+- spam at scale, mass cold-outreach abuse, bot-driven engagement, fake-account farming
+- bypassing platform rules, rate limits, captchas, paywalls, watermarks or moderation systems
+- malware, unauthorised access, credential theft, data exfiltration, prompt-injection exploits aimed at production systems
+- scraping or harvesting private, personal or copyrighted data without consent
+- generating fake reviews, fake testimonials, fake engagement metrics or deceptive marketing collateral
+- replacing professional judgment in legal, medical, financial or tax matters without explicit educational framing AND a clear “not professional advice” disclaimer
+- impersonating a real person, employee, client, executive or company representative (including AI voice/face cloning of real people without explicit consent)
 
-Notes:
-- Wallets, DEXs and tools that appear in https://stellar.org/ecosystem are a strong trust signal — but mentioning unlisted ones is allowed unless they are promoting fraud.
-- Disclosure of positions, "not financial advice" disclaimers, and source citations are recommended but NOT required for approval.`
+SEND TO MANUAL REVIEW when the content sits in a grey zone, including:
+- automation that could be repurposed for spam or manipulation but is presented as legitimate (e.g. “mass-personalised” outreach, lead-scraping pipelines, auto-DM flows)
+- workflows that touch client data, employee data, internal documents or other confidential business information without an explicit privacy / handling note
+- sales, recruiting or marketing tactics that flirt with deception (urgency hacks, fake scarcity, opaque AI-generated personas)
+- AI-generated images, voices or videos of real people, even when framed as “demo”
+- generic, template-only “AI filler” posts where the educational value or originality is unclear
+
+QUALITY BAR
+The ideal entry is actionable, specific, ethical and immediately useful to a working professional. Prefer concrete examples over abstract claims; prefer disclosed limitations over guaranteed outcomes; prefer transparent prompt/tool usage over hidden tricks.`
 
   function formatDate (iso: string): string {
     return new Date(iso).toLocaleString()
