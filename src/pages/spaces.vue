@@ -563,8 +563,33 @@
               Regenerate to refresh them.
             </v-alert>
 
+            <!--
+              English row — baseName IS the English source-of-truth, never
+              auto-translated. Render as a read-only row to make the
+              relationship obvious to admins (otherwise English would always
+              show as PENDING because no translation job is ever created
+              for it).
+            -->
+            <div class="mb-3">
+              <div class="d-flex align-center ga-2 mb-1">
+                <span class="text-caption font-weight-medium">en</span>
+                <v-chip color="primary" size="x-small" variant="tonal">
+                  source
+                </v-chip>
+              </div>
+              <v-text-field
+                density="compact"
+                hide-details
+                hint="This is the base name. Edit the space to change it."
+                :model-value="targetSpace?.baseName ?? ''"
+                persistent-hint
+                readonly
+                variant="outlined"
+              />
+            </div>
+
             <div
-              v-for="lang in enabledLocales"
+              v-for="lang in nonEnglishLocales"
               :key="lang.code"
               class="mb-3"
             >
@@ -771,6 +796,14 @@
   const loadError = ref<string | null>(null)
   const spaces = ref<SpaceResponse[]>([])
   const enabledLocales = ref<SupportedLanguage[]>([])
+  /** English is the source-of-truth (baseName), not a translation target. */
+  function isEnglishCode (code: string): boolean {
+    const c = code.toLowerCase()
+    return c === 'en' || c.startsWith('en-')
+  }
+  const nonEnglishLocales = computed(() =>
+    enabledLocales.value.filter(l => !isEnglishCode(l.code)),
+  )
   const moving = ref(false)
 
   const snackbar = ref(false)
@@ -1177,9 +1210,14 @@
   })
 
   function summariseTranslations (s: SpaceResponse): string {
-    const total = enabledLocales.value.length || Object.keys(s.translationStatus ?? {}).length
-    const reviewed = Object.values(s.translationStatus ?? {}).filter(v => v === 'REVIEWED').length
-    return total ? `${reviewed}/${total} reviewed` : 'edit'
+    // English is the source (baseName), so it doesn't count toward the
+    // "reviewed" denominator — only AI-translated locales do.
+    const targets = nonEnglishLocales.value.length
+      || Object.keys(s.translationStatus ?? {}).filter(c => !isEnglishCode(c)).length
+    const reviewed = Object.entries(s.translationStatus ?? {})
+      .filter(([code, status]) => !isEnglishCode(code) && status === 'REVIEWED')
+      .length
+    return targets ? `${reviewed}/${targets} reviewed` : 'edit'
   }
 
   function translationStatusColor (s: string | undefined): string {
@@ -1192,7 +1230,7 @@
   function openTranslations (s: SpaceResponse) {
     targetSpace.value = s
     Object.keys(translationDrafts).forEach(k => delete translationDrafts[k])
-    for (const lang of enabledLocales.value) {
+    for (const lang of nonEnglishLocales.value) {
       translationDrafts[lang.code] = s.translations?.[lang.code] ?? ''
     }
     translationsDialog.value = true
