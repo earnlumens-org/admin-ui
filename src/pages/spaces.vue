@@ -268,21 +268,65 @@
           <!-- Spacer so the dialog doesn't jump when the alert appears. -->
           <div v-else class="mb-3" />
 
+          <!-- ----------------------------------------------------- icon -->
+          <div class="mb-1 text-body-2 text-medium-emphasis">Icon</div>
+          <div class="d-flex align-center ga-3 mb-1">
+            <v-avatar color="surface-variant" rounded="lg" size="48">
+              <v-icon :icon="effectiveIcon" size="28" />
+            </v-avatar>
+            <div class="flex-grow-1">
+              <div class="text-body-1">{{ effectiveIcon }}</div>
+              <div class="text-caption text-medium-emphasis">
+                {{ form.icon ? 'Custom icon' : 'Default — no icon chosen' }}
+              </div>
+            </div>
+            <v-btn
+              prepend-icon="mdi-image-search-outline"
+              variant="tonal"
+              @click="openIconPicker"
+            >
+              Choose icon
+            </v-btn>
+          </div>
+          <div class="d-flex align-center mb-3">
+            <v-btn
+              v-if="form.icon"
+              density="comfortable"
+              size="small"
+              variant="text"
+              @click="form.icon = ''"
+            >
+              Reset to default
+            </v-btn>
+            <v-spacer />
+            <v-btn
+              density="comfortable"
+              size="small"
+              variant="text"
+              @click="iconAdvanced = !iconAdvanced"
+            >
+              <v-icon start size="16">
+                {{ iconAdvanced ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+              </v-icon>
+              {{ iconAdvanced ? 'Hide' : 'Use custom MDI name' }}
+            </v-btn>
+          </div>
+
           <v-text-field
+            v-if="iconAdvanced"
             v-model.trim="form.icon"
             class="mb-3"
-            hint='Material Design Icon name, e.g. "mdi-compass-outline".'
-            label="Icon"
+            hint='Advanced: paste any Material Design Icon name (e.g. "mdi-rocket-launch-outline"). Leave blank to use the default.'
+            label="Custom MDI name"
             persistent-hint
-            placeholder="mdi-compass-outline"
+            placeholder="mdi-..."
             :rules="[
-              v => !!v?.trim() || 'Required',
-              v => /^mdi-[a-z0-9-]{1,40}$/.test(v ?? '') || 'Invalid icon',
+              v => !v || /^mdi-[a-z0-9-]{1,40}$/.test(v) || 'Must look like \'mdi-something\'',
             ]"
             variant="outlined"
           >
             <template #prepend-inner>
-              <v-icon :icon="form.icon || 'mdi-help-circle-outline'" />
+              <v-icon :icon="effectiveIcon" />
             </template>
           </v-text-field>
 
@@ -460,6 +504,55 @@
     <v-snackbar v-model="snackbar" :color="snackbarColor" location="bottom" timeout="3000">
       {{ snackbarText }}
     </v-snackbar>
+
+    <!-- ============================================================ -->
+    <!--  Icon picker                                                 -->
+    <!-- ============================================================ -->
+    <v-dialog v-model="iconPickerOpen" max-width="480">
+      <v-card>
+        <v-card-title class="text-h6">Choose an icon</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="iconPickerSearch"
+            autofocus
+            class="mb-3"
+            clearable
+            density="comfortable"
+            hide-details
+            placeholder="Search… (e.g. star, fire, school)"
+            prepend-inner-icon="mdi-magnify"
+            variant="outlined"
+          />
+          <div
+            v-if="filteredIconSuggestions.length === 0"
+            class="text-center text-medium-emphasis py-6"
+          >
+            No matches. Try a different word, or use the
+            <strong>custom MDI name</strong> field for advanced icons.
+          </div>
+          <div v-else class="d-flex flex-wrap ga-2">
+            <v-card
+              v-for="i in filteredIconSuggestions"
+              :key="i.name"
+              class="pa-3 d-flex flex-column align-center text-center"
+              :color="effectiveIcon === i.name ? 'primary' : undefined"
+              hover
+              link
+              :variant="effectiveIcon === i.name ? 'tonal' : 'outlined'"
+              width="96"
+              @click="selectIcon(i.name)"
+            >
+              <v-icon :icon="i.name" size="32" />
+              <div class="text-caption mt-1">{{ i.label }}</div>
+            </v-card>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="iconPickerOpen = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -626,8 +719,45 @@
   const isFormValid = computed(() =>
     !!form.baseName?.trim()
     && form.baseName.length <= 40
-    && /^mdi-[a-z0-9-]{1,40}$/.test(form.icon ?? ''),
+    && (!form.icon || /^mdi-[a-z0-9-]{1,40}$/.test(form.icon)),
   )
+
+  // ---------------------------------------------------------- icon picker
+  // Empty form.icon = use the platform default. The picker writes the chosen
+  // mdi name into form.icon; submission falls back to DEFAULT_ICON if empty.
+  const DEFAULT_ICON = 'mdi-compass-outline'
+  const ICON_SUGGESTIONS: Array<{ name: string, label: string }> = [
+    { name: 'mdi-compass-outline', label: 'Compass' },
+    { name: 'mdi-star-outline', label: 'Star' },
+    { name: 'mdi-fire', label: 'Fire' },
+    { name: 'mdi-school-outline', label: 'School' },
+    { name: 'mdi-account-group-outline', label: 'Community' },
+    { name: 'mdi-book-open-page-variant-outline', label: 'Book' },
+    { name: 'mdi-rocket-launch-outline', label: 'Rocket' },
+    { name: 'mdi-earth', label: 'Earth' },
+  ]
+  const iconAdvanced = ref(false)
+  const iconPickerOpen = ref(false)
+  const iconPickerSearch = ref('')
+
+  const effectiveIcon = computed(() => form.icon?.trim() || DEFAULT_ICON)
+  const filteredIconSuggestions = computed(() => {
+    const q = iconPickerSearch.value.trim().toLowerCase()
+    if (!q) return ICON_SUGGESTIONS
+    return ICON_SUGGESTIONS.filter(i =>
+      i.label.toLowerCase().includes(q) || i.name.toLowerCase().includes(q),
+    )
+  })
+
+  function openIconPicker () {
+    iconPickerSearch.value = ''
+    iconPickerOpen.value = true
+  }
+
+  function selectIcon (name: string) {
+    form.icon = name
+    iconPickerOpen.value = false
+  }
 
   // ---------------------------------------------------------- AI name check
   // Real-time language hint for the name field. Debounced + abortable so a
@@ -734,11 +864,12 @@
   async function submitForm () {
     submitting.value = true
     formError.value = null
+    const iconToSend = (form.icon?.trim() || DEFAULT_ICON)
     try {
       if (formMode.value === 'create') {
         const payload: CreateSpacePayload = {
           baseName: form.baseName.trim(),
-          icon: form.icon.trim(),
+          icon: iconToSend,
           whoCanPublish: form.whoCanPublish,
           showInSidebar: form.showInSidebar,
           allowPublishing: form.allowPublishing,
@@ -749,7 +880,7 @@
       } else if (editingId.value) {
         const payload: UpdateSpacePayload = {
           baseName: form.baseName.trim(),
-          icon: form.icon.trim(),
+          icon: iconToSend,
           whoCanPublish: form.whoCanPublish,
           showInSidebar: form.showInSidebar,
           allowPublishing: form.allowPublishing,
