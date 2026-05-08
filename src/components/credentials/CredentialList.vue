@@ -109,20 +109,22 @@
         </v-card-title>
         <v-card-text>
           <p class="text-body-2 text-medium-emphasis mb-4">
-            Enter the public X handle of the user you want to verify. They will be
-            allowed to publish in spaces restricted to Verified Gold immediately.
+            Enter the exact X (Twitter) username of the user you want to verify.
+            They will be allowed to publish in spaces restricted to Verified Gold
+            immediately.
           </p>
           <v-text-field
             ref="usernameField"
             v-model="grantUsername"
             autofocus
+            class="mb-1"
+            density="compact"
             :disabled="granting"
             :error-messages="grantError ? [grantError] : []"
-            hint="Example: ai_for_work"
-            label="X handle"
-            persistent-hint
-            placeholder="@username"
-            prepend-inner-icon="mdi-at"
+            label="X Username"
+            placeholder="username"
+            prefix="@"
+            :rules="[v => !!v?.trim() || 'Username is required']"
             variant="outlined"
             @keydown.enter="submitGrant"
           />
