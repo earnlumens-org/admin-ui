@@ -331,7 +331,9 @@ export async function listAllLanguages (): Promise<SupportedLanguage[]> {
   return res.json()
 }
 
-/** Superadmin-only. `code` is BCP-47 (e.g. `es`, `zh-CN`). */
+/** Superadmin-only. `code` is BCP-47 (e.g. `es`, `zh-CN`). Adding a
+ *  language fans out translation jobs across every editable space of every
+ *  tenant on the backend. */
 export async function addLanguage (code: string): Promise<SupportedLanguage> {
   const res = await fetch(`${API_BASE_URL}/api/i18n/languages`, {
     method: 'POST',
@@ -341,35 +343,4 @@ export async function addLanguage (code: string): Promise<SupportedLanguage> {
   })
   if (!res.ok) throw await parseError(res)
   return res.json()
-}
-
-/** Superadmin-only: enable / disable a language without deleting translations. */
-export async function setLanguageEnabled (
-  code: string,
-  enabled: boolean,
-): Promise<SupportedLanguage> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/i18n/languages/${encodeURIComponent(code)}/enabled`,
-    {
-      method: 'PUT',
-      credentials: 'include',
-      headers: await authHeaders(),
-      body: JSON.stringify({ enabled }),
-    },
-  )
-  if (!res.ok) throw await parseError(res)
-  return res.json()
-}
-
-/** Superadmin-only. Removes the language entirely; existing translations stay. */
-export async function deleteLanguage (code: string): Promise<void> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/i18n/languages/${encodeURIComponent(code)}`,
-    {
-      method: 'DELETE',
-      credentials: 'include',
-      headers: await authHeaders(),
-    },
-  )
-  if (!res.ok) throw await parseError(res)
 }
