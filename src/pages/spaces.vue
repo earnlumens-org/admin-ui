@@ -508,10 +508,10 @@
     <!-- ============================================================ -->
     <!--  Icon picker                                                 -->
     <!-- ============================================================ -->
-    <v-dialog v-model="iconPickerOpen" max-width="480">
+    <v-dialog v-model="iconPickerOpen" max-width="560" scrollable>
       <v-card>
         <v-card-title class="text-h6">Choose an icon</v-card-title>
-        <v-card-text>
+        <v-card-text style="max-height: 60vh">
           <v-text-field
             v-model="iconPickerSearch"
             autofocus
@@ -519,31 +519,53 @@
             clearable
             density="comfortable"
             hide-details
-            placeholder="Search… (e.g. star, fire, school)"
+            placeholder="Search 7,000+ icons (e.g. cash, heart, rocket)…"
             prepend-inner-icon="mdi-magnify"
             variant="outlined"
           />
           <div
-            v-if="filteredIconSuggestions.length === 0"
+            v-if="iconSearchResults.mode === 'curated'"
+            class="text-caption text-medium-emphasis mb-2"
+          >
+            Suggested for spaces — type above to search the full Material
+            Design Icons catalogue.
+          </div>
+          <div
+            v-else-if="iconSearchResults.items.length === 0"
             class="text-center text-medium-emphasis py-6"
           >
-            No matches. Try a different word, or use the
-            <strong>custom MDI name</strong> field for advanced icons.
+            No icons match “{{ iconPickerSearch }}”.
           </div>
-          <div v-else class="d-flex flex-wrap ga-2">
+          <div v-else class="text-caption text-medium-emphasis mb-2">
+            <template v-if="iconSearchResults.truncated">
+              Showing the first {{ iconSearchResults.items.length }} matches —
+              refine your search to narrow down.
+            </template>
+            <template v-else>
+              {{ iconSearchResults.items.length }}
+              match{{ iconSearchResults.items.length === 1 ? '' : 'es' }}.
+            </template>
+          </div>
+          <div class="d-flex flex-wrap ga-2">
             <v-card
-              v-for="i in filteredIconSuggestions"
+              v-for="i in iconSearchResults.items"
               :key="i.name"
-              class="pa-3 d-flex flex-column align-center text-center"
+              class="pa-2 d-flex flex-column align-center text-center"
               :color="effectiveIcon === i.name ? 'primary' : undefined"
               hover
               link
+              :title="i.name"
               :variant="effectiveIcon === i.name ? 'tonal' : 'outlined'"
-              width="96"
+              width="88"
               @click="selectIcon(i.name)"
             >
-              <v-icon :icon="i.name" size="32" />
-              <div class="text-caption mt-1">{{ i.label }}</div>
+              <v-icon :icon="i.name" size="28" />
+              <div
+                class="text-caption mt-1 text-truncate"
+                style="max-width: 100%"
+              >
+                {{ i.label }}
+              </div>
             </v-card>
           </div>
         </v-card-text>
@@ -577,6 +599,7 @@
     updateSpace,
     validateSpaceName,
   } from '@/api/spaces'
+  import mdiNames from '@/assets/mdi-names.json'
   import { useTenantLabels } from '@/composables/useTenantLabels'
   import { useAuthStore } from '@/stores/auth'
 
@@ -726,6 +749,7 @@
   // Empty form.icon = use the platform default. The picker writes the chosen
   // mdi name into form.icon; submission falls back to DEFAULT_ICON if empty.
   const DEFAULT_ICON = 'mdi-compass-outline'
+  /** Hand-picked quick-picks shown when the search box is empty. */
   const ICON_SUGGESTIONS: Array<{ name: string, label: string }> = [
     { name: 'mdi-compass-outline', label: 'Compass' },
     { name: 'mdi-star-outline', label: 'Star' },
@@ -736,17 +760,52 @@
     { name: 'mdi-rocket-launch-outline', label: 'Rocket' },
     { name: 'mdi-earth', label: 'Earth' },
   ]
+  /**
+   * Full MDI catalogue (~7.4k names, regenerated at build time from
+   * @mdi/svg/meta.json). Names are stored without the 'mdi-' prefix to
+   * keep the JSON tiny; the picker prepends it on render.
+   */
+  const ALL_MDI_NAMES: string[] = mdiNames as string[]
+  const ICON_SEARCH_LIMIT = 60
+
   const iconAdvanced = ref(false)
   const iconPickerOpen = ref(false)
   const iconPickerSearch = ref('')
 
   const effectiveIcon = computed(() => form.icon?.trim() || DEFAULT_ICON)
-  const filteredIconSuggestions = computed(() => {
+
+  /**
+   * When the search box is empty we surface the curated quick-picks.
+   * Otherwise we fuzzy-match the full catalogue, capped to keep the DOM
+   * snappy. A 'truncated' badge tells the admin to refine when needed.
+   */
+  const iconSearchResults = computed(() => {
     const q = iconPickerSearch.value.trim().toLowerCase()
-    if (!q) return ICON_SUGGESTIONS
-    return ICON_SUGGESTIONS.filter(i =>
-      i.label.toLowerCase().includes(q) || i.name.toLowerCase().includes(q),
-    )
+    if (!q) {
+      return {
+        mode: 'curated' as const,
+        items: ICON_SUGGESTIONS,
+        total: ICON_SUGGESTIONS.length,
+        truncated: false,
+      }
+    }
+    const matches: Array<{ name: string, label: string }> = []
+    for (const raw of ALL_MDI_NAMES) {
+      if (raw.includes(q)) {
+        matches.push({ name: 'mdi-' + raw, label: raw })
+        if (matches.length > ICON_SEARCH_LIMIT) break
+      }
+    }
+    const truncated = matches.length > ICON_SEARCH_LIMIT
+    if (truncated) matches.length = ICON_SEARCH_LIMIT
+    // Heuristic: count beyond the cap is unknown without scanning the
+    // whole array; surface 'many more' when truncated.
+    return {
+      mode: 'search' as const,
+      items: matches,
+      total: matches.length,
+      truncated,
+    }
   })
 
   function openIconPicker () {

@@ -7,6 +7,8 @@ node_modules
 
 # Local smoke/adhoc scripts (not committed)
 /scripts
+# Build-time scripts that ARE committed
+!/scripts/gen-mdi-names.mjs
 
 # local env files
 .env
