@@ -56,7 +56,8 @@
       </v-card>
 
       <v-card v-else>
-        <v-table density="comfortable">
+        <!-- ============ Desktop / tablet table (md and up) ============ -->
+        <v-table v-if="mdAndUp" density="comfortable">
           <thead>
             <tr>
               <th style="width: 56px"></th>
@@ -184,6 +185,130 @@
             </tr>
           </tbody>
         </v-table>
+
+        <!-- ============ Mobile cards (< md) ============ -->
+        <div v-else class="pa-2">
+          <v-card
+            v-for="(s, idx) in spaces"
+            :key="s.id"
+            class="mb-2"
+            :class="{ 'opacity-60': s.status === 'ARCHIVED' }"
+            variant="outlined"
+          >
+            <div class="d-flex align-center pa-3 ga-3">
+              <v-avatar color="surface-variant" rounded="lg" size="44">
+                <v-icon :icon="s.icon || 'mdi-folder-outline'" />
+              </v-avatar>
+              <div class="flex-grow-1 overflow-hidden">
+                <div class="d-flex align-center ga-2">
+                  <div class="font-weight-medium text-truncate">
+                    {{ s.systemSpace ? 'Explore' : (s.baseName ?? '—') }}
+                  </div>
+                  <v-chip
+                    v-if="s.systemSpace"
+                    color="primary"
+                    size="x-small"
+                    variant="tonal"
+                  >
+                    system
+                  </v-chip>
+                  <v-chip
+                    v-if="s.status === 'ARCHIVED'"
+                    color="grey"
+                    size="x-small"
+                    variant="tonal"
+                  >
+                    archived
+                  </v-chip>
+                </div>
+                <div class="text-caption text-medium-emphasis mt-1">
+                  <code>{{ s.key }}</code>
+                  · {{ publishRuleLabel(s.whoCanPublish) }}
+                </div>
+              </div>
+              <v-menu>
+                <template #activator="{ props: menuProps }">
+                  <v-btn
+                    v-bind="menuProps"
+                    density="comfortable"
+                    icon="mdi-dots-vertical"
+                    size="small"
+                    variant="text"
+                  />
+                </template>
+                <v-list density="compact">
+                  <v-list-item
+                    v-if="!s.systemSpace && idx > 0"
+                    :disabled="moving"
+                    prepend-icon="mdi-arrow-up"
+                    title="Move up"
+                    @click="move(idx, -1)"
+                  />
+                  <v-list-item
+                    v-if="!s.systemSpace && idx < spaces.length - 1"
+                    :disabled="moving"
+                    prepend-icon="mdi-arrow-down"
+                    title="Move down"
+                    @click="move(idx, 1)"
+                  />
+                  <v-list-item
+                    v-if="!s.systemSpace"
+                    prepend-icon="mdi-translate"
+                    :title="`Translations — ${summariseTranslations(s)}`"
+                    @click="openTranslations(s)"
+                  />
+                  <v-list-item
+                    v-if="!s.systemSpace && s.status === 'ACTIVE'"
+                    prepend-icon="mdi-pencil-outline"
+                    title="Edit"
+                    @click="openEdit(s)"
+                  />
+                  <v-list-item
+                    v-if="!s.systemSpace && s.status === 'ACTIVE'"
+                    prepend-icon="mdi-archive-outline"
+                    title="Archive"
+                    @click="confirmArchive(s)"
+                  />
+                  <v-list-item
+                    v-if="!s.systemSpace && s.status === 'ARCHIVED'"
+                    prepend-icon="mdi-restore"
+                    title="Restore"
+                    @click="handleRestore(s)"
+                  />
+                </v-list>
+              </v-menu>
+            </div>
+            <v-divider />
+            <div class="d-flex align-center pa-2 px-3 text-caption text-medium-emphasis ga-3">
+              <span class="d-flex align-center">
+                <v-icon
+                  class="me-1"
+                  :color="s.showInSidebar ? 'success' : 'grey'"
+                  :icon="s.showInSidebar ? 'mdi-eye-outline' : 'mdi-eye-off-outline'"
+                  size="16"
+                />
+                Sidebar
+              </span>
+              <span class="d-flex align-center">
+                <v-icon
+                  class="me-1"
+                  :color="s.allowPublishing ? 'success' : 'grey'"
+                  :icon="s.allowPublishing ? 'mdi-check-circle-outline' : 'mdi-close-circle-outline'"
+                  size="16"
+                />
+                Publishing
+              </span>
+              <v-spacer />
+              <v-chip
+                :color="s.status === 'ACTIVE' ? 'success' : 'grey'"
+                size="x-small"
+                variant="tonal"
+              >
+                {{ s.status }}
+              </v-chip>
+            </div>
+          </v-card>
+        </div>
       </v-card>
     </template>
 
@@ -546,27 +671,33 @@
               match{{ iconSearchResults.items.length === 1 ? '' : 'es' }}.
             </template>
           </div>
-          <div class="d-flex flex-wrap ga-2">
-            <v-card
+          <div class="icon-grid">
+            <v-tooltip
               v-for="i in iconSearchResults.items"
               :key="i.name"
-              class="pa-2 d-flex flex-column align-center text-center"
-              :color="effectiveIcon === i.name ? 'primary' : undefined"
-              hover
-              link
-              :title="i.name"
-              :variant="effectiveIcon === i.name ? 'tonal' : 'outlined'"
-              width="88"
-              @click="selectIcon(i.name)"
+              location="top"
+              :open-delay="400"
+              :text="i.name"
             >
-              <v-icon :icon="i.name" size="28" />
-              <div
-                class="text-caption mt-1 text-truncate"
-                style="max-width: 100%"
-              >
-                {{ i.label }}
-              </div>
-            </v-card>
+              <template #activator="{ props: tipProps }">
+                <v-card
+                  v-bind="tipProps"
+                  class="icon-tile pa-2 d-flex flex-column align-center justify-center text-center"
+                  :color="effectiveIcon === i.name ? 'primary' : undefined"
+                  hover
+                  link
+                  :variant="effectiveIcon === i.name ? 'tonal' : 'outlined'"
+                  @click="selectIcon(i.name)"
+                >
+                  <v-icon :icon="i.name" size="28" />
+                  <div
+                    class="text-caption mt-1 text-truncate w-100"
+                  >
+                    {{ i.label }}
+                  </div>
+                </v-card>
+              </template>
+            </v-tooltip>
           </div>
         </v-card-text>
         <v-card-actions>
@@ -580,6 +711,7 @@
 
 <script lang="ts" setup>
   import { computed, onMounted, reactive, ref, watch } from 'vue'
+  import { useDisplay } from 'vuetify'
   import {
     archiveSpace,
     type CreateSpacePayload,
@@ -602,6 +734,9 @@
   import mdiNames from '@/assets/mdi-names.json'
   import { useTenantLabels } from '@/composables/useTenantLabels'
   import { useAuthStore } from '@/stores/auth'
+
+  // -------------------------------------------------------------- responsive
+  const { mdAndUp } = useDisplay()
 
   // -------------------------------------------------------------- auth
   const authStore = useAuthStore()
@@ -749,16 +884,54 @@
   // Empty form.icon = use the platform default. The picker writes the chosen
   // mdi name into form.icon; submission falls back to DEFAULT_ICON if empty.
   const DEFAULT_ICON = 'mdi-compass-outline'
-  /** Hand-picked quick-picks shown when the search box is empty. */
+  /**
+   * Hand-picked quick-picks shown when the search box is empty.
+   * Curated for the kind of categories admins typically create:
+   * communities, learning, content types, commerce, places.
+   */
   const ICON_SUGGESTIONS: Array<{ name: string, label: string }> = [
+    // Discovery / general
     { name: 'mdi-compass-outline', label: 'Compass' },
+    { name: 'mdi-home-outline', label: 'Home' },
     { name: 'mdi-star-outline', label: 'Star' },
-    { name: 'mdi-fire', label: 'Fire' },
-    { name: 'mdi-school-outline', label: 'School' },
-    { name: 'mdi-account-group-outline', label: 'Community' },
-    { name: 'mdi-book-open-page-variant-outline', label: 'Book' },
-    { name: 'mdi-rocket-launch-outline', label: 'Rocket' },
+    { name: 'mdi-heart-outline', label: 'Heart' },
+    { name: 'mdi-fire', label: 'Trending' },
+    { name: 'mdi-bookmark-outline', label: 'Saved' },
+    { name: 'mdi-tag-outline', label: 'Tag' },
     { name: 'mdi-earth', label: 'Earth' },
+    // People & community
+    { name: 'mdi-account-group-outline', label: 'Community' },
+    { name: 'mdi-account-outline', label: 'People' },
+    { name: 'mdi-message-outline', label: 'Chat' },
+    { name: 'mdi-forum-outline', label: 'Forum' },
+    // Content types
+    { name: 'mdi-image-outline', label: 'Photos' },
+    { name: 'mdi-video-outline', label: 'Video' },
+    { name: 'mdi-music', label: 'Music' },
+    { name: 'mdi-podcast', label: 'Podcast' },
+    { name: 'mdi-microphone-outline', label: 'Audio' },
+    { name: 'mdi-book-open-page-variant-outline', label: 'Book' },
+    { name: 'mdi-newspaper-variant-outline', label: 'News' },
+    { name: 'mdi-text-box-outline', label: 'Article' },
+    // Learning
+    { name: 'mdi-school-outline', label: 'School' },
+    { name: 'mdi-lightbulb-on-outline', label: 'Ideas' },
+    { name: 'mdi-rocket-launch-outline', label: 'Launch' },
+    { name: 'mdi-trophy-outline', label: 'Awards' },
+    // Commerce
+    { name: 'mdi-cart-outline', label: 'Shop' },
+    { name: 'mdi-cash', label: 'Cash' },
+    { name: 'mdi-gift-outline', label: 'Gifts' },
+    { name: 'mdi-tag-multiple-outline', label: 'Deals' },
+    // Places & lifestyle
+    { name: 'mdi-map-marker-outline', label: 'Places' },
+    { name: 'mdi-food-outline', label: 'Food' },
+    { name: 'mdi-gamepad-variant-outline', label: 'Games' },
+    { name: 'mdi-soccer', label: 'Sports' },
+    { name: 'mdi-palette-outline', label: 'Art' },
+    { name: 'mdi-camera-outline', label: 'Camera' },
+    { name: 'mdi-flower-outline', label: 'Lifestyle' },
+    { name: 'mdi-paw-outline', label: 'Pets' },
   ]
   /**
    * Full MDI catalogue (~7.4k names, regenerated at build time from
@@ -1067,3 +1240,21 @@
     }
   }
 </script>
+
+<style scoped>
+/*
+ * Icon picker grid: square tiles that auto-size by viewport so the dialog
+ * never gets a single oversized cell on mobile or weirdly small ones on
+ * desktop. `aspect-ratio: 1` keeps tiles perfectly square regardless of
+ * the column count chosen by auto-fill.
+ */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+}
+.icon-tile {
+  aspect-ratio: 1 / 1;
+  min-width: 0; /* allow text-truncate to actually truncate */
+}
+</style>
