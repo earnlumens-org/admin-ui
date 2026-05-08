@@ -20,6 +20,15 @@
         <template v-else>
           <span class="d-none d-sm-inline">{{ activeLabel }}</span>
           <span class="d-sm-none">{{ activeLabel.slice(0, 8) }}</span>
+          <v-chip
+            v-if="activeRoleChip"
+            class="ml-2"
+            :color="activeRoleChip.color"
+            size="x-small"
+            variant="tonal"
+          >
+            {{ activeRoleChip.label }}
+          </v-chip>
         </template>
       </v-btn>
     </template>
@@ -83,6 +92,22 @@
     if (authStore.user?.tenantAdminOf?.includes(tenantId)) return 'admin'
     return 'moderator'
   }
+
+  // Shown inline in the switcher button so the user immediately sees the
+  // scope of the active context (admin vs moderator) without opening the
+  // menu. SUPERADMIN is global and gets its own chip in the app bar already.
+  const activeRoleChip = computed<{ label: string, color: string } | null>(() => {
+    if (authStore.user?.role === 'SUPERADMIN') return null
+    const id = authStore.activeTenantId
+    if (!id) return null
+    if (authStore.user?.tenantAdminOf?.includes(id)) {
+      return { label: 'admin', color: 'primary' }
+    }
+    if (authStore.user?.moderatorOf?.includes(id)) {
+      return { label: 'mod', color: 'secondary' }
+    }
+    return null
+  })
 
   function select (tenantId: string) {
     authStore.setActiveTenant(tenantId)

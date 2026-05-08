@@ -74,6 +74,40 @@ export function allUserTenants (user: AdminUser | null): string[] {
   return Array.from(set)
 }
 
+/**
+ * The user's effective role in the currently active tenant context. SUPERADMIN
+ * always reports {@code 'SUPERADMIN'} regardless of {@code activeTenantId}
+ * because their authority spans every tenant.
+ */
+export function activeTenantRole (
+  user: AdminUser | null,
+  activeTenantId: string | null,
+): 'SUPERADMIN' | 'admin' | 'moderator' | null {
+  if (!user) return null
+  if (user.role === 'SUPERADMIN') return 'SUPERADMIN'
+  if (!activeTenantId) return null
+  if (user.tenantAdminOf?.includes(activeTenantId)) return 'admin'
+  if (user.moderatorOf?.includes(activeTenantId)) return 'moderator'
+  return null
+}
+
+/** True when the user can perform tenant-owner actions in the active context. */
+export function isActiveTenantOwner (
+  user: AdminUser | null,
+  activeTenantId: string | null,
+): boolean {
+  const role = activeTenantRole(user, activeTenantId)
+  return role === 'SUPERADMIN' || role === 'admin'
+}
+
+/** True when the user can see the moderation queue in the active context. */
+export function hasActiveModerationAccess (
+  user: AdminUser | null,
+  activeTenantId: string | null,
+): boolean {
+  return activeTenantRole(user, activeTenantId) !== null
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = ref(false)
   const isAuthReady = ref(false)

@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { logout as logoutApi } from '@/api/auth'
 import { broadcastLogout, clearToken } from '@/services/tokenWorkerClient'
-import { allUserTenants, parseUserFromToken, useAuthStore } from '@/stores/auth'
+import { allUserTenants, activeTenantRole, hasActiveModerationAccess, isActiveTenantOwner, parseUserFromToken, useAuthStore } from '@/stores/auth'
 
 // Mock the auth API module
 vi.mock('@/api/auth', () => ({
@@ -260,6 +260,50 @@ describe('auth store', () => {
       store.clearAuth()
       expect(store.activeTenantId).toBeNull()
       expect(sessionStorage.getItem('earnlumens.activeTenantId')).toBeNull()
+    })
+  })
+
+  describe('active-tenant role helpers', () => {
+    const splitUser = {
+      oauthUserId: 'o1',
+      username: 'u',
+      displayName: 'u',
+      profileImageUrl: '',
+      role: 'TENANT_ADMIN',
+      tenantAdminOf: ['alice'],
+      moderatorOf: ['beta'],
+    }
+
+    it('activeTenantRole returns admin or moderator based on the active id', () => {
+      expect(activeTenantRole(splitUser, 'alice')).toBe('admin')
+      expect(activeTenantRole(splitUser, 'beta')).toBe('moderator')
+    })
+
+    it('activeTenantRole returns null when the user has no membership in the active tenant', () => {
+      expect(activeTenantRole(splitUser, 'gamma')).toBeNull()
+      expect(activeTenantRole(splitUser, null)).toBeNull()
+      expect(activeTenantRole(null, 'alice')).toBeNull()
+    })
+
+    it('activeTenantRole always returns SUPERADMIN for a SUPERADMIN regardless of context', () => {
+      const su = { ...splitUser, role: 'SUPERADMIN' }
+      expect(activeTenantRole(su, 'alice')).toBe('SUPERADMIN')
+      expect(activeTenantRole(su, 'beta')).toBe('SUPERADMIN')
+      expect(activeTenantRole(su, 'unknown')).toBe('SUPERADMIN')
+      expect(activeTenantRole(su, null)).toBe('SUPERADMIN')
+    })
+
+    it('isActiveTenantOwner is true only when admin of the active tenant', () => {
+      // Admin of alice, mod of beta — owner gate should distinguish them.
+      expect(isActiveTenantOwner(splitUser, 'alice')).toBe(true)
+      expect(isActiveTenantOwner(splitUser, 'beta')).toBe(false)
+      expect(isActiveTenantOwner(splitUser, 'ghost')).toBe(false)
+    })
+
+    it('hasActiveModerationAccess covers both admin and moderator memberships', () => {
+      expect(hasActiveModerationAccess(splitUser, 'alice')).toBe(true)
+      expect(hasActiveModerationAccess(splitUser, 'beta')).toBe(true)
+      expect(hasActiveModerationAccess(splitUser, 'ghost')).toBe(false)
     })
   })
 })

@@ -51,7 +51,7 @@
             to="/dashboard"
           />
           <v-list-item
-            v-if="isSuperadmin || isTenantOwner || canCreateTenant"
+            v-if="isSuperadmin || hasAnyTenantOwnership || canCreateTenant"
             prepend-icon="mdi-domain"
             title="Tenants"
             to="/tenants"
@@ -77,7 +77,7 @@
             </template>
           </v-list-item>
           <v-list-item
-            v-if="isSuperadmin || isTenantOwner"
+            v-if="isActiveTenantAdmin"
             prepend-icon="mdi-tune-variant"
             title="Moderation Settings"
             to="/moderation-settings"
@@ -97,13 +97,13 @@
             </template>
           </v-list-item>
           <v-list-item
-            v-if="isSuperadmin || isTenantOwner"
+            v-if="isActiveTenantAdmin"
             prepend-icon="mdi-account-badge-outline"
             title="Moderators"
             to="/moderators"
           />
           <v-list-item
-            v-if="isSuperadmin || isTenantOwner"
+            v-if="isActiveTenantAdmin"
             prepend-icon="mdi-shape-outline"
             title="Spaces"
             to="/spaces"
@@ -135,7 +135,7 @@
             </template>
           </v-list-item>
           <v-list-item
-            v-if="isSuperadmin || isTenantOwner"
+            v-if="isActiveTenantAdmin"
             prepend-icon="mdi-cog-outline"
             title="Settings"
             to="/settings"
@@ -177,7 +177,12 @@
   import { useDisplay, useTheme } from 'vuetify'
   import TenantSwitcher from '@/components/TenantSwitcher.vue'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
-  import { allUserTenants, useAuthStore } from '@/stores/auth'
+  import {
+    allUserTenants,
+    hasActiveModerationAccess,
+    isActiveTenantOwner as isActiveTenantOwnerFn,
+    useAuthStore,
+  } from '@/stores/auth'
 
   const authStore = useAuthStore()
   const route = useRoute()
@@ -187,18 +192,60 @@
   const { inReviewCount, openReportsCount, pendingInvitationsCount } = useSidebarBadges()
 
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
-  const isTenantOwner = computed(() => (authStore.user?.tenantAdminOf?.length ?? 0) > 0)
-  const isModerator = computed(() => (authStore.user?.moderatorOf?.length ?? 0) > 0)
+  /** True when the user owns at least one tenant (used only for the global Tenants entry). */
+  const hasAnyTenantOwnership = computed(
+    () => (authStore.user?.tenantAdminOf?.length ?? 0) > 0,
+  )
   const canCreateTenant = computed(() => authStore.user?.canCreateTenant === true)
   const showSwitcher = computed(() => allUserTenants(authStore.user).length >= 2)
-  // Hide moderation surfaces (queue, reports, moderators, settings) for users who
-  // have no moderation membership anywhere — e.g. blue-credential creators that
-  // haven't created a tenant yet. Otherwise the sidebar entries would land them
-  // on a 403'd root-tenant view, which both leaks the existence of the root
-  // tenant and is confusing UX.
-  const hasModerationAccess = computed(
-    () => isSuperadmin.value || isTenantOwner.value || isModerator.value,
+
+  /**
+   * Active-tenant scoped permissions. Switching the tenant in the top-right
+   * picker must re-evaluate the sidebar so a user who is admin of tenant A
+   * but only moderator of tenant B does not see admin-only entries while
+   * acting on B.
+   */
+  const isActiveTenantAdmin = computed(
+    () => isActiveTenantOwnerFn(authStore.user, authStore.activeTenantId),
   )
+  const hasModerationAccess = computed(
+    () => hasActiveModerationAccess(authStore.user, authStore.activeTenantId),
+  )
+
+  /**
+   * Per-route predicate. Mirrors the sidebar v-if conditions so when the
+   * active tenant changes we can detect that the current page is no longer
+   * reachable in the new context and bounce the user to /dashboard.
+   *
+   * Routes not listed are unrestricted (auth-only).
+   */
+  function routeAllowed (path: string): boolean {
+    if (path.startsWith('/dashboard')) return true
+    if (path.startsWith('/moderation/invitations')) return true
+    if (path.startsWith('/tenants')) {
+      return isSuperadmin.value || hasAnyTenantOwnership.value || canCreateTenant.value
+    }
+    if (path.startsWith('/supervisors')) return isSuperadmin.value
+    if (path.startsWith('/users')) return isSuperadmin.value
+    if (path.startsWith('/audit')) return isSuperadmin.value
+    if (path.startsWith('/moderation-settings')) return isActiveTenantAdmin.value
+    if (path.startsWith('/moderators')) return isActiveTenantAdmin.value
+    if (path.startsWith('/spaces')) return isActiveTenantAdmin.value
+    if (path.startsWith('/settings')) return isActiveTenantAdmin.value
+    if (path.startsWith('/moderation')) return hasModerationAccess.value
+    if (path.startsWith('/reports')) return hasModerationAccess.value
+    return true
+  }
+
+  // When the user switches tenant context, the page they are on may belong
+  // to a role they no longer hold (e.g. /spaces while becoming a moderator).
+  // Send them to the dashboard so the scope of the new context is obvious.
+  watch(() => authStore.activeTenantId, () => {
+    if (!authStore.isAuthenticated) return
+    if (!routeAllowed(route.path)) {
+      router.replace('/dashboard')
+    }
+  })
 
   const authRoutes = new Set(['/', '/oauth2/callback'])
 
