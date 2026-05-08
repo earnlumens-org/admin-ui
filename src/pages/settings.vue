@@ -10,35 +10,44 @@
       Tenant configuration
     </div>
 
+    <v-tabs v-model="activeTab" class="mb-4" color="primary">
+      <v-tab value="general">General</v-tab>
+      <v-tab v-if="isSuperadmin" value="languages">
+        <v-icon start>mdi-translate</v-icon>
+        Languages
+      </v-tab>
+    </v-tabs>
+
     <v-divider class="mb-4" />
 
-    <v-card v-if="loading" class="pa-8 text-center" variant="tonal">
-      <v-progress-circular color="primary" indeterminate />
-    </v-card>
+    <v-window v-model="activeTab">
+      <v-window-item value="general">
+        <v-card v-if="loading" class="pa-8 text-center" variant="tonal">
+          <v-progress-circular color="primary" indeterminate />
+        </v-card>
 
-    <v-alert
-      v-else-if="loadError"
-      border="start"
-      class="mb-4"
-      type="error"
-      variant="tonal"
-    >
-      {{ loadError }}
-      <template #append>
-        <v-btn size="small" variant="text" @click="loadTenant">Retry</v-btn>
-      </template>
-    </v-alert>
+        <v-alert
+          v-else-if="loadError"
+          border="start"
+          class="mb-4"
+          type="error"
+          variant="tonal"
+        >
+          {{ loadError }}
+          <template #append>
+            <v-btn size="small" variant="text" @click="loadTenant">Retry</v-btn>
+          </template>
+        </v-alert>
 
-    <v-card v-else-if="!tenant" class="pa-8 text-center" variant="tonal">
-      <v-icon color="medium-emphasis" size="48">mdi-domain-off</v-icon>
-      <div class="text-body-1 mt-4">No tenant to configure.</div>
-      <div class="text-body-2 text-medium-emphasis mt-1">
-        Create your tenant from the Tenants page first.
-      </div>
-    </v-card>
+        <v-card v-else-if="!tenant" class="pa-8 text-center" variant="tonal">
+          <v-icon color="medium-emphasis" size="48">mdi-domain-off</v-icon>
+          <div class="text-body-1 mt-4">No tenant to configure.</div>
+          <div class="text-body-2 text-medium-emphasis mt-1">
+            Create your tenant from the Tenants page first.
+          </div>
+        </v-card>
 
-    <template v-else>
-      <v-form ref="form" v-model="formValid" @submit.prevent="save">
+        <v-form v-else ref="form" v-model="formValid" @submit.prevent="save">
         <v-row>
           <v-col cols="12" md="6">
             <v-card>
@@ -165,22 +174,27 @@
           </v-col>
         </v-row>
 
-        <div class="d-flex justify-end ga-2 mt-4">
-          <v-btn :disabled="!isDirty || saving" variant="text" @click="reset">
-            Discard
-          </v-btn>
-          <v-btn
-            color="primary"
-            :disabled="!isDirty || !formValid"
-            :loading="saving"
-            type="submit"
-            variant="flat"
-          >
-            Save changes
-          </v-btn>
-        </div>
-      </v-form>
-    </template>
+          <div class="d-flex justify-end ga-2 mt-4">
+            <v-btn :disabled="!isDirty || saving" variant="text" @click="reset">
+              Discard
+            </v-btn>
+            <v-btn
+              color="primary"
+              :disabled="!isDirty || !formValid"
+              :loading="saving"
+              type="submit"
+              variant="flat"
+            >
+              Save changes
+            </v-btn>
+          </div>
+        </v-form>
+      </v-window-item>
+
+      <v-window-item v-if="isSuperadmin" value="languages">
+        <SettingsLanguages @notify="showSnackbar" />
+      </v-window-item>
+    </v-window>
 
     <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
       {{ snackbarText }}
@@ -190,12 +204,18 @@
 
 <script lang="ts" setup>
   import { computed, onMounted, reactive, ref } from 'vue'
+  import SettingsLanguages from '@/components/SettingsLanguages.vue'
   import {
     getMyTenant,
     TenantApiError,
     type TenantSummary,
     updateMyTenant,
   } from '@/api/tenants'
+  import { useAuthStore } from '@/stores/auth'
+
+  const authStore = useAuthStore()
+  const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
+  const activeTab = ref('general')
 
   const tenant = ref<TenantSummary | null>(null)
   const loading = ref(false)
