@@ -109,7 +109,7 @@
             to="/spaces"
           />
           <v-list-item
-            v-if="isSuperadmin"
+            v-if="isSuperadmin || isActiveTenantAdmin"
             prepend-icon="mdi-account-group-outline"
             title="Users"
             to="/users"
@@ -226,7 +226,7 @@
       return isSuperadmin.value || hasAnyTenantOwnership.value || canCreateTenant.value
     }
     if (path.startsWith('/supervisors')) return isSuperadmin.value
-    if (path.startsWith('/users')) return isSuperadmin.value
+    if (path.startsWith('/users')) return isSuperadmin.value || isActiveTenantAdmin.value
     if (path.startsWith('/audit')) return isSuperadmin.value
     if (path.startsWith('/moderation-settings')) return isActiveTenantAdmin.value
     if (path.startsWith('/moderators')) return isActiveTenantAdmin.value
