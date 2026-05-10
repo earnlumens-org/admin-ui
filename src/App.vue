@@ -115,7 +115,7 @@
             to="/users"
           />
           <v-list-item
-            v-if="isSuperadmin"
+            v-if="isSuperadmin || isActiveTenantAdmin || hasModerationAccess"
             prepend-icon="mdi-history"
             title="Audit Log"
             to="/audit"
@@ -227,7 +227,7 @@
     }
     if (path.startsWith('/supervisors')) return isSuperadmin.value
     if (path.startsWith('/users')) return isSuperadmin.value || isActiveTenantAdmin.value
-    if (path.startsWith('/audit')) return isSuperadmin.value
+    if (path.startsWith('/audit')) return isSuperadmin.value || isActiveTenantAdmin.value || hasModerationAccess.value
     if (path.startsWith('/moderation-settings')) return isActiveTenantAdmin.value
     if (path.startsWith('/moderators')) return isActiveTenantAdmin.value
     if (path.startsWith('/spaces')) return isActiveTenantAdmin.value
