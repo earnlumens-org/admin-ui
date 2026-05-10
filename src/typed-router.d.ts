@@ -14,6 +14,9 @@ import type {
   ParamValueZeroOrMore,
   ParamValueZeroOrOne,
 } from 'vue-router'
+import type {
+  _ExtractParamParserType,
+} from 'vue-router/experimental'
 
 declare module 'vue-router' {
   interface TypesConfig {
@@ -123,6 +126,13 @@ declare module 'vue-router/auto-routes' {
       '/users',
       Record<never, never>,
       Record<never, never>,
+      | '/users/[userId]'
+    >,
+    '/users/[userId]': RouteRecordInfo<
+      '/users/[userId]',
+      '/users/:userId',
+      { userId: ParamValue<true> },
+      { userId: ParamValue<false> },
       | never
     >,
   }
@@ -219,6 +229,13 @@ declare module 'vue-router/auto-routes' {
     'src/pages/users.vue': {
       routes:
         | '/users'
+        | '/users/[userId]'
+      views:
+        | 'default'
+    }
+    'src/pages/users/[userId].vue': {
+      routes:
+        | '/users/[userId]'
       views:
         | never
     }
