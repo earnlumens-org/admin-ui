@@ -121,12 +121,12 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/users': RouteRecordInfo<
-      '/users',
+    '/users/': RouteRecordInfo<
+      '/users/',
       '/users',
       Record<never, never>,
       Record<never, never>,
-      | '/users/[userId]'
+      | never
     >,
     '/users/[userId]': RouteRecordInfo<
       '/users/[userId]',
@@ -226,12 +226,11 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
-    'src/pages/users.vue': {
+    'src/pages/users/index.vue': {
       routes:
-        | '/users'
-        | '/users/[userId]'
+        | '/users/'
       views:
-        | 'default'
+        | never
     }
     'src/pages/users/[userId].vue': {
       routes:
