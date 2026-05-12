@@ -66,6 +66,7 @@
                   </v-chip>
                   <v-chip
                     :color="tenant.status === 'ACTIVE' ? 'success' : 'error'"
+                    :prepend-icon="tenant.status === 'ACTIVE' ? undefined : 'mdi-lock-outline'"
                     size="small"
                     variant="tonal"
                   >
@@ -81,10 +82,13 @@
 
     <!-- Non-superadmin owners/moderators -->
     <template v-else>
-      <!-- No tenant yet → CTA to open the wizard -->
-      <v-card v-if="!myTenant" class="pa-8 text-center" variant="tonal">
-        <v-icon color="medium-emphasis" size="48">mdi-domain-plus</v-icon>
-        <div class="text-body-1 mt-4">{{ $t('tenants.page.no_tenants') }}</div>
+      <!-- No tenant yet → onboarding card or generic empty state -->
+      <v-card v-if="!myTenant && canCreateTenant" class="pa-8 text-center" variant="tonal">
+        <v-icon color="primary" size="48">mdi-rocket-launch-outline</v-icon>
+        <div class="text-h6 mt-4">{{ $t('tenants.welcome.title') }}</div>
+        <div class="text-body-2 text-medium-emphasis mt-2 mx-auto" style="max-width: 520px">
+          {{ $t('tenants.welcome.body') }}
+        </div>
         <v-btn
           class="mt-4"
           color="primary"
@@ -95,9 +99,26 @@
           {{ $t('tenants.page.create_cta') }}
         </v-btn>
       </v-card>
+      <v-card v-else-if="!myTenant" class="pa-8 text-center" variant="tonal">
+        <v-icon color="medium-emphasis" size="48">mdi-domain-plus</v-icon>
+        <div class="text-body-1 mt-4">{{ $t('tenants.page.no_tenants') }}</div>
+      </v-card>
 
       <!-- Owns one tenant → show its summary -->
-      <v-card v-else class="mb-4" variant="outlined">
+      <template v-else>
+        <v-alert
+          v-if="myTenant.status === 'BLOCKED'"
+          border="start"
+          class="mb-4"
+          icon="mdi-lock-outline"
+          type="error"
+          variant="tonal"
+        >
+          <div class="font-weight-medium">{{ $t('tenants.blocked.title') }}</div>
+          <div class="text-body-2">{{ $t('tenants.blocked.body') }}</div>
+        </v-alert>
+
+        <v-card class="mb-4" variant="outlined">
         <v-list-item lines="three">
           <template #prepend>
             <v-avatar color="primary" rounded="sm" size="48">
@@ -115,6 +136,7 @@
             <div class="d-flex flex-column align-end ga-1">
               <v-chip
                 :color="myTenant.status === 'ACTIVE' ? 'success' : 'error'"
+                :prepend-icon="myTenant.status === 'ACTIVE' ? undefined : 'mdi-lock-outline'"
                 size="small"
                 variant="tonal"
               >
@@ -126,7 +148,8 @@
             </div>
           </template>
         </v-list-item>
-      </v-card>
+        </v-card>
+      </template>
 
       <!-- "Coming soon" card for an additional paid tenant -->
       <v-card class="mt-6" variant="tonal">
@@ -171,6 +194,7 @@
   const { t } = useI18n()
 
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
+  const canCreateTenant = computed(() => authStore.user?.canCreateTenant === true)
 
   const loading = ref(false)
   const loadError = ref<string | null>(null)

@@ -30,6 +30,14 @@ const messages = {
         create_cta: 'Create your tenant',
         no_tenants: 'No tenants yet.',
       },
+      welcome: {
+        title: 'Welcome to Earnlumens',
+        body: 'Your account is verified and ready. Open your first storefront to start selling — you can configure branding, wallet and fees in a couple of minutes.',
+      },
+      blocked: {
+        title: 'This tenant is currently blocked',
+        body: 'Your storefront is temporarily unavailable to customers. Reach out to support to review the reason and restore access.',
+      },
       soon: {
         title: 'Additional tenants — coming soon',
         body: 'Running multiple storefronts under one account is a paid feature still under construction. Each user may currently own a single tenant.',
@@ -109,6 +117,14 @@ const messages = {
         subtitle_owner: 'あなたのストアフロント。',
         create_cta: 'テナントを作成',
         no_tenants: 'テナントはまだありません。',
+      },
+      welcome: {
+        title: 'Earnlumens へようこそ',
+        body: 'あなたのアカウントは認証済みで準備完了です。最初のストアフロントを開設して販売を始めましょう — ブランディング、ウォレット、手数料は数分で設定できます。',
+      },
+      blocked: {
+        title: 'このテナントは現在ブロックされています',
+        body: 'ストアフロントは一時的にお客様から利用できません。理由の確認とアクセス復旧についてはサポートにご連絡ください。',
       },
       soon: {
         title: '追加テナント — 近日公開',
