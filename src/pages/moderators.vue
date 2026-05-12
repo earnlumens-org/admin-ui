@@ -360,10 +360,16 @@
   }
 
   async function handleInvite () {
+    const target = inviteUsername.value.trim().replace(/^@/, '')
+    const myHandle = (authStore.user?.username ?? '').trim()
+    if (myHandle && target.toLowerCase() === myHandle.toLowerCase()) {
+      showSnackbar('You cannot invite yourself as a moderator', 'error')
+      return
+    }
     inviteLoading.value = true
     try {
-      await (isTenantOwner.value && ownedTenantId.value ? inviteMyTenantModerator(ownedTenantId.value, inviteUsername.value.trim()) : inviteModerator(inviteTenant.value, inviteUsername.value.trim()))
-      showSnackbar(`Invitation sent to @${inviteUsername.value.trim()}`, 'success')
+      await (isTenantOwner.value && ownedTenantId.value ? inviteMyTenantModerator(ownedTenantId.value, target) : inviteModerator(inviteTenant.value, target))
+      showSnackbar(`Invitation sent to @${target}`, 'success')
       inviteDialog.value = false
       inviteUsername.value = ''
       await loadData()
