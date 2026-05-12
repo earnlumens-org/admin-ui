@@ -49,7 +49,7 @@
               size="small"
               variant="tonal"
             >
-              {{ detail.user.strikeCount }} active strike{{ (detail.user.strikeCount ?? 0) > 1 ? 's' : '' }}
+              {{ displayedStrikes }} active strike{{ displayedStrikes > 1 ? 's' : '' }}{{ atMaxStrikes ? ' (max)' : '' }}
             </v-chip>
             <span class="text-caption text-medium-emphasis">
               {{ detail.creatorHistory.totalReports }} reports against ·
@@ -76,8 +76,36 @@
         </v-card-text>
 
         <v-divider />
+        <v-alert
+          v-if="isSelf"
+          class="ma-3"
+          density="compact"
+          type="info"
+          variant="tonal"
+        >
+          You are viewing your own account. Moderation actions are disabled — ask another admin if you need to act on it.
+        </v-alert>
+        <v-alert
+          v-else-if="isActivelyPermaBanned"
+          class="ma-3"
+          density="compact"
+          type="info"
+          variant="tonal"
+        >
+          User is permanently banned. Further warnings or strikes have no effect — use <b>Unblock / clear</b> first if you want to reset the ladder.
+        </v-alert>
+        <v-alert
+          v-else-if="atMaxStrikes"
+          class="ma-3"
+          density="compact"
+          type="warning"
+          variant="tonal"
+        >
+          User is at the top of the strike ladder (3/3). The next <b>Apply strike</b> will re-apply a permanent ban without increasing the counter.
+        </v-alert>
         <v-card-actions class="px-4 pb-3 ga-2 flex-wrap">
           <v-btn
+            v-if="!isSelf && !detail.user.blocked"
             color="warning"
             :disabled="acting"
             prepend-icon="mdi-bell-alert-outline"
@@ -87,6 +115,7 @@
             Warn
           </v-btn>
           <v-btn
+            v-if="!isSelf && !isActivelyPermaBanned"
             color="warning"
             :disabled="acting"
             prepend-icon="mdi-alert-decagram"
@@ -96,6 +125,7 @@
             Apply strike
           </v-btn>
           <v-btn
+            v-if="!isSelf"
             color="error"
             :disabled="acting"
             prepend-icon="mdi-account-cancel"
@@ -106,7 +136,7 @@
           </v-btn>
           <v-spacer />
           <v-btn
-            v-if="detail.user.blocked || (detail.user.strikeCount ?? 0) > 0"
+            v-if="!isSelf && (detail.user.blocked || (detail.user.strikeCount ?? 0) > 0)"
             color="success"
             :disabled="acting"
             prepend-icon="mdi-account-check-outline"
@@ -176,8 +206,8 @@
             type="warning"
             variant="tonal"
           >
-            This will apply strike #{{ (detail?.user.strikeCount ?? 0) + 1 }} and
-            <b>{{ strikePreview }}</b>.
+            This will apply strike #{{ nextStrikeNumber }} and
+            <b>{{ strikePreview }}</b>.<span v-if="atMaxStrikes"> The strike counter stays at 3 — it does not climb further.</span>
           </v-alert>
           <v-alert
             v-if="dialogMode === 'ban'"
@@ -214,8 +244,11 @@
             <v-text-field
               v-if="banType === 'TEMP_BAN'"
               v-model.number="banDays"
+              hint="Maximum 365 days. Use a permanent ban for longer sanctions."
               label="Duration (days)"
+              max="365"
               min="1"
+              persistent-hint
               type="number"
               variant="outlined"
             />
@@ -258,10 +291,12 @@
     type UserDetailResponse,
     warnUser,
   } from '@/api/userModeration'
+  import { useAuthStore } from '@/stores/auth'
 
   const route = useRoute()
   const userId = String(route.params.userId)
   const tenantId = String(route.query.tenantId || 'earnlumens')
+  const authStore = useAuthStore()
 
   const detail = ref<UserDetailResponse | null>(null)
   const loading = ref(true)
@@ -275,6 +310,31 @@
   const banType = ref<'TEMP_BAN' | 'PERMA_BAN'>('TEMP_BAN')
   const banDays = ref<number>(7)
   const clearStrikes = ref(false)
+
+  /** True when the moderator is looking at their own profile. The backend
+   *  also rejects self-sanctions, but we hide the buttons so the moderator
+   *  never sees an action they cannot perform. */
+  const isSelf = computed(
+    () => !!detail.value && detail.value.user.oauthUserId === authStore.user?.oauthUserId,
+  )
+  /** Currently serving a permanent ban (PERMA_BAN or STRIKE_3 with no
+   *  expiry). When true: no further sanction can escalate the user, so
+   *  Warn and Apply-strike are hidden. */
+  const isActivelyPermaBanned = computed(() => {
+    const u = detail.value?.user
+    if (!u || !u.blocked) return false
+    if (u.banExpiresAt) return false
+    return u.banType === 'PERMA_BAN' || u.banType === 'STRIKE_3'
+  })
+  /** Strike count is at the top of the ladder. Surfaced in the strike
+   *  preview so the moderator knows the next strike re-applies PERMA. */
+  const atMaxStrikes = computed(() => (detail.value?.user.strikeCount ?? 0) >= 3)
+  /** Display value for the strike chip. The backend now clamps at 3, but
+   *  legacy data may still contain higher counts. */
+  const displayedStrikes = computed(() => Math.min(detail.value?.user.strikeCount ?? 0, 3))
+  /** Strike # the next Apply-strike action will record. Clamped at 3 to
+   *  match the backend. */
+  const nextStrikeNumber = computed(() => Math.min((detail.value?.user.strikeCount ?? 0) + 1, 3))
 
   const dialogTitle = computed(() => ({
     warn: 'Issue formal warning',
@@ -291,7 +351,7 @@
   })[dialogMode.value])
 
   const strikePreview = computed(() => {
-    const next = (detail.value?.user.strikeCount ?? 0) + 1
+    const next = nextStrikeNumber.value
     if (next === 1) return 'block the account for 7 days'
     if (next === 2) return 'block the account for 30 days'
     return 'permanently ban the account'
