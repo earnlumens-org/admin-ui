@@ -118,13 +118,36 @@
         title="Revenue"
       />
       <v-row class="mb-2">
-        <DashboardMetricCard label="Total revenue (XLM)" placeholder />
-        <DashboardMetricCard label="Revenue this month" placeholder />
         <DashboardMetricCard
-          :label="effectiveRole === 'SUPERADMIN' ? 'Top tenant revenue' : 'Best-selling space'"
-          placeholder
+          icon="mdi-cash-multiple"
+          label="Total revenue (XLM)"
+          :loading="revenueLoading"
+          :placeholder="!revenueStats || revenueStats.totalRevenueXlm == null"
+          :value="formatXlm(revenueStats?.totalRevenueXlm)"
         />
-        <DashboardMetricCard label="Platform fees collected" placeholder />
+        <DashboardMetricCard
+          icon="mdi-calendar-month-outline"
+          label="Revenue this month"
+          :loading="revenueLoading"
+          :placeholder="!revenueStats || revenueStats.monthRevenueXlm == null"
+          :value="formatXlm(revenueStats?.monthRevenueXlm)"
+        />
+        <DashboardMetricCard
+          :caption="revenueHighlightCaption"
+          icon="mdi-trophy-outline"
+          :label="effectiveRole === 'SUPERADMIN' ? 'Top tenant revenue' : 'Best-selling space'"
+          :loading="revenueLoading"
+          :placeholder="!revenueHighlight"
+          :value="revenueHighlightValue"
+        />
+        <DashboardMetricCard
+          color="primary"
+          icon="mdi-bank-outline"
+          label="Platform fees collected"
+          :loading="revenueLoading"
+          :placeholder="!revenueStats || revenueStats.platformFeesXlm == null"
+          :value="formatXlm(revenueStats?.platformFeesXlm)"
+        />
       </v-row>
     </template>
 
@@ -197,12 +220,14 @@
 <script lang="ts" setup>
   import type { ModerationStats } from '@/api/moderation'
   import type { PlatformStats } from '@/api/platform'
+  import type { RevenueStats } from '@/api/revenue'
 
   import { computed, ref, watch } from 'vue'
   import DashboardMetricCard from '@/components/dashboard/DashboardMetricCard.vue'
   import DashboardSectionHeader from '@/components/dashboard/DashboardSectionHeader.vue'
   import { fetchModerationStats } from '@/api/moderation'
   import { fetchPlatformStats } from '@/api/platform'
+  import { fetchRevenueStats } from '@/api/revenue'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
   import {
     activeTenantRole,
@@ -353,4 +378,96 @@
   }
 
   watch(effectiveRole, () => { loadPlatformStats() }, { immediate: true })
+
+  // Revenue snapshot for the dashboard. Two effective scopes:
+  //  • SUPERADMIN with no active tenant context → platform-wide aggregate
+  //    (total, month, top-grossing tenant, platform fees).
+  //  • Tenant admin OR SUPERADMIN with an explicit active tenant → totals
+  //    scoped to that tenant plus the best-selling space inside it.
+  // The backend re-checks authorisation on every call so the UI guard is
+  // purely cosmetic: hides the section for moderators / unauthenticated.
+  const revenueStats = ref<RevenueStats | null>(null)
+  const revenueLoading = ref(false)
+
+  /**
+   * Decides which scope the revenue endpoint should return:
+   *  - SUPERADMIN looking at the global "earnlumens" context → platform aggregate.
+   *  - Anyone else (or SUPERADMIN inside a specific tenant) → tenant aggregate.
+   * Returns `null` when the user has no tenant context to query — e.g. a
+   * tenant prospect before their tenant exists, where the section is hidden.
+   */
+  function tenantForRevenue (): string | null | 'PLATFORM' {
+    if (!canSeeRevenue.value) return null
+    if (effectiveRole.value === 'SUPERADMIN') {
+      // The global "earnlumens" context is platform-wide; an explicit tenant
+      // selection means the SUPERADMIN wants that tenant's numbers.
+      const t = authStore.activeTenantId
+      return !t || t === 'earnlumens' ? 'PLATFORM' : t
+    }
+    return authStore.activeTenantId ?? allUserTenants(authStore.user)[0] ?? null
+  }
+
+  async function loadRevenue () {
+    const scope = tenantForRevenue()
+    if (!scope) {
+      revenueStats.value = null
+      return
+    }
+    revenueLoading.value = true
+    try {
+      revenueStats.value = await fetchRevenueStats(scope === 'PLATFORM' ? null : scope)
+    } catch {
+      revenueStats.value = null
+    } finally {
+      revenueLoading.value = false
+    }
+  }
+
+  // Re-fetch whenever the effective role OR the active tenant changes — the
+  // tenant switcher must trigger a refresh so a SUPERADMIN dropping into a
+  // specific tenant no longer sees platform totals on screen.
+  watch(
+    () => [effectiveRole.value, authStore.activeTenantId],
+    () => { loadRevenue() },
+    { immediate: true },
+  )
+
+  /**
+   * Format a BigDecimal-as-string XLM amount for compact dashboard display.
+   * Keeps up to 2 decimals (further precision is irrelevant at-a-glance) and
+   * uses the user's locale grouping. Returns `null` for missing values so the
+   * card falls back to its em-dash placeholder.
+   */
+  function formatXlm (raw: string | null | undefined): string | null {
+    if (raw == null || raw === '') return null
+    const n = Number(raw)
+    if (!Number.isFinite(n)) return raw
+    return new Intl.NumberFormat(undefined, {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+    }).format(n)
+  }
+
+  // Top-tenant card (SUPERADMIN) vs best-selling-space card (tenant admin)
+  // share the same UI slot — pick whichever applies to the active scope.
+  const revenueHighlight = computed(
+    () => revenueStats.value?.topTenant ?? revenueStats.value?.bestSellingSpace ?? null,
+  )
+
+  // Render the XLM amount as the headline value (to match every other card
+  // in the row) and keep the entity name as a small caption below the label.
+  // This avoids the truncation we used to get from packing both into the
+  // card title ("earnlumens · 33 X...").
+  const revenueHighlightValue = computed(() => {
+    const h = revenueHighlight.value
+    if (!h) return null
+    const amount = formatXlm(h.amountXlm)
+    return amount ? `${amount} XLM` : null
+  })
+
+  const revenueHighlightCaption = computed(() => {
+    const h = revenueHighlight.value
+    if (!h) return null
+    return h.name?.trim() || h.id
+  })
 </script>

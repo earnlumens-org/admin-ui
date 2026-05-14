@@ -72,7 +72,7 @@
           :key="mod.id"
           variant="outlined"
         >
-          <div class="d-flex align-center pa-4 ga-3">
+          <div class="d-flex align-center pa-4 ga-3 flex-wrap">
             <v-avatar size="40">
               <v-img v-if="mod.profileImageUrl" :src="mod.profileImageUrl" />
               <v-icon v-else>mdi-account-circle</v-icon>
@@ -101,9 +101,38 @@
             >
               Active
             </v-chip>
+            <!-- Compact permission badges. Hidden on baseline-only mods. -->
+            <v-tooltip
+              v-for="badge in permissionBadges(mod)"
+              :key="badge.key"
+              location="top"
+              :text="badge.tooltip"
+            >
+              <template #activator="{ props }">
+                <v-chip
+                  v-bind="props"
+                  :color="badge.color"
+                  label
+                  :prepend-icon="badge.icon"
+                  size="x-small"
+                  variant="tonal"
+                >
+                  {{ badge.label }}
+                </v-chip>
+              </template>
+            </v-tooltip>
             <div class="text-caption text-medium-emphasis text-no-wrap">
               Since {{ formatDate(mod.acceptedAt || mod.createdAt) }}
             </div>
+            <v-btn
+              v-if="canEditPermissions"
+              color="primary"
+              icon="mdi-shield-key-outline"
+              size="small"
+              :title="$t ? undefined : 'Edit permissions'"
+              variant="text"
+              @click="openPermissions(mod)"
+            />
             <v-btn
               color="error"
               icon="mdi-account-remove-outline"
@@ -252,6 +281,57 @@
       </v-card>
     </v-dialog>
 
+    <!-- Permissions dialog -->
+    <v-dialog v-model="permissionsDialog" max-width="520">
+      <v-card>
+        <v-card-title class="text-h6">
+          Edit permissions
+        </v-card-title>
+        <v-card-text>
+          <div class="text-body-2 text-medium-emphasis mb-3">
+            Every moderator can warn, apply strikes #1 and #2, issue
+            temporary bans and resolve reports. The flags below are
+            <b>opt-in extras</b> for actions whose effects are permanent,
+            financial or curatorial — grant them only to moderators you
+            trust with that level of authority.
+          </div>
+          <v-list density="compact" lines="two">
+            <v-list-item
+              v-for="flag in editablePermissionFlags"
+              :key="flag.key"
+              :title="flag.label"
+              :subtitle="flag.description"
+            >
+              <template #prepend>
+                <v-icon :color="flag.iconColor">{{ flag.icon }}</v-icon>
+              </template>
+              <template #append>
+                <v-switch
+                  v-model="permissionsForm[flag.key]"
+                  color="primary"
+                  density="compact"
+                  hide-details
+                  inset
+                />
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="permissionsDialog = false">Cancel</v-btn>
+          <v-btn
+            color="primary"
+            :loading="permissionsSaving"
+            variant="flat"
+            @click="handlePermissionsSave"
+          >
+            Save
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
       {{ snackbarText }}
@@ -260,7 +340,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, onMounted, ref } from 'vue'
+  import { computed, onMounted, reactive, ref } from 'vue'
   import { fetchTenantIds } from '@/api/moderation'
   import {
     fetchModerators,
@@ -268,8 +348,11 @@
     inviteModerator,
     inviteMyTenantModerator,
     type ModeratorDto,
+    type ModeratorPermissionsPayload,
     revokeModerator,
     revokeMyTenantModerator,
+    updateModeratorPermissions,
+    updateMyTenantModeratorPermissions,
   } from '@/api/moderators'
   import { useAuthStore } from '@/stores/auth'
 
@@ -301,6 +384,108 @@
   const revokeDialog = ref(false)
   const revokeTarget = ref<ModeratorDto | null>(null)
   const revokeLoading = ref(false)
+
+  // Permissions dialog. Only owners and superadmin reach the edit button;
+  // backend re-asserts both ownership and the per-flag policy on PATCH.
+  const canEditPermissions = computed(() => isSuperadmin.value || isTenantOwner.value)
+  const permissionsDialog = ref(false)
+  const permissionsTarget = ref<ModeratorDto | null>(null)
+  const permissionsSaving = ref(false)
+  const permissionsForm = reactive<ModeratorPermissionsPayload>({
+    canManualPermaBan: false,
+    canClearStrikes: false,
+    canVerifyCreators: false,
+    canViewTenantAudit: false,
+  })
+
+  /**
+   * Editable flags shown in the dialog. canViewTenantAudit is hidden
+   * while there is no UI surface that depends on it; it stays reachable
+   * via the API for forward compatibility but is not exposed here so it
+   * does not appear as a "dead toggle" to owners.
+   */
+  const editablePermissionFlags: ReadonlyArray<{
+    key: keyof ModeratorPermissionsPayload
+    label: string
+    description: string
+    icon: string
+    iconColor: string
+  }> = [
+    {
+      key: 'canManualPermaBan',
+      label: 'Manual permanent ban',
+      description: 'Issue a PERMA_BAN that bypasses the 3-strike ladder. Strike #3 still escalates to PERMA without this flag.',
+      icon: 'mdi-account-cancel',
+      iconColor: 'error',
+    },
+    {
+      key: 'canClearStrikes',
+      label: 'Clear strike history',
+      description: "Wipe a user's previous strikes when unblocking (treats prior sanctions as overturned). Plain Unblock stays available without this flag.",
+      icon: 'mdi-eraser-variant',
+      iconColor: 'warning',
+    },
+    {
+      key: 'canVerifyCreators',
+      label: 'Verify creators (Gold)',
+      description: 'Grant and revoke Gold creator credentials on this tenant.',
+      icon: 'mdi-shield-star',
+      iconColor: 'amber',
+    },
+  ]
+
+  /**
+   * Compact badges shown on each moderator row for the flags they have
+   * enabled. Returns nothing for baseline moderators so the row stays
+   * uncluttered for the 90% case.
+   */
+  function permissionBadges (mod: ModeratorDto) {
+    const out: Array<{ key: string, label: string, tooltip: string, icon: string, color: string }> = []
+    if (mod.canManualPermaBan) {
+      out.push({ key: 'perma', label: 'PERMA', tooltip: 'Can issue manual permanent bans', icon: 'mdi-account-cancel', color: 'error' })
+    }
+    if (mod.canClearStrikes) {
+      out.push({ key: 'clear', label: 'Clear strikes', tooltip: 'Can clear strike history on unblock', icon: 'mdi-eraser-variant', color: 'warning' })
+    }
+    if (mod.canVerifyCreators) {
+      out.push({ key: 'verify', label: 'Verify', tooltip: 'Can grant Gold creator credentials', icon: 'mdi-shield-star', color: 'amber' })
+    }
+    return out
+  }
+
+  function openPermissions (mod: ModeratorDto) {
+    permissionsTarget.value = mod
+    permissionsForm.canManualPermaBan = mod.canManualPermaBan
+    permissionsForm.canClearStrikes = mod.canClearStrikes
+    permissionsForm.canVerifyCreators = mod.canVerifyCreators
+    permissionsForm.canViewTenantAudit = mod.canViewTenantAudit
+    permissionsDialog.value = true
+  }
+
+  async function handlePermissionsSave () {
+    if (!permissionsTarget.value) return
+    permissionsSaving.value = true
+    try {
+      const payload: ModeratorPermissionsPayload = {
+        canManualPermaBan: permissionsForm.canManualPermaBan,
+        canClearStrikes: permissionsForm.canClearStrikes,
+        canVerifyCreators: permissionsForm.canVerifyCreators,
+        canViewTenantAudit: permissionsForm.canViewTenantAudit,
+      }
+      const updated = isTenantOwner.value && ownedTenantId.value
+        ? await updateMyTenantModeratorPermissions(ownedTenantId.value, permissionsTarget.value.id, payload)
+        : await updateModeratorPermissions(permissionsTarget.value.id, payload)
+      // Patch the row in-place so the badges refresh without a full reload.
+      const idx = moderators.value.findIndex(m => m.id === updated.id)
+      if (idx >= 0) moderators.value[idx] = updated
+      showSnackbar('Permissions updated', 'success')
+      permissionsDialog.value = false
+    } catch (error: unknown) {
+      showSnackbar(error instanceof Error ? error.message : 'Failed to update permissions', 'error')
+    } finally {
+      permissionsSaving.value = false
+    }
+  }
 
   // Snackbar
   const snackbar = ref(false)

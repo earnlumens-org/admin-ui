@@ -24,6 +24,25 @@ export interface ModeratorDto {
   invitedBy: string
   createdAt: string
   acceptedAt: string | null
+  // Opt-in extra capabilities granted on top of the baseline moderator
+  // role. All default to false on every new invitation; the tenant
+  // owner enables them explicitly via the permissions dialog.
+  canManualPermaBan: boolean
+  canClearStrikes: boolean
+  canVerifyCreators: boolean
+  canViewTenantAudit: boolean
+}
+
+/**
+ * Body shape for the PATCH .../permissions endpoints. Server treats
+ * missing keys as false, so a partial body always reduces (never
+ * elevates) capabilities.
+ */
+export interface ModeratorPermissionsPayload {
+  canManualPermaBan: boolean
+  canClearStrikes: boolean
+  canVerifyCreators: boolean
+  canViewTenantAudit: boolean
 }
 
 export async function fetchModerators (): Promise<ModeratorDto[]> {
@@ -121,4 +140,50 @@ export async function revokeMyTenantModerator (
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error || 'Failed to revoke moderator')
   }
+}
+
+/**
+ * Owner-scoped permission update. Replaces the four flags wholesale;
+ * the server treats missing keys as false.
+ */
+export async function updateMyTenantModeratorPermissions (
+  tenantId: string,
+  moderatorId: string,
+  perms: ModeratorPermissionsPayload,
+): Promise<ModeratorDto> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/tenants/me/${encodeURIComponent(tenantId)}/moderators/${encodeURIComponent(moderatorId)}/permissions`,
+    {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: await authHeaders(),
+      body: JSON.stringify(perms),
+    },
+  )
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || 'Failed to update permissions')
+  }
+  return res.json()
+}
+
+/** SUPERADMIN-scoped permission update; same body shape. */
+export async function updateModeratorPermissions (
+  moderatorId: string,
+  perms: ModeratorPermissionsPayload,
+): Promise<ModeratorDto> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/moderators/${encodeURIComponent(moderatorId)}/permissions`,
+    {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: await authHeaders(),
+      body: JSON.stringify(perms),
+    },
+  )
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || 'Failed to update permissions')
+  }
+  return res.json()
 }

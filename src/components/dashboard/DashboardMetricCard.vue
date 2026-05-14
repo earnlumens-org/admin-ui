@@ -24,6 +24,13 @@
           </template>
         </v-card-title>
         <v-card-subtitle>{{ label }}</v-card-subtitle>
+        <div
+          v-if="caption && !loading && !placeholder"
+          class="text-caption text-medium-emphasis text-truncate mt-1"
+          :title="caption"
+        >
+          {{ caption }}
+        </div>
       </v-card-item>
     </v-card>
   </v-col>
@@ -41,6 +48,8 @@
     loading?: boolean
     /** When true, render a placeholder em-dash instead of the value (no data wired yet). */
     placeholder?: boolean
+    /** Optional small caption shown under the label (e.g. "earnlumens" for top tenant). */
+    caption?: string | null
   }>()
 
   const formatted = computed(() => {

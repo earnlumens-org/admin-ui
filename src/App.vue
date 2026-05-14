@@ -43,103 +43,114 @@
         </template>
       </v-app-bar>
 
-      <v-navigation-drawer v-model="drawer" width="220">
+      <v-navigation-drawer v-model="drawer" width="232">
         <v-list class="mt-1" density="compact" nav>
+          <!-- Universal anchor -->
           <v-list-item
             prepend-icon="mdi-view-dashboard-outline"
             title="Dashboard"
             to="/dashboard"
           />
-          <v-list-item
-            v-if="isSuperadmin || hasAnyTenantOwnership || canCreateTenant"
-            prepend-icon="mdi-domain"
-            title="Tenants"
-            to="/tenants"
-          />
-          <v-list-item
-            v-if="isSuperadmin"
-            prepend-icon="mdi-shield-account-outline"
-            title="Supervisors"
-            to="/supervisors"
-          />
-          <v-list-item
-            v-if="hasModerationAccess"
-            prepend-icon="mdi-file-check-outline"
-            to="/moderation"
-          >
-            <v-list-item-title>Moderation</v-list-item-title>
-            <template v-if="inReviewCount > 0" #append>
-              <v-badge
-                color="warning"
-                :content="inReviewCount"
-                inline
-              />
-            </template>
-          </v-list-item>
-          <v-list-item
-            v-if="isActiveTenantAdmin"
-            prepend-icon="mdi-tune-variant"
-            title="Moderation Settings"
-            to="/moderation-settings"
-          />
-          <v-list-item
-            v-if="hasModerationAccess"
-            prepend-icon="mdi-flag-outline"
-            to="/reports"
-          >
-            <v-list-item-title>Reports</v-list-item-title>
-            <template v-if="openReportsCount > 0" #append>
-              <v-badge
-                color="error"
-                :content="openReportsCount"
-                inline
-              />
-            </template>
-          </v-list-item>
-          <v-list-item
-            v-if="isActiveTenantAdmin"
-            prepend-icon="mdi-account-badge-outline"
-            title="Moderators"
-            to="/moderators"
-          />
-          <v-list-item
-            v-if="isActiveTenantAdmin"
-            prepend-icon="mdi-shape-outline"
-            title="Spaces"
-            to="/spaces"
-          />
-          <v-list-item
-            v-if="isSuperadmin || isActiveTenantAdmin"
-            prepend-icon="mdi-account-group-outline"
-            title="Users"
-            to="/users"
-          />
-          <v-list-item
-            v-if="isSuperadmin || isActiveTenantAdmin || hasModerationAccess"
-            prepend-icon="mdi-history"
-            title="Audit Log"
-            to="/audit"
-          />
-          <v-list-item
-            v-if="pendingInvitationsCount > 0"
-            prepend-icon="mdi-email-outline"
-            to="/moderation/invitations"
-          >
-            <v-list-item-title>Invitations</v-list-item-title>
-            <template #append>
-              <v-badge
-                color="warning"
-                :content="pendingInvitationsCount"
-                inline
-              />
-            </template>
-          </v-list-item>
-          <v-list-item
-            v-if="isActiveTenantAdmin"
-            prepend-icon="mdi-cog-outline"
-            title="Settings"
-            to="/settings"
-          />
+
+          <!-- ───────── WORK · daily operations ───────── -->
+          <template v-if="showWorkGroup">
+            <v-list-subheader class="nav-subheader">Work</v-list-subheader>
+            <v-list-item
+              v-if="hasModerationAccess"
+              prepend-icon="mdi-clipboard-check-outline"
+              to="/moderation"
+            >
+              <v-list-item-title>Review queue</v-list-item-title>
+              <template v-if="inReviewCount > 0" #append>
+                <v-badge color="warning" :content="inReviewCount" inline />
+              </template>
+            </v-list-item>
+            <v-list-item
+              v-if="hasModerationAccess"
+              prepend-icon="mdi-flag-outline"
+              to="/reports"
+            >
+              <v-list-item-title>Reports</v-list-item-title>
+              <template v-if="openReportsCount > 0" #append>
+                <v-badge color="error" :content="openReportsCount" inline />
+              </template>
+            </v-list-item>
+            <v-list-item
+              v-if="pendingInvitationsCount > 0"
+              prepend-icon="mdi-email-outline"
+              to="/moderation/invitations"
+            >
+              <v-list-item-title>Invitations</v-list-item-title>
+              <template #append>
+                <v-badge color="warning" :content="pendingInvitationsCount" inline />
+              </template>
+            </v-list-item>
+          </template>
+
+          <!-- ───────── MANAGE · tenant resources ───────── -->
+          <template v-if="showManageGroup">
+            <v-list-subheader class="nav-subheader">Manage</v-list-subheader>
+            <v-list-item
+              v-if="isActiveTenantAdmin"
+              prepend-icon="mdi-shape-outline"
+              title="Spaces"
+              to="/spaces"
+            />
+            <v-list-item
+              v-if="isSuperadmin || isActiveTenantAdmin"
+              prepend-icon="mdi-account-group-outline"
+              title="Users"
+              to="/users"
+            />
+            <v-list-item
+              v-if="isActiveTenantAdmin"
+              prepend-icon="mdi-account-badge-outline"
+              title="Moderators"
+              to="/moderators"
+            />
+          </template>
+
+          <!-- ───────── CONFIGURE · set-and-forget ───────── -->
+          <template v-if="showConfigureGroup">
+            <v-list-subheader class="nav-subheader">Configure</v-list-subheader>
+            <v-list-item
+              prepend-icon="mdi-tune-variant"
+              title="Moderation rules"
+              to="/moderation-settings"
+            />
+            <v-list-item
+              prepend-icon="mdi-cog-outline"
+              title="Tenant settings"
+              to="/settings"
+            />
+          </template>
+
+          <!-- ───────── PLATFORM · cross-tenant ───────── -->
+          <template v-if="showPlatformGroup">
+            <v-list-subheader class="nav-subheader">Platform</v-list-subheader>
+            <v-list-item
+              v-if="isSuperadmin || hasAnyTenantOwnership || canCreateTenant"
+              prepend-icon="mdi-domain"
+              title="Tenants"
+              to="/tenants"
+            />
+            <v-list-item
+              v-if="isSuperadmin"
+              prepend-icon="mdi-shield-account-outline"
+              title="Supervisors"
+              to="/supervisors"
+            />
+          </template>
+
+          <!-- ───────── AUDIT · forensic read ───────── -->
+          <template v-if="showAuditGroup">
+            <v-list-subheader class="nav-subheader">Audit</v-list-subheader>
+            <v-list-item
+              prepend-icon="mdi-history"
+              title="Activity log"
+              to="/audit"
+            />
+          </template>
         </v-list>
 
         <template #append>
@@ -210,6 +221,24 @@
   )
   const hasModerationAccess = computed(
     () => hasActiveModerationAccess(authStore.user, authStore.activeTenantId),
+  )
+
+  /**
+   * Group visibility for the sidebar. Each subheader only renders when at
+   * least one of its items is visible, so the menu never shows a hanging
+   * "Manage" / "Configure" label with nothing under it (e.g. when a tenant
+   * owner switches to a tenant where they're only a moderator).
+   */
+  const showWorkGroup = computed(
+    () => hasModerationAccess.value || pendingInvitationsCount.value > 0,
+  )
+  const showManageGroup = computed(() => isActiveTenantAdmin.value || isSuperadmin.value)
+  const showConfigureGroup = computed(() => isActiveTenantAdmin.value)
+  const showPlatformGroup = computed(
+    () => isSuperadmin.value || hasAnyTenantOwnership.value || canCreateTenant.value,
+  )
+  const showAuditGroup = computed(
+    () => isSuperadmin.value || isActiveTenantAdmin.value || hasModerationAccess.value,
   )
 
   /**
@@ -297,5 +326,21 @@
 <style scoped>
 .avatar-grayscale {
   filter: grayscale(100%);
+}
+
+/*
+ * Sidebar section labels. Kept intentionally low-contrast and uppercase so
+ * they read as structural separators rather than clickable items, and never
+ * compete visually with the nav links underneath.
+ */
+:deep(.nav-subheader) {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  min-height: 28px;
+  padding-top: 12px;
+  padding-bottom: 4px;
 }
 </style>
