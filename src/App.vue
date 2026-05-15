@@ -97,7 +97,7 @@
               to="/spaces"
             />
             <v-list-item
-              v-if="isSuperadmin || isActiveTenantAdmin || canManageCredentials"
+              v-if="isSuperadmin || isActiveTenantAdmin || canAccessUsers"
               prepend-icon="mdi-account-group-outline"
               title="Users"
               to="/users"
@@ -257,6 +257,17 @@
       || isActiveTenantAdmin.value
       || myPerms.value.canVerifyCreators,
   )
+  /**
+   * Any per-user moderator capability — surfaces /users in the sidebar so
+   * a moderator who only has canManualPermaBan / canClearStrikes can still
+   * reach the screens where those buttons live. Without this, those flags
+   * would be granted but unreachable from the menu.
+   */
+  const canAccessUsers = computed(
+    () => canManageCredentials.value
+      || myPerms.value.canManualPermaBan
+      || myPerms.value.canClearStrikes,
+  )
 
   /**
    * Group visibility for the sidebar. Each subheader only renders when at
@@ -268,7 +279,7 @@
     () => hasModerationAccess.value || pendingInvitationsCount.value > 0,
   )
   const showManageGroup = computed(
-    () => isActiveTenantAdmin.value || isSuperadmin.value || canManageCredentials.value,
+    () => isActiveTenantAdmin.value || isSuperadmin.value || canAccessUsers.value,
   )
   const showConfigureGroup = computed(() => isActiveTenantAdmin.value)
   const showPlatformGroup = computed(
@@ -292,7 +303,7 @@
       return isSuperadmin.value || hasAnyTenantOwnership.value || canCreateTenant.value
     }
     if (path.startsWith('/supervisors')) return isSuperadmin.value
-    if (path.startsWith('/users')) return isSuperadmin.value || isActiveTenantAdmin.value || canManageCredentials.value
+    if (path.startsWith('/users')) return isSuperadmin.value || isActiveTenantAdmin.value || canAccessUsers.value
     if (path.startsWith('/audit')) return isSuperadmin.value || isActiveTenantAdmin.value || hasModerationAccess.value
     if (path.startsWith('/moderation-settings')) return isActiveTenantAdmin.value
     if (path.startsWith('/moderators')) return isActiveTenantAdmin.value

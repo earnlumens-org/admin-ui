@@ -214,6 +214,41 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <!--
+      Moderator capabilities panel. Without this, an opt-in flag granted by
+      the tenant owner (e.g. canManualPermaBan) is invisible until the
+      moderator stumbles into the right dialog. This block lists every flag
+      the moderator currently holds and points them at the screen where the
+      capability is exercised.
+    -->
+    <template v-if="effectiveRole === 'moderator' && capabilityItems.length">
+      <DashboardSectionHeader
+        class="mt-4"
+        hint="Special permissions the tenant owner has granted you."
+        title="Your capabilities"
+      />
+      <v-row>
+        <v-col v-for="cap in capabilityItems" :key="cap.key" cols="12" md="6">
+          <v-card class="h-100" variant="outlined">
+            <v-card-item>
+              <template #prepend>
+                <v-avatar color="info" rounded size="40" variant="tonal">
+                  <v-icon :icon="cap.icon" />
+                </v-avatar>
+              </template>
+              <v-card-title class="text-body-1 font-weight-medium">{{ cap.title }}</v-card-title>
+              <v-card-subtitle class="text-wrap">{{ cap.description }}</v-card-subtitle>
+            </v-card-item>
+            <v-card-actions v-if="cap.to">
+              <v-btn :prepend-icon="cap.toIcon" :to="cap.to" variant="text">
+                {{ cap.cta }}
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-col>
+      </v-row>
+    </template>
   </v-container>
 </template>
 
@@ -234,6 +269,7 @@
     allUserTenants,
     useAuthStore,
   } from '@/stores/auth'
+  import { useMyPermissionsStore } from '@/stores/myPermissions'
 
   interface QuickAction {
     title: string
@@ -243,7 +279,18 @@
     to: string
   }
 
+  interface CapabilityItem {
+    key: string
+    title: string
+    description: string
+    icon: string
+    cta?: string
+    to?: string
+    toIcon?: string
+  }
+
   const authStore = useAuthStore()
+  const permsStore = useMyPermissionsStore()
   const { inReviewCount, openReportsCount, pendingInvitationsCount } = useSidebarBadges()
 
   const activeTenantId = computed(() => authStore.activeTenantId)
@@ -286,6 +333,63 @@
     return u.canCreateTenant === true && !ownsTenant
   })
 
+  /**
+   * Per-flag descriptors for the "Your capabilities" panel. Only flags the
+   * caller actually holds are emitted; the panel itself is hidden when the
+   * list is empty so a baseline moderator does not see an empty section.
+   * Each item points at the exact screen where the capability is exercised
+   * so the moderator does not have to guess where the new button lives.
+   */
+  const capabilityItems = computed<CapabilityItem[]>(() => {
+    const perms = permsStore.permissionsFor(authStore.activeTenantId)
+    const items: CapabilityItem[] = []
+    if (perms.canManualPermaBan) {
+      items.push({
+        key: 'canManualPermaBan',
+        title: 'Manual permanent ban',
+        description: 'You can issue a permanent ban from a user profile, in addition to the automatic 7/30-day escalation.',
+        icon: 'mdi-account-cancel-outline',
+        cta: 'Open Users',
+        to: '/users',
+        toIcon: 'mdi-account-group-outline',
+      })
+    }
+    if (perms.canClearStrikes) {
+      items.push({
+        key: 'canClearStrikes',
+        title: 'Clear strike history',
+        description: 'When unbanning a user you can also reset their strike counter back to zero.',
+        icon: 'mdi-counter',
+        cta: 'Open Users',
+        to: '/users',
+        toIcon: 'mdi-account-group-outline',
+      })
+    }
+    if (perms.canVerifyCreators) {
+      items.push({
+        key: 'canVerifyCreators',
+        title: 'Verify creators (Gold)',
+        description: 'You can review credential submissions and grant or revoke the Gold creator badge.',
+        icon: 'mdi-shield-check-outline',
+        cta: 'Open Credentials',
+        to: '/users',
+        toIcon: 'mdi-account-group-outline',
+      })
+    }
+    if (perms.canViewTenantAudit) {
+      items.push({
+        key: 'canViewTenantAudit',
+        title: 'View tenant audit',
+        description: 'You can browse the full audit log for this tenant, not only your own actions.',
+        icon: 'mdi-history',
+        cta: 'Open Audit log',
+        to: '/audit',
+        toIcon: 'mdi-history',
+      })
+    }
+    return items
+  })
+
   const quickActions = computed<QuickAction[]>(() => {
     const role = effectiveRole.value
     if (role === 'SUPERADMIN') {
@@ -306,11 +410,24 @@
       ]
     }
     if (role === 'moderator') {
-      return [
+      const actions: QuickAction[] = [
         { title: 'Moderation queue', description: 'Pick up the next entries waiting for your review.', icon: 'mdi-file-check-outline', color: 'warning', to: '/moderation' },
         { title: 'Reports', description: 'Resolve user reports assigned to your tenant.', icon: 'mdi-flag-outline', color: 'error', to: '/reports' },
         { title: 'Audit log', description: 'Review your recent moderation actions.', icon: 'mdi-history', color: 'grey', to: '/audit' },
       ]
+      // Surface /users when the moderator holds any per-user capability,
+      // otherwise the granted flag has no entry point in the menu.
+      const myPerms = permsStore.permissionsFor(authStore.activeTenantId)
+      if (myPerms.canManualPermaBan || myPerms.canClearStrikes || myPerms.canVerifyCreators) {
+        actions.push({
+          title: 'Users',
+          description: 'Open user profiles to apply the moderator actions you have been granted.',
+          icon: 'mdi-account-group-outline',
+          color: 'info',
+          to: '/users',
+        })
+      }
+      return actions
     }
     // No active tenant context (e.g. TENANT_PROSPECT before tenant creation)
     // — only thing meaningful is going to /tenants to create one.
