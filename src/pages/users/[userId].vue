@@ -239,8 +239,21 @@
           <template v-if="dialogMode === 'ban'">
             <v-radio-group v-model="banType" inline>
               <v-radio label="Temporary" value="TEMP_BAN" />
-              <v-radio label="Permanent" value="PERMA_BAN" />
+              <v-radio
+                v-if="canManualPermaBan"
+                label="Permanent"
+                value="PERMA_BAN"
+              />
             </v-radio-group>
+            <v-alert
+              v-if="!canManualPermaBan"
+              class="mb-3"
+              density="compact"
+              type="info"
+              variant="tonal"
+            >
+              Manual permanent bans are not part of your moderator role. Issue a temporary ban or apply a strike instead — strike #3 still escalates to PERMA automatically.
+            </v-alert>
             <v-text-field
               v-if="banType === 'TEMP_BAN'"
               v-model.number="banDays"
@@ -254,11 +267,22 @@
             />
           </template>
 
-          <v-checkbox
-            v-if="dialogMode === 'unban'"
-            v-model="clearStrikes"
-            label="Also clear the strike count (treat past strikes as overturned)"
-          />
+          <template v-if="dialogMode === 'unban'">
+            <v-checkbox
+              v-if="canClearStrikes"
+              v-model="clearStrikes"
+              label="Also clear the strike count (treat past strikes as overturned)"
+            />
+            <v-alert
+              v-else-if="(detail?.user.strikeCount ?? 0) > 0"
+              class="mb-1"
+              density="compact"
+              type="info"
+              variant="tonal"
+            >
+              Unblock will lift the current sanction but the user's strike history is preserved. Clearing strikes is a separate capability — ask the tenant owner to grant it if you need to reset the ladder.
+            </v-alert>
+          </template>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -292,11 +316,20 @@
     warnUser,
   } from '@/api/userModeration'
   import { useAuthStore } from '@/stores/auth'
+  import { useMyPermissionsStore } from '@/stores/myPermissions'
 
   const route = useRoute()
   const userId = String(route.params.userId)
   const tenantId = String(route.query.tenantId || 'earnlumens')
   const authStore = useAuthStore()
+  const permsStore = useMyPermissionsStore()
+
+  // Resolve the caller's effective capabilities for this tenant. Owners and
+  // SUPERADMIN come back as all-true (server-side bypass), so a plain check
+  // works for every role and we never need to special-case in this file.
+  const myPerms = computed(() => permsStore.permissionsFor(tenantId))
+  const canManualPermaBan = computed(() => myPerms.value.canManualPermaBan)
+  const canClearStrikes = computed(() => myPerms.value.canClearStrikes)
 
   const detail = ref<UserDetailResponse | null>(null)
   const loading = ref(true)
@@ -361,6 +394,8 @@
     dialogMode.value = mode
     formReason.value = ''
     formNotes.value = ''
+    // Always start on TEMP — even when the moderator has the manual-PERMA
+    // capability, a deliberate radio click is required to escalate.
     banType.value = 'TEMP_BAN'
     banDays.value = 7
     clearStrikes.value = false
@@ -411,7 +446,14 @@
     }
   }
 
-  onMounted(load)
+  onMounted(() => {
+    load()
+    // The route's tenantId can differ from the active tenant (SUPERADMIN
+    // routinely opens a user under a non-active scope), so fetch this
+    // tenant's permissions explicitly rather than relying on the global
+    // active-tenant load that App.vue triggers.
+    permsStore.loadFor(tenantId)
+  })
 
   function iconFor (type: SanctionType): string {
     switch (type) {

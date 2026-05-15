@@ -97,7 +97,7 @@
               to="/spaces"
             />
             <v-list-item
-              v-if="isSuperadmin || isActiveTenantAdmin"
+              v-if="isSuperadmin || isActiveTenantAdmin || canManageCredentials"
               prepend-icon="mdi-account-group-outline"
               title="Users"
               to="/users"
@@ -169,6 +169,27 @@
       <router-view />
     </v-main>
 
+    <!--
+      Surface permission deltas the moment they reach the client. Without
+      this, a moderator whose tenant owner just toggled `canManualPermaBan`
+      would have no way to know — the new buttons would silently appear on
+      a screen they may not be looking at, sometimes hours later.
+    -->
+    <v-snackbar
+      v-model="permissionsSnackbar"
+      color="info"
+      location="bottom right"
+      :timeout="-1"
+    >
+      <div class="d-flex flex-column">
+        <span class="font-weight-medium">{{ permissionDeltaTitle }}</span>
+        <span class="text-caption">{{ permissionDeltaBody }}</span>
+      </div>
+      <template #actions>
+        <v-btn variant="text" @click="dismissPermissionsDelta">Got it</v-btn>
+      </template>
+    </v-snackbar>
+
     <v-dialog v-model="showError" max-width="400">
       <v-card>
         <v-card-title>Error</v-card-title>
@@ -194,8 +215,10 @@
     isActiveTenantOwner as isActiveTenantOwnerFn,
     useAuthStore,
   } from '@/stores/auth'
+  import { PERMISSION_LABELS, useMyPermissionsStore } from '@/stores/myPermissions'
 
   const authStore = useAuthStore()
+  const permsStore = useMyPermissionsStore()
   const route = useRoute()
   const router = useRouter()
   const theme = useTheme()
@@ -224,6 +247,18 @@
   )
 
   /**
+   * Active-tenant moderator capabilities. Used both to gate the sidebar
+   * (so a moderator with canVerifyCreators sees the Users entry) and to
+   * decide which routes the user can land on after a tenant switch.
+   */
+  const myPerms = computed(() => permsStore.permissionsFor(authStore.activeTenantId))
+  const canManageCredentials = computed(
+    () => isSuperadmin.value
+      || isActiveTenantAdmin.value
+      || myPerms.value.canVerifyCreators,
+  )
+
+  /**
    * Group visibility for the sidebar. Each subheader only renders when at
    * least one of its items is visible, so the menu never shows a hanging
    * "Manage" / "Configure" label with nothing under it (e.g. when a tenant
@@ -232,7 +267,9 @@
   const showWorkGroup = computed(
     () => hasModerationAccess.value || pendingInvitationsCount.value > 0,
   )
-  const showManageGroup = computed(() => isActiveTenantAdmin.value || isSuperadmin.value)
+  const showManageGroup = computed(
+    () => isActiveTenantAdmin.value || isSuperadmin.value || canManageCredentials.value,
+  )
   const showConfigureGroup = computed(() => isActiveTenantAdmin.value)
   const showPlatformGroup = computed(
     () => isSuperadmin.value || hasAnyTenantOwnership.value || canCreateTenant.value,
@@ -255,7 +292,7 @@
       return isSuperadmin.value || hasAnyTenantOwnership.value || canCreateTenant.value
     }
     if (path.startsWith('/supervisors')) return isSuperadmin.value
-    if (path.startsWith('/users')) return isSuperadmin.value || isActiveTenantAdmin.value
+    if (path.startsWith('/users')) return isSuperadmin.value || isActiveTenantAdmin.value || canManageCredentials.value
     if (path.startsWith('/audit')) return isSuperadmin.value || isActiveTenantAdmin.value || hasModerationAccess.value
     if (path.startsWith('/moderation-settings')) return isActiveTenantAdmin.value
     if (path.startsWith('/moderators')) return isActiveTenantAdmin.value
@@ -275,6 +312,63 @@
       router.replace('/dashboard')
     }
   })
+
+  // Keep the per-tenant capability cache in sync with whichever tenant the
+  // user is currently looking at. Each load also diffs against the previous
+  // snapshot stored in localStorage so newly granted (or revoked) flags
+  // surface a snackbar without the user having to log out and back in.
+  watch(
+    () => [authStore.isAuthenticated, authStore.activeTenantId] as const,
+    ([authed, tid]) => {
+      if (!authed || !tid) return
+      permsStore.loadFor(tid)
+    },
+    { immediate: true },
+  )
+
+  // Re-check on window focus too: tenant owners often grant a flag and
+  // ping the moderator out-of-band ("dale, ya te di acceso") — the next
+  // tab focus is a natural moment to pick that change up.
+  function handleWindowFocus () {
+    if (!authStore.isAuthenticated || !authStore.activeTenantId) return
+    permsStore.loadFor(authStore.activeTenantId)
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', handleWindowFocus)
+  }
+
+  /** Snackbar for permission grants/revocations detected by the store. */
+  const permissionsSnackbar = computed({
+    get: () => permsStore.pendingDelta !== null,
+    set: value => {
+      if (!value) permsStore.acknowledgeNotification()
+    },
+  })
+  const permissionDeltaTitle = computed(() => {
+    const delta = permsStore.pendingDelta
+    if (!delta) return ''
+    if (delta.granted.length && delta.revoked.length) {
+      return 'Your moderator capabilities changed'
+    }
+    return delta.granted.length
+      ? 'New moderator capabilities granted'
+      : 'Some moderator capabilities were revoked'
+  })
+  const permissionDeltaBody = computed(() => {
+    const delta = permsStore.pendingDelta
+    if (!delta) return ''
+    const parts: string[] = []
+    if (delta.granted.length) {
+      parts.push(`Granted: ${delta.granted.map(k => PERMISSION_LABELS[k]).join(', ')}`)
+    }
+    if (delta.revoked.length) {
+      parts.push(`Revoked: ${delta.revoked.map(k => PERMISSION_LABELS[k]).join(', ')}`)
+    }
+    return parts.join(' \u00b7 ')
+  })
+  function dismissPermissionsDelta () {
+    permsStore.acknowledgeNotification()
+  }
 
   const authRoutes = new Set(['/', '/oauth2/callback'])
 
@@ -319,6 +413,7 @@
 
   async function handleLogout () {
     await authStore.logout()
+    permsStore.reset()
     router.push('/')
   }
 </script>

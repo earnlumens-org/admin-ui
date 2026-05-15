@@ -116,10 +116,12 @@
   import SanctionLadderExplainer from '@/components/moderation/SanctionLadderExplainer.vue'
   import UserSanctionList from '@/components/moderation/UserSanctionList.vue'
   import { hasActiveModerationAccess, isActiveTenantOwner, useAuthStore } from '@/stores/auth'
+  import { useMyPermissionsStore } from '@/stores/myPermissions'
   import { listUsers, type StorefrontUserDto } from '@/api/userModeration'
 
   const authStore = useAuthStore()
   const router = useRouter()
+  const permsStore = useMyPermissionsStore()
 
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
   const isActiveTenantAdmin = computed(
@@ -135,7 +137,12 @@
       || hasActiveModerationAccess(authStore.user, authStore.activeTenantId),
   )
   const canManageCredentials = computed(
-    () => isSuperadmin.value || isActiveTenantAdmin.value,
+    () => isSuperadmin.value
+      || isActiveTenantAdmin.value
+      // Plain moderators see this tab only when the tenant owner granted
+      // the canVerifyCreators flag; the backend gates the underlying
+      // grant/revoke endpoints with the same check.
+      || permsStore.permissionsFor(authStore.activeTenantId).canVerifyCreators,
   )
   const activeTenantId = computed(() => authStore.activeTenantId)
 
