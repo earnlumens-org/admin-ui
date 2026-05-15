@@ -131,12 +131,14 @@
   import { useRouter } from 'vue-router'
   import { acceptMyInvitation, fetchMyInvitations, type MyInvitation, rejectMyInvitation } from '@/api/invitations'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
+  import { useTenantLabels } from '@/composables/useTenantLabels'
   import { refreshToken } from '@/services/tokenWorkerClient'
   import { parseUserFromToken, useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
   const router = useRouter()
   const { refresh: refreshBadges } = useSidebarBadges()
+  const { refresh: refreshTenantLabels } = useTenantLabels()
 
   const invitations = ref<MyInvitation[]>([])
   const loading = ref(false)
@@ -203,6 +205,9 @@
       invitations.value = invitations.value.filter(i => i.invitationId !== invite.invitationId)
       showSnackbar(`Joined ${invite.tenantTitle ?? invite.tenantId} as moderator`, 'success')
       await syncSession()
+      // Re-fetch the accessible-tenant labels so the just-joined tenant shows
+      // its real title in the switcher instead of the raw id fallback.
+      await refreshTenantLabels()
       await refreshBadges()
       // If this was the last pending one, send the user back to the dashboard.
       if (invitations.value.length === 0) {
