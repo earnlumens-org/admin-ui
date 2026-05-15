@@ -99,18 +99,16 @@
           <v-col cols="12" md="6">
             <v-card>
               <v-card-item>
-                <v-card-title>Storefront brand</v-card-title>
-                <v-card-subtitle>Texto que aparece junto al logo</v-card-subtitle>
+                <v-card-title>Platform fee</v-card-title>
+                <v-card-subtitle>Set by the platform</v-card-subtitle>
               </v-card-item>
               <v-card-text>
                 <v-text-field
-                  v-model="draft.brandText"
                   density="comfortable"
-                  hint="Déjalo vacío para usar el nombre del tenant."
-                  label="Brand text"
-                  maxlength="60"
-                  persistent-hint
-                  :rules="[rules.brandTextLength]"
+                  disabled
+                  label="Platform fee %"
+                  :model-value="tenant.platformFeePercent"
+                  suffix="%"
                   variant="outlined"
                 />
               </v-card-text>
@@ -158,16 +156,18 @@
           <v-col cols="12" md="6">
             <v-card>
               <v-card-item>
-                <v-card-title>Platform fee</v-card-title>
-                <v-card-subtitle>Set by the platform</v-card-subtitle>
+                <v-card-title>Storefront brand</v-card-title>
+                <v-card-subtitle>Texto que aparece junto al logo</v-card-subtitle>
               </v-card-item>
               <v-card-text>
                 <v-text-field
+                  v-model="draft.brandText"
                   density="comfortable"
-                  disabled
-                  label="Platform fee %"
-                  :model-value="tenant.platformFeePercent"
-                  suffix="%"
+                  hint="Déjalo vacío para usar el nombre del tenant."
+                  label="Brand text"
+                  maxlength="60"
+                  persistent-hint
+                  :rules="[rules.brandTextLength]"
                   variant="outlined"
                 />
               </v-card-text>
