@@ -23,6 +23,7 @@ export interface TenantSummary {
   title: string
   description: string | null
   logoR2Key: string | null
+  brandText: string | null
   ownerUsername: string
   ownerDisplayName: string
   tenantWallet: string | null
@@ -136,6 +137,12 @@ export interface UpdateTenantSettingsPayload {
   title?: string
   description?: string
   logoR2Key?: string
+  /**
+   * Storefront app-bar label. Empty string clears the override and the
+   * server falls back to the tenant title (or to the hardcoded EARNLUMENS
+   * brand for the platform/root tenant).
+   */
+  brandText?: string
   tenantWallet?: string
   tenantFeePercent?: string
 }

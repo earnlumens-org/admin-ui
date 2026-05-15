@@ -99,17 +99,18 @@
           <v-col cols="12" md="6">
             <v-card>
               <v-card-item>
-                <v-card-title>Branding</v-card-title>
-                <v-card-subtitle>Logo storage key</v-card-subtitle>
+                <v-card-title>Storefront brand</v-card-title>
+                <v-card-subtitle>Texto que aparece junto al logo</v-card-subtitle>
               </v-card-item>
               <v-card-text>
                 <v-text-field
-                  v-model="draft.logoR2Key"
+                  v-model="draft.brandText"
                   density="comfortable"
-                  hint="R2 object key (upload UI coming soon)"
-                  label="Logo key"
-                  maxlength="256"
+                  hint="Déjalo vacío para usar el nombre del tenant."
+                  label="Brand text"
+                  maxlength="60"
                   persistent-hint
+                  :rules="[rules.brandTextLength]"
                   variant="outlined"
                 />
               </v-card-text>
@@ -172,6 +173,43 @@
               </v-card-text>
             </v-card>
           </v-col>
+
+          <v-col cols="12">
+            <v-card>
+              <v-card-item>
+                <v-card-title>Preview</v-card-title>
+                <v-card-subtitle>Vista previa de la barra superior del storefront</v-card-subtitle>
+              </v-card-item>
+              <v-card-text>
+                <div class="d-flex flex-column flex-md-row ga-4">
+                  <div class="preview-shell flex-grow-1">
+                    <div class="text-caption text-medium-emphasis mb-1">Desktop</div>
+                    <div class="preview-frame preview-desktop">
+                      <div class="preview-appbar">
+                        <span class="preview-menu">
+                          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
+                        </span>
+                        <span aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
+                        <span class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="preview-shell">
+                    <div class="text-caption text-medium-emphasis mb-1">Mobile</div>
+                    <div class="preview-frame preview-mobile">
+                      <div class="preview-appbar">
+                        <span class="preview-menu">
+                          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
+                        </span>
+                        <span aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
+                        <span class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
         </v-row>
 
           <div class="d-flex justify-end ga-2 mt-4">
@@ -205,13 +243,17 @@
 <script lang="ts" setup>
   import { computed, onMounted, reactive, ref } from 'vue'
   import SettingsLanguages from '@/components/SettingsLanguages.vue'
+  import storefrontLogo from '@/assets/storefront-logo.svg?raw'
   import {
     getMyTenant,
     TenantApiError,
     type TenantSummary,
+    type UpdateTenantSettingsPayload,
     updateMyTenant,
   } from '@/api/tenants'
   import { useAuthStore } from '@/stores/auth'
+
+  const storefrontLogoSvg = storefrontLogo
 
   const authStore = useAuthStore()
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
@@ -232,8 +274,22 @@
     title: '',
     description: '',
     logoR2Key: '',
+    brandText: '',
     tenantWallet: '',
     tenantFeePercent: '',
+  })
+
+  /**
+   * Live preview label — mirrors the storefront fallback chain so the
+   * admin sees the exact text users will see: brandText override → tenant
+   * title → hardcoded EARNLUMENS brand.
+   */
+  const previewBrand = computed(() => {
+    const override = draft.brandText.trim()
+    if (override) return override
+    const title = draft.title.trim()
+    if (title) return title
+    return 'EARNLUMENS'
   })
 
   const isDirty = computed(() => {
@@ -241,6 +297,7 @@
     return draft.title !== (tenant.value.title ?? '')
       || draft.description !== (tenant.value.description ?? '')
       || draft.logoR2Key !== (tenant.value.logoR2Key ?? '')
+      || draft.brandText !== (tenant.value.brandText ?? '')
       || draft.tenantWallet !== (tenant.value.tenantWallet ?? '')
       || draft.tenantFeePercent !== (tenant.value.tenantFeePercent ?? '')
   })
@@ -252,6 +309,7 @@
     titleRequired: (v: string) => (v && v.trim().length > 0) || 'Required',
     titleLength: (v: string) => (v && v.length >= 2 && v.length <= 80) || 'Between 2 and 80 characters',
     descLength: (v: string) => (!v || v.length <= 280) || 'Up to 280 characters',
+    brandTextLength: (v: string) => (!v || v.length <= 60) || 'Up to 60 characters',
     walletRequired: (v: string) => (v && v.trim().length > 0) || 'Required',
     walletFormat: (v: string) => WALLET_RE.test(v ?? '') || 'Invalid Stellar address',
     feeFormat: (v: string) => FEE_RE.test(v ?? '') || 'Use a number like 12.50',
@@ -265,6 +323,7 @@
     draft.title = t.title ?? ''
     draft.description = t.description ?? ''
     draft.logoR2Key = t.logoR2Key ?? ''
+    draft.brandText = t.brandText ?? ''
     draft.tenantWallet = t.tenantWallet ?? ''
     draft.tenantFeePercent = t.tenantFeePercent ?? ''
   }
@@ -295,10 +354,13 @@
 
   function diffPayload () {
     if (!tenant.value) return null
-    const out: Record<string, string> = {}
+    const out: UpdateTenantSettingsPayload = {}
     if (draft.title !== (tenant.value.title ?? '')) out.title = draft.title.trim()
     if (draft.description !== (tenant.value.description ?? '')) out.description = draft.description.trim()
     if (draft.logoR2Key !== (tenant.value.logoR2Key ?? '')) out.logoR2Key = draft.logoR2Key.trim()
+    // brandText is sent raw (including empty string) so the server can clear
+    // the override and fall back to the tenant title automatically.
+    if (draft.brandText !== (tenant.value.brandText ?? '')) out.brandText = draft.brandText.trim()
     if (draft.tenantWallet !== (tenant.value.tenantWallet ?? '')) out.tenantWallet = draft.tenantWallet.trim()
     if (draft.tenantFeePercent !== (tenant.value.tenantFeePercent ?? '')) out.tenantFeePercent = draft.tenantFeePercent
     return out
@@ -330,3 +392,66 @@
 
   onMounted(loadTenant)
 </script>
+
+<style scoped>
+/*
+ * Storefront app-bar preview. The DOM and the icon-sizing classes mirror
+ * media-store-ui's AppBar (24x24 logo, ml-3 spacing, font-weight-bold
+ * text-button label) so the admin sees the exact visual result of their
+ * brandText edit instead of an approximation.
+ */
+.preview-shell { min-width: 0; }
+
+.preview-frame {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgb(var(--v-theme-surface));
+}
+
+.preview-desktop { width: 100%; max-width: 1100px; }
+.preview-mobile { width: 360px; max-width: 100%; }
+
+.preview-appbar {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 0 16px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.preview-menu {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.preview-menu :deep(svg) {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.preview-appbar .app-logo {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+}
+
+.preview-appbar .app-logo :deep(svg) {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.preview-brand {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+</style>
