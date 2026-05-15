@@ -11,17 +11,21 @@
 
     <!-- Filters: tenant scope (SUPERADMIN only) + action type. -->
     <div class="d-flex flex-wrap align-center ga-3 mb-4">
-      <v-select
-        v-if="isSuperadmin && tenantOptions.length > 1"
+      <v-autocomplete
+        v-if="isSuperadmin"
         v-model="tenantFilter"
+        clearable
         density="compact"
         hide-details
         item-title="title"
         item-value="value"
         :items="tenantOptions"
         label="Tenant"
-        style="max-width: 240px"
+        :loading="tenantsLoading"
+        :menu-props="{ maxHeight: 360 }"
+        style="min-width: 240px; max-width: 320px"
         variant="outlined"
+        @click:clear="tenantFilter = '_all'"
       />
       <v-select
         v-model="typeFilter"
@@ -108,6 +112,7 @@
   import { computed, onMounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import { listAudit } from '@/api/audit'
+  import { listAllTenants, type TenantSummary } from '@/api/tenants'
   import type { SanctionType, UserSanctionDto } from '@/api/userModeration'
   import { useAuthStore } from '@/stores/auth'
 
@@ -117,13 +122,40 @@
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
   const activeTenantId = computed(() => authStore.activeTenantId)
 
+  // SUPERADMIN sees the full tenant catalogue so the audit can be sliced
+  // per-storefront (otherwise the cross-tenant feed becomes unreadable on
+  // any platform with more than a handful of active tenants).
+  const allTenants = ref<TenantSummary[]>([])
+  const tenantsLoading = ref(false)
+
+  // The root "earnlumens" tenant is a pseudo-tenant with no Mongo Tenant
+  // document, so listAllTenants() never returns it. Inject it manually so
+  // SUPERADMIN can still filter root-scoped audit rows.
+  const ROOT_TENANT_ID = 'earnlumens'
+
   const tenantOptions = computed(() => {
     const list: { title: string, value: string }[] = []
-    if (isSuperadmin.value) list.push({ title: 'All tenants', value: '_all' })
-    const active = activeTenantId.value
-    if (active && !list.some(o => o.value === active)) {
-      list.push({ title: active, value: active })
+    if (isSuperadmin.value) {
+      list.push({ title: 'All tenants', value: '_all' })
+      list.push({ title: 'earnlumens (root)', value: ROOT_TENANT_ID })
+      for (const t of allTenants.value) {
+        if (t.id === ROOT_TENANT_ID) continue
+        list.push({
+          title: t.title?.trim() || t.subdomain || t.id,
+          value: t.id,
+        })
+      }
+      // Keep the active tenant available even if the catalogue request
+      // failed — better to fall back to a single option than to a blank
+      // dropdown that hides the filter entirely.
+      const active = activeTenantId.value
+      if (active && !list.some(o => o.value === active)) {
+        list.push({ title: active, value: active })
+      }
+      return list
     }
+    const active = activeTenantId.value
+    if (active) list.push({ title: active, value: active })
     return list
   })
 
@@ -171,7 +203,22 @@
   watch([tenantFilter, typeFilter], () => reload())
   watch(pageOneBased, () => load())
 
-  onMounted(() => load())
+  async function loadTenants () {
+    if (!isSuperadmin.value) return
+    tenantsLoading.value = true
+    try {
+      allTenants.value = await listAllTenants()
+    } catch {
+      allTenants.value = []
+    } finally {
+      tenantsLoading.value = false
+    }
+  }
+
+  onMounted(() => {
+    loadTenants()
+    load()
+  })
 
   function goToUser (row: UserSanctionDto) {
     if (!row.userId) return
