@@ -20,9 +20,15 @@
                 icon
                 variant="text"
               >
-                <v-avatar class="avatar-grayscale">
-                  <v-img v-if="authStore.user?.profileImageUrl" :src="authStore.user.profileImageUrl" />
-                  <v-icon v-else icon="mdi-account-circle" />
+                <v-avatar class="avatar-grayscale" color="grey-lighten-3" size="36">
+                  <v-img
+                    v-if="avatarUrl"
+                    :alt="authStore.user?.displayName || authStore.user?.username || 'User avatar'"
+                    referrerpolicy="no-referrer"
+                    :src="avatarUrl"
+                    @error="avatarFailed = true"
+                  />
+                  <v-icon v-else color="grey-darken-1" icon="mdi-account-circle" size="32" />
                 </v-avatar>
               </v-btn>
             </template>
@@ -224,6 +230,23 @@
   const theme = useTheme()
   const { mdAndUp } = useDisplay()
   const { inReviewCount, openReportsCount, pendingInvitationsCount } = useSidebarBadges()
+
+  // Avatar fallback: X profile_image_url URLs (pbs.twimg.com) occasionally
+  // 403 / 404 on hot-link, leaving v-img with a blank box. Track load errors
+  // and resize the X normal (48x48) variant to the bigger normal-resolution
+  // image so we never show a microscopic upscaled blob inside the 36px avatar.
+  const avatarFailed = ref(false)
+  const avatarUrl = computed(() => {
+    if (avatarFailed.value) return ''
+    const raw = authStore.user?.profileImageUrl || ''
+    if (!raw) return ''
+    // X serves _normal (48), _bigger (73), _400x400 (400). Bump _normal to
+    // _bigger so a 36-72px avatar still looks sharp on Retina screens.
+    return raw.replace('_normal.', '_bigger.')
+  })
+  // Reset the error flag if the user/token changes so a fresh login can
+  // re-attempt the load.
+  watch(() => authStore.user?.profileImageUrl, () => { avatarFailed.value = false })
 
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
   /** True when the user owns at least one tenant (used only for the global Tenants entry). */
