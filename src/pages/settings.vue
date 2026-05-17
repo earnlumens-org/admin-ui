@@ -157,65 +157,134 @@
             <v-card>
               <v-card-item>
                 <v-card-title>Storefront brand</v-card-title>
-                <v-card-subtitle>Texto y logo que aparecen junto al menú</v-card-subtitle>
+                <v-card-subtitle>Texto y logos que aparecen junto al menú</v-card-subtitle>
               </v-card-item>
               <v-card-text>
+                <!--
+                  brandTextHidden is a separate flag from brandText so the
+                  owner can hide the label without losing the text they
+                  typed (flipping the switch back ON restores it).
+                -->
+                <v-switch
+                  v-model="draft.brandTextHidden"
+                  class="mb-0"
+                  color="primary"
+                  density="comfortable"
+                  hide-details
+                  :label="draft.brandTextHidden ? 'Solo logo (sin texto)' : 'Mostrar texto de marca'"
+                />
                 <v-text-field
                   v-model="draft.brandText"
+                  class="mt-2"
                   density="comfortable"
-                  hint="Déjalo vacío para usar el nombre del tenant."
+                  :disabled="draft.brandTextHidden"
+                  :hint="draft.brandTextHidden
+                    ? 'Desactivado: el storefront mostrará solo el logo.'
+                    : 'Déjalo vacío para usar el nombre del tenant.'"
                   label="Brand text"
                   maxlength="60"
                   persistent-hint
                   :rules="[rules.brandTextLength]"
                   variant="outlined"
                 />
+
                 <div class="mt-4">
-                  <div class="text-subtitle-2 mb-1">Logo</div>
+                  <div class="text-subtitle-2 mb-1">Logo (modo claro)</div>
                   <div class="text-caption text-medium-emphasis mb-3">
                     PNG o WebP, hasta 512 KB. Se renderiza con alto fijo de 24px;
                     si lo dejas vacío se usa el logo por defecto.
                   </div>
                   <div class="d-flex align-center ga-3 flex-wrap">
-                    <div class="logo-thumb">
-                      <img v-if="previewLogoUrl" :alt="draft.brandText || draft.title" :src="previewLogoUrl">
+                    <div class="logo-thumb logo-thumb--light">
+                      <img v-if="previewLogoUrlLight" :alt="draft.brandText || draft.title" :src="previewLogoUrlLight">
                       <span v-else class="text-caption text-medium-emphasis">Sin logo</span>
                     </div>
                     <v-file-input
                       accept="image/png,image/webp"
                       class="flex-grow-1"
                       density="comfortable"
-                      :disabled="logoUploading"
+                      :disabled="logoUploading.light"
                       hide-details
-                      label="Subir logo"
-                      :loading="logoUploading"
-                      :model-value="logoFileModel"
+                      label="Subir logo claro"
+                      :loading="logoUploading.light"
+                      :model-value="logoFileModel.light"
                       prepend-icon=""
                       prepend-inner-icon="mdi-image-outline"
                       show-size
                       style="min-width: 200px;"
                       variant="outlined"
-                      @update:model-value="onLogoFileSelected"
+                      @update:model-value="(v) => onLogoFileSelected('light', v)"
                     />
                     <v-btn
-                      :disabled="!draft.logoR2Key || logoUploading"
+                      :disabled="!draft.logoR2Key || logoUploading.light"
                       size="small"
                       variant="text"
-                      @click="clearLogo"
+                      @click="clearLogo('light')"
                     >
                       Quitar logo
                     </v-btn>
                   </div>
                   <v-alert
-                    v-if="logoError"
+                    v-if="logoError.light"
                     class="mt-3"
                     closable
                     density="compact"
                     type="error"
                     variant="tonal"
-                    @click:close="logoError = ''"
+                    @click:close="logoError.light = ''"
                   >
-                    {{ logoError }}
+                    {{ logoError.light }}
+                  </v-alert>
+                </div>
+
+                <v-divider class="my-4" />
+
+                <div>
+                  <div class="text-subtitle-2 mb-1">Logo (modo oscuro)</div>
+                  <div class="text-caption text-medium-emphasis mb-3">
+                    Opcional. Si lo dejas vacío, en modo oscuro se usa el logo
+                    de modo claro.
+                  </div>
+                  <div class="d-flex align-center ga-3 flex-wrap">
+                    <div class="logo-thumb logo-thumb--dark">
+                      <img v-if="previewLogoUrlDark" :alt="draft.brandText || draft.title" :src="previewLogoUrlDark">
+                      <span v-else class="text-caption text-medium-emphasis">Sin logo</span>
+                    </div>
+                    <v-file-input
+                      accept="image/png,image/webp"
+                      class="flex-grow-1"
+                      density="comfortable"
+                      :disabled="logoUploading.dark"
+                      hide-details
+                      label="Subir logo oscuro"
+                      :loading="logoUploading.dark"
+                      :model-value="logoFileModel.dark"
+                      prepend-icon=""
+                      prepend-inner-icon="mdi-image-outline"
+                      show-size
+                      style="min-width: 200px;"
+                      variant="outlined"
+                      @update:model-value="(v) => onLogoFileSelected('dark', v)"
+                    />
+                    <v-btn
+                      :disabled="!draft.logoR2KeyDark || logoUploading.dark"
+                      size="small"
+                      variant="text"
+                      @click="clearLogo('dark')"
+                    >
+                      Quitar logo
+                    </v-btn>
+                  </div>
+                  <v-alert
+                    v-if="logoError.dark"
+                    class="mt-3"
+                    closable
+                    density="compact"
+                    type="error"
+                    variant="tonal"
+                    @click:close="logoError.dark = ''"
+                  >
+                    {{ logoError.dark }}
                   </v-alert>
                 </div>
               </v-card-text>
@@ -229,33 +298,46 @@
                 <v-card-subtitle>Vista previa de la barra superior del storefront</v-card-subtitle>
               </v-card-item>
               <v-card-text>
-                <div class="d-flex flex-column flex-md-row ga-4">
-                  <div class="preview-shell flex-grow-1">
-                    <div class="text-caption text-medium-emphasis mb-1">Desktop</div>
-                    <div class="preview-frame preview-desktop">
-                      <div class="preview-appbar">
-                        <span class="preview-menu">
-                          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
-                        </span>
-                        <img v-if="previewLogoUrl" :alt="previewBrand" class="ml-3 app-logo app-logo--img" :src="previewLogoUrl">
-                        <span v-else aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
-                        <span class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
+                <!--
+                  Two preview rows so the admin can verify BOTH themes at
+                  once. v-theme-provider scopes Vuetify's --v-theme-* CSS
+                  vars to the subtree, so the inner .preview-frame surface
+                  flips colours without affecting the rest of the page.
+                  Within each row the desktop + mobile widths are mocked,
+                  matching the storefront breakpoints.
+                -->
+                <div v-for="row in previewRows" :key="row.theme" class="mb-4">
+                  <div class="text-subtitle-2 mb-2">{{ row.label }}</div>
+                  <v-theme-provider :theme="row.theme" with-background>
+                    <div class="d-flex flex-column flex-md-row ga-4">
+                      <div class="preview-shell flex-grow-1">
+                        <div class="text-caption text-medium-emphasis mb-1">Desktop</div>
+                        <div class="preview-frame preview-desktop">
+                          <div class="preview-appbar">
+                            <span class="preview-menu">
+                              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
+                            </span>
+                            <img v-if="row.logoUrl" :alt="previewBrand" class="ml-3 app-logo app-logo--img" :src="row.logoUrl">
+                            <span v-else aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
+                            <span v-if="previewBrand" class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="preview-shell">
+                        <div class="text-caption text-medium-emphasis mb-1">Mobile</div>
+                        <div class="preview-frame preview-mobile">
+                          <div class="preview-appbar">
+                            <span class="preview-menu">
+                              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
+                            </span>
+                            <img v-if="row.logoUrl" :alt="previewBrand" class="ml-3 app-logo app-logo--img" :src="row.logoUrl">
+                            <span v-else aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
+                            <span v-if="previewBrand" class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div class="preview-shell">
-                    <div class="text-caption text-medium-emphasis mb-1">Mobile</div>
-                    <div class="preview-frame preview-mobile">
-                      <div class="preview-appbar">
-                        <span class="preview-menu">
-                          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
-                        </span>
-                        <img v-if="previewLogoUrl" :alt="previewBrand" class="ml-3 app-logo app-logo--img" :src="previewLogoUrl">
-                        <span v-else aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
-                        <span class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
-                      </div>
-                    </div>
-                  </div>
+                  </v-theme-provider>
                 </div>
               </v-card-text>
             </v-card>
@@ -326,17 +408,21 @@
     title: '',
     description: '',
     logoR2Key: '',
+    logoR2KeyDark: '',
     brandText: '',
+    brandTextHidden: false,
     tenantWallet: '',
     tenantFeePercent: '',
   })
 
   /**
    * Live preview label — mirrors the storefront fallback chain so the
-   * admin sees the exact text users will see: brandText override → tenant
-   * title → hardcoded EARNLUMENS brand.
+   * admin sees the exact text users will see. When the owner has flipped
+   * on "logo-only" mode the preview renders no text at all; otherwise the
+   * usual brandText override → tenant title → hardcoded brand chain applies.
    */
   const previewBrand = computed(() => {
+    if (draft.brandTextHidden) return ''
     const override = draft.brandText.trim()
     if (override) return override
     const title = draft.title.trim()
@@ -345,28 +431,55 @@
   })
 
   // ----- Logo upload (PNG / WebP, max 512 KB, ratio <= 6:1, height >= 64) -----
+  //
+  // The owner can upload TWO independent logos — one for the light theme
+  // and one for the dark theme. The dark variant is optional; when missing
+  // the storefront renders the light variant in both themes.
+  type LogoVariant = 'light' | 'dark'
+
   const LOGO_ALLOWED_TYPES = new Set(['image/png', 'image/webp'])
   const LOGO_MAX_BYTES = 512 * 1024
   const LOGO_MIN_DIMENSION = 64
   const LOGO_MAX_RATIO = 6
 
-  const logoUploading = ref(false)
-  const logoError = ref('')
-  /** Object-URL preview of an in-flight upload; replaced by the CDN URL once committed. */
-  const localLogoPreview = ref<string | null>(null)
-  /** Bound directly to v-file-input; cleared after each select. */
-  const logoFileModel = ref<File | File[] | null>(null)
+  const logoUploading = reactive<Record<LogoVariant, boolean>>({ light: false, dark: false })
+  const logoError = reactive<Record<LogoVariant, string>>({ light: '', dark: '' })
+  /** Object-URL preview of an in-flight upload per variant; replaced by the CDN URL once committed. */
+  const localLogoPreview = reactive<Record<LogoVariant, string | null>>({ light: null, dark: null })
+  /** Bound directly to v-file-input; cleared after each select. One slot per variant. */
+  const logoFileModel = reactive<Record<LogoVariant, File | File[] | null>>({ light: null, dark: null })
+
+  function draftKeyFor (variant: LogoVariant): 'logoR2Key' | 'logoR2KeyDark' {
+    return variant === 'dark' ? 'logoR2KeyDark' : 'logoR2Key'
+  }
 
   /**
-   * URL used in the thumbnail and in the AppBar mocks. Prefers the
-   * in-flight object URL so the preview is instant; falls back to the
-   * CDN URL once the draft holds a persisted key.
+   * URL used in the thumbnail and in the AppBar mocks for a given variant.
+   * Prefers the in-flight object URL so the preview is instant; falls back
+   * to the CDN URL once the draft holds a persisted key. The dark preview
+   * falls back to the light variant when no dark logo is set, mirroring
+   * the runtime fallback in the storefront AppBar.
    */
-  const previewLogoUrl = computed<string | null>(() => {
-    if (localLogoPreview.value) return localLogoPreview.value
-    if (draft.logoR2Key) return `${CDN_BASE_URL}/${draft.logoR2Key}`
+  function previewLogoUrlFor (variant: LogoVariant): string | null {
+    if (localLogoPreview[variant]) return localLogoPreview[variant]
+    const key = draft[draftKeyFor(variant)]
+    if (key) return `${CDN_BASE_URL}/${key}`
+    if (variant === 'dark') return previewLogoUrlFor('light')
     return null
-  })
+  }
+  const previewLogoUrlLight = computed(() => previewLogoUrlFor('light'))
+  const previewLogoUrlDark = computed(() => previewLogoUrlFor('dark'))
+
+  /**
+   * Drives the dual-theme preview block. Each row scopes a Vuetify theme
+   * to its subtree (via {@code <v-theme-provider>}) and renders the logo
+   * that the storefront would actually pick for that theme \u2014 so the admin
+   * sees, side by side, exactly what dark- and light-mode visitors get.
+   */
+  const previewRows = computed(() => [
+    { theme: 'light', label: 'Modo claro', logoUrl: previewLogoUrlLight.value },
+    { theme: 'dark', label: 'Modo oscuro', logoUrl: previewLogoUrlDark.value },
+  ])
 
   async function validateLogoFile (file: File): Promise<void> {
     if (!LOGO_ALLOWED_TYPES.has(file.type)) {
@@ -398,35 +511,36 @@
     }
   }
 
-  async function onLogoFileSelected (selection: File | File[] | null) {
-    logoError.value = ''
+  async function onLogoFileSelected (variant: LogoVariant, selection: File | File[] | null) {
+    logoError[variant] = ''
     const file = Array.isArray(selection) ? selection[0] ?? null : selection
     // v-file-input emits null when the user clears the picker; treat as no-op.
     if (!file) {
-      logoFileModel.value = null
+      logoFileModel[variant] = null
       return
     }
     if (!tenant.value) {
-      logoFileModel.value = null
+      logoFileModel[variant] = null
       return
     }
     try {
       await validateLogoFile(file)
     } catch (error) {
-      logoError.value = error instanceof Error ? error.message : 'Archivo no válido.'
-      logoFileModel.value = null
+      logoError[variant] = error instanceof Error ? error.message : 'Archivo no válido.'
+      logoFileModel[variant] = null
       return
     }
 
     // Show the local preview immediately so the user gets instant
     // feedback while we negotiate with the backend + R2.
-    if (localLogoPreview.value) URL.revokeObjectURL(localLogoPreview.value)
-    localLogoPreview.value = URL.createObjectURL(file)
+    const previousPreview = localLogoPreview[variant]
+    if (previousPreview) URL.revokeObjectURL(previousPreview)
+    localLogoPreview[variant] = URL.createObjectURL(file)
 
-    logoUploading.value = true
+    logoUploading[variant] = true
     try {
       const { uploadUrl, r2Key } = await presignTenantLogoUpload(
-        tenant.value.id, file.type, file.size,
+        tenant.value.id, file.type, file.size, variant,
       )
       const putRes = await fetch(uploadUrl, {
         method: 'PUT',
@@ -439,32 +553,37 @@
       // Successful upload — stage the key on the draft so the regular
       // Save button persists it via PATCH. The local object-URL preview
       // stays in place until the next snapshotIntoDraft.
-      draft.logoR2Key = r2Key
+      draft[draftKeyFor(variant)] = r2Key
       showSnackbar('Logo subido. Pulsa Save changes para confirmar.', 'info')
     } catch (error) {
       const code = error instanceof TenantApiError ? error.code : (error as Error).message
-      logoError.value = `No se pudo subir el logo: ${code}`
-      if (localLogoPreview.value) {
-        URL.revokeObjectURL(localLogoPreview.value)
-        localLogoPreview.value = null
+      logoError[variant] = `No se pudo subir el logo: ${code}`
+      const failedPreview = localLogoPreview[variant]
+      if (failedPreview) {
+        URL.revokeObjectURL(failedPreview)
+        localLogoPreview[variant] = null
       }
     } finally {
-      logoUploading.value = false
-      logoFileModel.value = null
+      logoUploading[variant] = false
+      logoFileModel[variant] = null
     }
   }
 
-  function clearLogo () {
-    draft.logoR2Key = ''
-    if (localLogoPreview.value) {
-      URL.revokeObjectURL(localLogoPreview.value)
-      localLogoPreview.value = null
+  function clearLogo (variant: LogoVariant) {
+    draft[draftKeyFor(variant)] = ''
+    const preview = localLogoPreview[variant]
+    if (preview) {
+      URL.revokeObjectURL(preview)
+      localLogoPreview[variant] = null
     }
-    logoError.value = ''
+    logoError[variant] = ''
   }
 
   onUnmounted(() => {
-    if (localLogoPreview.value) URL.revokeObjectURL(localLogoPreview.value)
+    for (const variant of ['light', 'dark'] as const) {
+      const preview = localLogoPreview[variant]
+      if (preview) URL.revokeObjectURL(preview)
+    }
   })
 
   const isDirty = computed(() => {
@@ -472,7 +591,9 @@
     return draft.title !== (tenant.value.title ?? '')
       || draft.description !== (tenant.value.description ?? '')
       || draft.logoR2Key !== (tenant.value.logoR2Key ?? '')
+      || draft.logoR2KeyDark !== (tenant.value.logoR2KeyDark ?? '')
       || draft.brandText !== (tenant.value.brandText ?? '')
+      || draft.brandTextHidden !== (tenant.value.brandTextHidden ?? false)
       || draft.tenantWallet !== (tenant.value.tenantWallet ?? '')
       || draft.tenantFeePercent !== (tenant.value.tenantFeePercent ?? '')
   })
@@ -498,16 +619,19 @@
     draft.title = t.title ?? ''
     draft.description = t.description ?? ''
     draft.logoR2Key = t.logoR2Key ?? ''
+    draft.logoR2KeyDark = t.logoR2KeyDark ?? ''
     draft.brandText = t.brandText ?? ''
+    draft.brandTextHidden = t.brandTextHidden ?? false
     draft.tenantWallet = t.tenantWallet ?? ''
     draft.tenantFeePercent = t.tenantFeePercent ?? ''
-    // Drop any local preview — the canonical URL now comes from the
-    // freshly-snapshotted draft.logoR2Key via previewLogoUrl.
-    if (localLogoPreview.value) {
-      URL.revokeObjectURL(localLogoPreview.value)
-      localLogoPreview.value = null
+    // Drop any local previews — the canonical URL now comes from the
+    // freshly-snapshotted draft keys via previewLogoUrlFor().
+    for (const variant of ['light', 'dark'] as const) {
+      const preview = localLogoPreview[variant]
+      if (preview) URL.revokeObjectURL(preview)
+      localLogoPreview[variant] = null
+      logoError[variant] = ''
     }
-    logoError.value = ''
   }
 
   function reset () {
@@ -540,9 +664,11 @@
     if (draft.title !== (tenant.value.title ?? '')) out.title = draft.title.trim()
     if (draft.description !== (tenant.value.description ?? '')) out.description = draft.description.trim()
     if (draft.logoR2Key !== (tenant.value.logoR2Key ?? '')) out.logoR2Key = draft.logoR2Key.trim()
+    if (draft.logoR2KeyDark !== (tenant.value.logoR2KeyDark ?? '')) out.logoR2KeyDark = draft.logoR2KeyDark.trim()
     // brandText is sent raw (including empty string) so the server can clear
     // the override and fall back to the tenant title automatically.
     if (draft.brandText !== (tenant.value.brandText ?? '')) out.brandText = draft.brandText.trim()
+    if (draft.brandTextHidden !== (tenant.value.brandTextHidden ?? false)) out.brandTextHidden = draft.brandTextHidden
     if (draft.tenantWallet !== (tenant.value.tenantWallet ?? '')) out.tenantWallet = draft.tenantWallet.trim()
     if (draft.tenantFeePercent !== (tenant.value.tenantFeePercent ?? '')) out.tenantFeePercent = draft.tenantFeePercent
     return out
@@ -657,6 +783,13 @@
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+
+/* Dark-variant thumb forces a dark surface so the admin can verify the
+ * dark logo against the background it will actually live on. */
+.logo-thumb--dark {
+  background: #1e1e1e;
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .preview-brand {

@@ -23,7 +23,11 @@ export interface TenantSummary {
   title: string
   description: string | null
   logoR2Key: string | null
+  /** Optional dark-theme logo; storefront falls back to logoR2Key when null. */
+  logoR2KeyDark: string | null
   brandText: string | null
+  /** When true the storefront renders no text label next to the logo. */
+  brandTextHidden: boolean
   ownerUsername: string
   ownerDisplayName: string
   tenantWallet: string | null
@@ -137,12 +141,16 @@ export interface UpdateTenantSettingsPayload {
   title?: string
   description?: string
   logoR2Key?: string
+  /** Dark-theme logo R2 key. Empty string clears the value. */
+  logoR2KeyDark?: string
   /**
    * Storefront app-bar label. Empty string clears the override and the
    * server falls back to the tenant title (or to the hardcoded EARNLUMENS
    * brand for the platform/root tenant).
    */
   brandText?: string
+  /** Flip on to hide the text label entirely (logo-only mode). */
+  brandTextHidden?: boolean
   tenantWallet?: string
   tenantFeePercent?: string
 }
@@ -216,6 +224,7 @@ export async function presignTenantLogoUpload (
   tenantId: string,
   contentType: string,
   sizeBytes: number,
+  variant: 'light' | 'dark' = 'light',
 ): Promise<LogoUploadUrlResponse> {
   const res = await fetch(
     `${API_BASE_URL}/api/tenants/me/${encodeURIComponent(tenantId)}/logo/upload-url`,
@@ -223,7 +232,7 @@ export async function presignTenantLogoUpload (
       method: 'POST',
       credentials: 'include',
       headers: await authHeaders(),
-      body: JSON.stringify({ contentType, sizeBytes }),
+      body: JSON.stringify({ contentType, sizeBytes, variant }),
     },
   )
   if (!res.ok) {
