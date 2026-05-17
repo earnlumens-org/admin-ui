@@ -157,7 +157,7 @@
             <v-card>
               <v-card-item>
                 <v-card-title>Storefront brand</v-card-title>
-                <v-card-subtitle>Texto que aparece junto al logo</v-card-subtitle>
+                <v-card-subtitle>Texto y logo que aparecen junto al menú</v-card-subtitle>
               </v-card-item>
               <v-card-text>
                 <v-text-field
@@ -170,6 +170,54 @@
                   :rules="[rules.brandTextLength]"
                   variant="outlined"
                 />
+                <div class="mt-4">
+                  <div class="text-subtitle-2 mb-1">Logo</div>
+                  <div class="text-caption text-medium-emphasis mb-3">
+                    PNG o WebP, hasta 512 KB. Se renderiza con alto fijo de 24px;
+                    si lo dejas vacío se usa el logo por defecto.
+                  </div>
+                  <div class="d-flex align-center ga-3 flex-wrap">
+                    <div class="logo-thumb">
+                      <img v-if="previewLogoUrl" :alt="draft.brandText || draft.title" :src="previewLogoUrl">
+                      <span v-else class="text-caption text-medium-emphasis">Sin logo</span>
+                    </div>
+                    <v-file-input
+                      accept="image/png,image/webp"
+                      class="flex-grow-1"
+                      density="comfortable"
+                      :disabled="logoUploading"
+                      hide-details
+                      label="Subir logo"
+                      :loading="logoUploading"
+                      :model-value="logoFileModel"
+                      prepend-icon=""
+                      prepend-inner-icon="mdi-image-outline"
+                      show-size
+                      style="min-width: 200px;"
+                      variant="outlined"
+                      @update:model-value="onLogoFileSelected"
+                    />
+                    <v-btn
+                      :disabled="!draft.logoR2Key || logoUploading"
+                      size="small"
+                      variant="text"
+                      @click="clearLogo"
+                    >
+                      Quitar logo
+                    </v-btn>
+                  </div>
+                  <v-alert
+                    v-if="logoError"
+                    class="mt-3"
+                    closable
+                    density="compact"
+                    type="error"
+                    variant="tonal"
+                    @click:close="logoError = ''"
+                  >
+                    {{ logoError }}
+                  </v-alert>
+                </div>
               </v-card-text>
             </v-card>
           </v-col>
@@ -189,7 +237,8 @@
                         <span class="preview-menu">
                           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
                         </span>
-                        <span aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
+                        <img v-if="previewLogoUrl" :alt="previewBrand" class="ml-3 app-logo app-logo--img" :src="previewLogoUrl">
+                        <span v-else aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
                         <span class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
                       </div>
                     </div>
@@ -201,7 +250,8 @@
                         <span class="preview-menu">
                           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
                         </span>
-                        <span aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
+                        <img v-if="previewLogoUrl" :alt="previewBrand" class="ml-3 app-logo app-logo--img" :src="previewLogoUrl">
+                        <span v-else aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
                         <span class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
                       </div>
                     </div>
@@ -241,16 +291,18 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, onMounted, reactive, ref } from 'vue'
+  import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
   import SettingsLanguages from '@/components/SettingsLanguages.vue'
   import storefrontLogo from '@/assets/storefront-logo.svg?raw'
   import {
     getMyTenant,
+    presignTenantLogoUpload,
     TenantApiError,
     type TenantSummary,
     type UpdateTenantSettingsPayload,
     updateMyTenant,
   } from '@/api/tenants'
+  import { CDN_BASE_URL } from '@/config/env'
   import { useAuthStore } from '@/stores/auth'
 
   const storefrontLogoSvg = storefrontLogo
@@ -292,6 +344,129 @@
     return 'EARNLUMENS'
   })
 
+  // ----- Logo upload (PNG / WebP, max 512 KB, ratio <= 6:1, height >= 64) -----
+  const LOGO_ALLOWED_TYPES = new Set(['image/png', 'image/webp'])
+  const LOGO_MAX_BYTES = 512 * 1024
+  const LOGO_MIN_DIMENSION = 64
+  const LOGO_MAX_RATIO = 6
+
+  const logoUploading = ref(false)
+  const logoError = ref('')
+  /** Object-URL preview of an in-flight upload; replaced by the CDN URL once committed. */
+  const localLogoPreview = ref<string | null>(null)
+  /** Bound directly to v-file-input; cleared after each select. */
+  const logoFileModel = ref<File | File[] | null>(null)
+
+  /**
+   * URL used in the thumbnail and in the AppBar mocks. Prefers the
+   * in-flight object URL so the preview is instant; falls back to the
+   * CDN URL once the draft holds a persisted key.
+   */
+  const previewLogoUrl = computed<string | null>(() => {
+    if (localLogoPreview.value) return localLogoPreview.value
+    if (draft.logoR2Key) return `${CDN_BASE_URL}/${draft.logoR2Key}`
+    return null
+  })
+
+  async function validateLogoFile (file: File): Promise<void> {
+    if (!LOGO_ALLOWED_TYPES.has(file.type)) {
+      throw new Error('Solo se permiten PNG o WebP.')
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      throw new Error('El archivo supera los 512 KB.')
+    }
+    // Probe natural dimensions to enforce min-height + ratio. The Image
+    // element decodes asynchronously; we await it before issuing the
+    // presign so a bad file never reaches R2.
+    const url = URL.createObjectURL(file)
+    try {
+      const dims = await new Promise<{ w: number, h: number }>((resolve, reject) => {
+        const img = new Image()
+        img.addEventListener('load', () => resolve({ w: img.naturalWidth, h: img.naturalHeight }))
+        img.addEventListener('error', () => reject(new Error('No se pudo leer la imagen.')))
+        img.src = url
+      })
+      if (dims.w < LOGO_MIN_DIMENSION || dims.h < LOGO_MIN_DIMENSION) {
+        throw new Error(`Dimensiones mínimas: ${LOGO_MIN_DIMENSION}×${LOGO_MIN_DIMENSION} px.`)
+      }
+      const ratio = Math.max(dims.w / dims.h, dims.h / dims.w)
+      if (ratio > LOGO_MAX_RATIO) {
+        throw new Error(`Proporción máxima ${LOGO_MAX_RATIO}:1 (este logo es ${ratio.toFixed(1)}:1).`)
+      }
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  async function onLogoFileSelected (selection: File | File[] | null) {
+    logoError.value = ''
+    const file = Array.isArray(selection) ? selection[0] ?? null : selection
+    // v-file-input emits null when the user clears the picker; treat as no-op.
+    if (!file) {
+      logoFileModel.value = null
+      return
+    }
+    if (!tenant.value) {
+      logoFileModel.value = null
+      return
+    }
+    try {
+      await validateLogoFile(file)
+    } catch (error) {
+      logoError.value = error instanceof Error ? error.message : 'Archivo no válido.'
+      logoFileModel.value = null
+      return
+    }
+
+    // Show the local preview immediately so the user gets instant
+    // feedback while we negotiate with the backend + R2.
+    if (localLogoPreview.value) URL.revokeObjectURL(localLogoPreview.value)
+    localLogoPreview.value = URL.createObjectURL(file)
+
+    logoUploading.value = true
+    try {
+      const { uploadUrl, r2Key } = await presignTenantLogoUpload(
+        tenant.value.id, file.type, file.size,
+      )
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!putRes.ok) {
+        throw new Error(`Subida falló (HTTP ${putRes.status}).`)
+      }
+      // Successful upload — stage the key on the draft so the regular
+      // Save button persists it via PATCH. The local object-URL preview
+      // stays in place until the next snapshotIntoDraft.
+      draft.logoR2Key = r2Key
+      showSnackbar('Logo subido. Pulsa Save changes para confirmar.', 'info')
+    } catch (error) {
+      const code = error instanceof TenantApiError ? error.code : (error as Error).message
+      logoError.value = `No se pudo subir el logo: ${code}`
+      if (localLogoPreview.value) {
+        URL.revokeObjectURL(localLogoPreview.value)
+        localLogoPreview.value = null
+      }
+    } finally {
+      logoUploading.value = false
+      logoFileModel.value = null
+    }
+  }
+
+  function clearLogo () {
+    draft.logoR2Key = ''
+    if (localLogoPreview.value) {
+      URL.revokeObjectURL(localLogoPreview.value)
+      localLogoPreview.value = null
+    }
+    logoError.value = ''
+  }
+
+  onUnmounted(() => {
+    if (localLogoPreview.value) URL.revokeObjectURL(localLogoPreview.value)
+  })
+
   const isDirty = computed(() => {
     if (!tenant.value) return false
     return draft.title !== (tenant.value.title ?? '')
@@ -326,6 +501,13 @@
     draft.brandText = t.brandText ?? ''
     draft.tenantWallet = t.tenantWallet ?? ''
     draft.tenantFeePercent = t.tenantFeePercent ?? ''
+    // Drop any local preview — the canonical URL now comes from the
+    // freshly-snapshotted draft.logoR2Key via previewLogoUrl.
+    if (localLogoPreview.value) {
+      URL.revokeObjectURL(localLogoPreview.value)
+      localLogoPreview.value = null
+    }
+    logoError.value = ''
   }
 
   function reset () {
@@ -444,6 +626,37 @@
   width: 100%;
   height: 100%;
   display: block;
+}
+
+/*
+ * Uploaded raster logo. Matches the storefront AppBar 1:1 — fixed 24px
+ * height + max-width 160px + object-fit:contain — so the admin sees
+ * pixel-perfect what the storefront will render.
+ */
+.preview-appbar .app-logo--img {
+  width: auto;
+  height: 24px;
+  max-width: 160px;
+  object-fit: contain;
+}
+
+/* Thumbnail next to the file picker in the settings card. */
+.logo-thumb {
+  width: 96px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 4px;
+  background: rgb(var(--v-theme-surface));
+  overflow: hidden;
+}
+
+.logo-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .preview-brand {

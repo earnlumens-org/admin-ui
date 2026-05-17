@@ -193,3 +193,41 @@ export async function fetchAccessibleTenants (): Promise<AccessibleTenant[]> {
   }
   return res.json()
 }
+
+/**
+ * Response of {@code POST /api/tenants/me/{tenantId}/logo/upload-url}.
+ *
+ * - `uploadUrl`: presigned R2 PUT URL (valid 15 min). The client must PUT
+ *   the binary with header `Content-Type` matching the declared MIME type;
+ *   any other type causes the R2 signature to fail.
+ * - `r2Key`: object key to persist via the regular tenant PATCH once the
+ *   upload completes.
+ */
+export interface LogoUploadUrlResponse {
+  uploadUrl: string
+  r2Key: string
+}
+
+/**
+ * Requests a presigned upload URL for the tenant logo. The caller must own
+ * the tenant; the server enforces type (PNG or WebP) and size (≤ 512 KB).
+ */
+export async function presignTenantLogoUpload (
+  tenantId: string,
+  contentType: string,
+  sizeBytes: number,
+): Promise<LogoUploadUrlResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/tenants/me/${encodeURIComponent(tenantId)}/logo/upload-url`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: await authHeaders(),
+      body: JSON.stringify({ contentType, sizeBytes }),
+    },
+  )
+  if (!res.ok) {
+    throw await parseError(res)
+  }
+  return res.json()
+}
