@@ -12,7 +12,7 @@
 #  - 'unsafe-inline' on style-src is required by Vuetify.
 
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.earnlumens.org https://cdn-dev.earnlumens.org; media-src 'self' blob: https://cdn.earnlumens.org https://cdn-dev.earnlumens.org; font-src 'self' data:; connect-src 'self' https://api.admin.earnlumens.org https://api.admin-dev.earnlumens.org https://cdn.earnlumens.org https://cdn-dev.earnlumens.org https://horizon.stellar.org https://horizon-testnet.stellar.org; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.earnlumens.org https://cdn-dev.earnlumens.org https://pbs.twimg.com https://abs.twimg.com; media-src 'self' blob: https://cdn.earnlumens.org https://cdn-dev.earnlumens.org; font-src 'self' data:; connect-src 'self' https://api.admin.earnlumens.org https://api.admin-dev.earnlumens.org https://cdn.earnlumens.org https://cdn-dev.earnlumens.org https://horizon.stellar.org https://horizon-testnet.stellar.org; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
