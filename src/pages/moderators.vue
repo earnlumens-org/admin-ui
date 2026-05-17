@@ -129,7 +129,7 @@
               color="primary"
               icon="mdi-shield-key-outline"
               size="small"
-              :title="$t ? undefined : 'Edit permissions'"
+              title="Edit permissions"
               variant="text"
               @click="openPermissions(mod)"
             />

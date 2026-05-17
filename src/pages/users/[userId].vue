@@ -319,7 +319,7 @@
   import { useMyPermissionsStore } from '@/stores/myPermissions'
 
   const route = useRoute()
-  const userId = String(route.params.userId)
+  const userId = String((route.params as { userId: string }).userId)
   const tenantId = String(route.query.tenantId || 'earnlumens')
   const authStore = useAuthStore()
   const permsStore = useMyPermissionsStore()
