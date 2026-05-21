@@ -230,7 +230,7 @@
   height: 48px;
   padding: 4px;
   border-radius: 8px;
-  background-color: rgb(var(--v-theme-surface-variant, var(--v-theme-surface)));
+  background-color: #ffffff;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   overflow: hidden;
 }
