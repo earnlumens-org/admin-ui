@@ -205,6 +205,13 @@
         color: 'info',
         to: '/settings/branding',
       },
+      {
+        title: 'Storefront banner',
+        subtitle: 'Hero banner that introduces your niche on the home page',
+        icon: 'mdi-image-area',
+        color: 'deep-purple',
+        to: '/settings/banner',
+      },
     ]
 
     if (isSuperadmin.value) {

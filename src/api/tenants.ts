@@ -28,6 +28,16 @@ export interface TenantSummary {
   brandText: string | null
   /** When true the storefront renders no text label next to the logo. */
   brandTextHidden: boolean
+  /** Hero banner master switch. When false the storefront skips rendering it. */
+  bannerEnabled: boolean
+  /** R2 key of the banner background image (under .../banner/). */
+  bannerImageR2Key: string | null
+  bannerEyebrow: string | null
+  bannerHeadline: string | null
+  bannerSubheadline: string | null
+  bannerCtaLabel: string | null
+  bannerCtaUrl: string | null
+  bannerImageAlt: string | null
   ownerUsername: string
   ownerDisplayName: string
   tenantWallet: string | null
@@ -151,6 +161,22 @@ export interface UpdateTenantSettingsPayload {
   brandText?: string
   /** Flip on to hide the text label entirely (logo-only mode). */
   brandTextHidden?: boolean
+  /** Hero banner master switch. */
+  bannerEnabled?: boolean
+  /** Banner background R2 key. Empty string clears the value. */
+  bannerImageR2Key?: string
+  /** Eyebrow / niche chip rendered above the headline. Empty string clears. */
+  bannerEyebrow?: string
+  /** Big marketing title. Empty string clears. */
+  bannerHeadline?: string
+  /** Supporting paragraph under the headline. Empty string clears. */
+  bannerSubheadline?: string
+  /** CTA button label. Empty string clears. */
+  bannerCtaLabel?: string
+  /** CTA destination. Relative (/explore) or absolute https. Empty string clears. */
+  bannerCtaUrl?: string
+  /** Image alt text — accessibility + SEO. Empty string clears. */
+  bannerImageAlt?: string
   tenantWallet?: string
   tenantFeePercent?: string
 }
@@ -218,13 +244,14 @@ export interface LogoUploadUrlResponse {
 
 /**
  * Requests a presigned upload URL for the tenant logo. The caller must own
- * the tenant; the server enforces type (PNG or WebP) and size (≤ 512 KB).
+ * the tenant; the server enforces type (PNG or WebP for logo, +JPEG for the
+ * banner variant) and size (≤ 512 KB for logos, ≤ 2 MB for the banner).
  */
 export async function presignTenantLogoUpload (
   tenantId: string,
   contentType: string,
   sizeBytes: number,
-  variant: 'light' | 'dark' = 'light',
+  variant: 'light' | 'dark' | 'banner' = 'light',
 ): Promise<LogoUploadUrlResponse> {
   const res = await fetch(
     `${API_BASE_URL}/api/tenants/me/${encodeURIComponent(tenantId)}/logo/upload-url`,
