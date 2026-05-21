@@ -41,7 +41,7 @@ const messages = {
       soon: {
         title: 'Additional tenants — coming soon',
         body: 'Running multiple storefronts under one account is a paid feature still under construction. Each user may currently own a single tenant.',
-        badge: 'próximamente',
+        badge: 'coming soon',
       },
       switcher: {
         label: 'Active tenant',

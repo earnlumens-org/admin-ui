@@ -6,12 +6,14 @@
     />
 
     <div class="text-h6 mb-1">Settings</div>
+
     <div class="text-body-2 text-medium-emphasis mb-4">
       Tenant configuration
     </div>
 
     <v-tabs v-model="activeTab" class="mb-4" color="primary">
       <v-tab value="general">General</v-tab>
+
       <v-tab v-if="isSuperadmin" value="languages">
         <v-icon start>mdi-translate</v-icon>
         Languages
@@ -42,263 +44,282 @@
         <v-card v-else-if="!tenant" class="pa-8 text-center" variant="tonal">
           <v-icon color="medium-emphasis" size="48">mdi-domain-off</v-icon>
           <div class="text-body-1 mt-4">No tenant to configure.</div>
+
           <div class="text-body-2 text-medium-emphasis mt-1">
             Create your tenant from the Tenants page first.
           </div>
         </v-card>
 
         <v-form v-else ref="form" v-model="formValid" @submit.prevent="save">
-        <v-row>
-          <v-col cols="12" md="6">
-            <v-card>
-              <v-card-item>
-                <v-card-title>General</v-card-title>
-                <v-card-subtitle>Display name and description</v-card-subtitle>
-              </v-card-item>
-              <v-card-text>
-                <v-text-field
-                  v-model="draft.title"
-                  class="mb-2"
-                  density="comfortable"
-                  label="Tenant name"
-                  maxlength="80"
-                  :rules="[rules.titleRequired, rules.titleLength]"
-                  variant="outlined"
-                />
-                <v-textarea
-                  v-model="draft.description"
-                  density="comfortable"
-                  label="Description"
-                  maxlength="280"
-                  rows="3"
-                  :rules="[rules.descLength]"
-                  variant="outlined"
-                />
-              </v-card-text>
-            </v-card>
-          </v-col>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-card>
+                <v-card-item>
+                  <v-card-title>General</v-card-title>
+                  <v-card-subtitle>Display name and description</v-card-subtitle>
+                </v-card-item>
 
-          <v-col cols="12" md="6">
-            <v-card>
-              <v-card-item>
-                <v-card-title>Subdomain</v-card-title>
-                <v-card-subtitle>Immutable after creation</v-card-subtitle>
-              </v-card-item>
-              <v-card-text>
-                <v-text-field
-                  density="comfortable"
-                  disabled
-                  label="URL"
-                  :model-value="`${tenant.subdomain}.earnlumens.org`"
-                  variant="outlined"
-                />
-              </v-card-text>
-            </v-card>
-          </v-col>
+                <v-card-text>
+                  <v-text-field
+                    v-model="draft.title"
+                    class="mb-2"
+                    density="comfortable"
+                    label="Tenant name"
+                    maxlength="80"
+                    :rules="[rules.titleRequired, rules.titleLength]"
+                    variant="outlined"
+                  />
 
-          <v-col cols="12" md="6">
-            <v-card>
-              <v-card-item>
-                <v-card-title>Platform fee</v-card-title>
-                <v-card-subtitle>Set by the platform</v-card-subtitle>
-              </v-card-item>
-              <v-card-text>
-                <v-text-field
-                  density="comfortable"
-                  disabled
-                  label="Platform fee %"
-                  :model-value="tenant.platformFeePercent"
-                  suffix="%"
-                  variant="outlined"
-                />
-              </v-card-text>
-            </v-card>
-          </v-col>
+                  <v-textarea
+                    v-model="draft.description"
+                    density="comfortable"
+                    label="Description"
+                    maxlength="280"
+                    rows="3"
+                    :rules="[rules.descLength]"
+                    variant="outlined"
+                  />
+                </v-card-text>
+              </v-card>
+            </v-col>
 
-          <v-col cols="12" md="6">
-            <v-card>
-              <v-card-item>
-                <v-card-title>Wallet</v-card-title>
-                <v-card-subtitle>Stellar wallet for receiving payments</v-card-subtitle>
-              </v-card-item>
-              <v-card-text>
-                <v-text-field
-                  v-model.trim="draft.tenantWallet"
-                  density="comfortable"
-                  label="Stellar wallet address"
-                  placeholder="GABC...XYZ"
-                  :rules="[rules.walletRequired, rules.walletFormat]"
-                  variant="outlined"
-                />
-              </v-card-text>
-            </v-card>
-          </v-col>
+            <v-col cols="12" md="6">
+              <v-card>
+                <v-card-item>
+                  <v-card-title>Subdomain</v-card-title>
+                  <v-card-subtitle>Immutable after creation</v-card-subtitle>
+                </v-card-item>
 
-          <v-col cols="12" md="6">
-            <v-card>
-              <v-card-item>
-                <v-card-title>Tenant fee</v-card-title>
-                <v-card-subtitle>Your cut on each sale (0–30%)</v-card-subtitle>
-              </v-card-item>
-              <v-card-text>
-                <v-text-field
-                  v-model="draft.tenantFeePercent"
-                  density="comfortable"
-                  label="Tenant fee %"
-                  :rules="[rules.feeFormat, rules.feeRange]"
-                  suffix="%"
-                  variant="outlined"
-                />
-              </v-card-text>
-            </v-card>
-          </v-col>
+                <v-card-text>
+                  <v-text-field
+                    density="comfortable"
+                    disabled
+                    label="URL"
+                    :model-value="`${tenant.subdomain}.earnlumens.org`"
+                    variant="outlined"
+                  />
+                </v-card-text>
+              </v-card>
+            </v-col>
 
-          <v-col cols="12" md="6">
-            <v-card>
-              <v-card-item>
-                <v-card-title>Storefront brand</v-card-title>
-                <v-card-subtitle>Texto y logos que aparecen junto al menú</v-card-subtitle>
-              </v-card-item>
-              <v-card-text>
-                <!--
+            <v-col cols="12" md="6">
+              <v-card>
+                <v-card-item>
+                  <v-card-title>Platform fee</v-card-title>
+                  <v-card-subtitle>Set by the platform</v-card-subtitle>
+                </v-card-item>
+
+                <v-card-text>
+                  <v-text-field
+                    density="comfortable"
+                    disabled
+                    label="Platform fee %"
+                    :model-value="tenant.platformFeePercent"
+                    suffix="%"
+                    variant="outlined"
+                  />
+                </v-card-text>
+              </v-card>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-card>
+                <v-card-item>
+                  <v-card-title>Wallet</v-card-title>
+                  <v-card-subtitle>Stellar wallet for receiving payments</v-card-subtitle>
+                </v-card-item>
+
+                <v-card-text>
+                  <v-text-field
+                    v-model.trim="draft.tenantWallet"
+                    density="comfortable"
+                    label="Stellar wallet address"
+                    placeholder="GABC...XYZ"
+                    :rules="[rules.walletRequired, rules.walletFormat]"
+                    variant="outlined"
+                  />
+                </v-card-text>
+              </v-card>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-card>
+                <v-card-item>
+                  <v-card-title>Tenant fee</v-card-title>
+                  <v-card-subtitle>Your cut on each sale (0–30%)</v-card-subtitle>
+                </v-card-item>
+
+                <v-card-text>
+                  <v-text-field
+                    v-model="draft.tenantFeePercent"
+                    density="comfortable"
+                    label="Tenant fee %"
+                    :rules="[rules.feeFormat, rules.feeRange]"
+                    suffix="%"
+                    variant="outlined"
+                  />
+                </v-card-text>
+              </v-card>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-card>
+                <v-card-item>
+                  <v-card-title>Storefront brand</v-card-title>
+                  <v-card-subtitle>Text and logos shown next to the menu</v-card-subtitle>
+                </v-card-item>
+
+                <v-card-text>
+                  <!--
                   brandTextHidden is a separate flag from brandText so the
                   owner can hide the label without losing the text they
                   typed (flipping the switch back ON restores it).
                 -->
-                <v-switch
-                  v-model="draft.brandTextHidden"
-                  class="mb-0"
-                  color="primary"
-                  density="comfortable"
-                  hide-details
-                  :label="draft.brandTextHidden ? 'Solo logo (sin texto)' : 'Mostrar texto de marca'"
-                />
-                <v-text-field
-                  v-model="draft.brandText"
-                  class="mt-2"
-                  density="comfortable"
-                  :disabled="draft.brandTextHidden"
-                  :hint="draft.brandTextHidden
-                    ? 'Desactivado: el storefront mostrará solo el logo.'
-                    : 'Déjalo vacío para usar el nombre del tenant.'"
-                  label="Brand text"
-                  maxlength="60"
-                  persistent-hint
-                  :rules="[rules.brandTextLength]"
-                  variant="outlined"
-                />
+                  <v-switch
+                    v-model="draft.brandTextHidden"
+                    class="mb-0"
+                    color="primary"
+                    density="comfortable"
+                    hide-details
+                    :label="draft.brandTextHidden ? 'Logo only (no text)' : 'Show brand text'"
+                  />
 
-                <div class="mt-4">
-                  <div class="text-subtitle-2 mb-1">Logo (modo claro)</div>
-                  <div class="text-caption text-medium-emphasis mb-3">
-                    PNG o WebP, hasta 512 KB. Se renderiza con alto fijo de 24px;
-                    si lo dejas vacío se usa el logo por defecto.
-                  </div>
-                  <div class="d-flex align-center ga-3 flex-wrap">
-                    <div class="logo-thumb logo-thumb--light">
-                      <img v-if="previewLogoUrlLight" :alt="draft.brandText || draft.title" :src="previewLogoUrlLight">
-                      <span v-else class="text-caption text-medium-emphasis">Sin logo</span>
+                  <v-text-field
+                    v-model="draft.brandText"
+                    class="mt-2"
+                    density="comfortable"
+                    :disabled="draft.brandTextHidden"
+                    :hint="draft.brandTextHidden
+                      ? 'Disabled: the storefront will show only the logo.'
+                      : 'Leave empty to use the tenant name.'"
+                    label="Brand text"
+                    maxlength="60"
+                    persistent-hint
+                    :rules="[rules.brandTextLength]"
+                    variant="outlined"
+                  />
+
+                  <div class="mt-4">
+                    <div class="text-subtitle-2 mb-1">Logo (light mode)</div>
+
+                    <div class="text-caption text-medium-emphasis mb-3">
+                      PNG or WebP, up to 512 KB. Rendered at a fixed 24px height;
+                      leave empty to use the default logo.
                     </div>
-                    <v-file-input
-                      accept="image/png,image/webp"
-                      class="flex-grow-1"
-                      density="comfortable"
-                      :disabled="logoUploading.light"
-                      hide-details
-                      label="Subir logo claro"
-                      :loading="logoUploading.light"
-                      :model-value="logoFileModel.light"
-                      prepend-icon=""
-                      prepend-inner-icon="mdi-image-outline"
-                      show-size
-                      style="min-width: 200px;"
-                      variant="outlined"
-                      @update:model-value="(v) => onLogoFileSelected('light', v)"
-                    />
-                    <v-btn
-                      :disabled="!draft.logoR2Key || logoUploading.light"
-                      size="small"
-                      variant="text"
-                      @click="clearLogo('light')"
-                    >
-                      Quitar logo
-                    </v-btn>
-                  </div>
-                  <v-alert
-                    v-if="logoError.light"
-                    class="mt-3"
-                    closable
-                    density="compact"
-                    type="error"
-                    variant="tonal"
-                    @click:close="logoError.light = ''"
-                  >
-                    {{ logoError.light }}
-                  </v-alert>
-                </div>
 
-                <v-divider class="my-4" />
+                    <div class="d-flex align-center ga-3 flex-wrap">
+                      <div class="logo-thumb logo-thumb--light">
+                        <img v-if="previewLogoUrlLight" :alt="draft.brandText || draft.title" :src="previewLogoUrlLight">
+                        <span v-else class="text-caption text-medium-emphasis">No logo</span>
+                      </div>
 
-                <div>
-                  <div class="text-subtitle-2 mb-1">Logo (modo oscuro)</div>
-                  <div class="text-caption text-medium-emphasis mb-3">
-                    Opcional. Si lo dejas vacío, en modo oscuro se usa el logo
-                    de modo claro.
-                  </div>
-                  <div class="d-flex align-center ga-3 flex-wrap">
-                    <div class="logo-thumb logo-thumb--dark">
-                      <img v-if="previewLogoUrlDark" :alt="draft.brandText || draft.title" :src="previewLogoUrlDark">
-                      <span v-else class="text-caption text-medium-emphasis">Sin logo</span>
+                      <v-file-input
+                        accept="image/png,image/webp"
+                        class="flex-grow-1"
+                        density="comfortable"
+                        :disabled="logoUploading.light"
+                        hide-details
+                        label="Upload light logo"
+                        :loading="logoUploading.light"
+                        :model-value="logoFileModel.light"
+                        prepend-icon=""
+                        prepend-inner-icon="mdi-image-outline"
+                        show-size
+                        style="min-width: 200px;"
+                        variant="outlined"
+                        @update:model-value="(v) => onLogoFileSelected('light', v)"
+                      />
+
+                      <v-btn
+                        :disabled="!draft.logoR2Key || logoUploading.light"
+                        size="small"
+                        variant="text"
+                        @click="clearLogo('light')"
+                      >
+                        Remove logo
+                      </v-btn>
                     </div>
-                    <v-file-input
-                      accept="image/png,image/webp"
-                      class="flex-grow-1"
-                      density="comfortable"
-                      :disabled="logoUploading.dark"
-                      hide-details
-                      label="Subir logo oscuro"
-                      :loading="logoUploading.dark"
-                      :model-value="logoFileModel.dark"
-                      prepend-icon=""
-                      prepend-inner-icon="mdi-image-outline"
-                      show-size
-                      style="min-width: 200px;"
-                      variant="outlined"
-                      @update:model-value="(v) => onLogoFileSelected('dark', v)"
-                    />
-                    <v-btn
-                      :disabled="!draft.logoR2KeyDark || logoUploading.dark"
-                      size="small"
-                      variant="text"
-                      @click="clearLogo('dark')"
-                    >
-                      Quitar logo
-                    </v-btn>
-                  </div>
-                  <v-alert
-                    v-if="logoError.dark"
-                    class="mt-3"
-                    closable
-                    density="compact"
-                    type="error"
-                    variant="tonal"
-                    @click:close="logoError.dark = ''"
-                  >
-                    {{ logoError.dark }}
-                  </v-alert>
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-col>
 
-          <v-col cols="12">
-            <v-card>
-              <v-card-item>
-                <v-card-title>Preview</v-card-title>
-                <v-card-subtitle>Vista previa de la barra superior del storefront</v-card-subtitle>
-              </v-card-item>
-              <v-card-text>
-                <!--
+                    <v-alert
+                      v-if="logoError.light"
+                      class="mt-3"
+                      closable
+                      density="compact"
+                      type="error"
+                      variant="tonal"
+                      @click:close="logoError.light = ''"
+                    >
+                      {{ logoError.light }}
+                    </v-alert>
+                  </div>
+
+                  <v-divider class="my-4" />
+
+                  <div>
+                    <div class="text-subtitle-2 mb-1">Logo (dark mode)</div>
+
+                    <div class="text-caption text-medium-emphasis mb-3">
+                      Optional. If left empty, the dark mode uses the light logo.
+                    </div>
+
+                    <div class="d-flex align-center ga-3 flex-wrap">
+                      <div class="logo-thumb logo-thumb--dark">
+                        <img v-if="previewLogoUrlDark" :alt="draft.brandText || draft.title" :src="previewLogoUrlDark">
+                        <span v-else class="text-caption text-medium-emphasis">No logo</span>
+                      </div>
+
+                      <v-file-input
+                        accept="image/png,image/webp"
+                        class="flex-grow-1"
+                        density="comfortable"
+                        :disabled="logoUploading.dark"
+                        hide-details
+                        label="Upload dark logo"
+                        :loading="logoUploading.dark"
+                        :model-value="logoFileModel.dark"
+                        prepend-icon=""
+                        prepend-inner-icon="mdi-image-outline"
+                        show-size
+                        style="min-width: 200px;"
+                        variant="outlined"
+                        @update:model-value="(v) => onLogoFileSelected('dark', v)"
+                      />
+
+                      <v-btn
+                        :disabled="!draft.logoR2KeyDark || logoUploading.dark"
+                        size="small"
+                        variant="text"
+                        @click="clearLogo('dark')"
+                      >
+                        Remove logo
+                      </v-btn>
+                    </div>
+
+                    <v-alert
+                      v-if="logoError.dark"
+                      class="mt-3"
+                      closable
+                      density="compact"
+                      type="error"
+                      variant="tonal"
+                      @click:close="logoError.dark = ''"
+                    >
+                      {{ logoError.dark }}
+                    </v-alert>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+
+            <v-col cols="12">
+              <v-card>
+                <v-card-item>
+                  <v-card-title>Preview</v-card-title>
+                  <v-card-subtitle>Preview of the storefront app bar</v-card-subtitle>
+                </v-card-item>
+
+                <v-card-text>
+                  <!--
                   Two preview rows so the admin can verify BOTH themes at
                   once. v-theme-provider scopes Vuetify's --v-theme-* CSS
                   vars to the subtree, so the inner .preview-frame surface
@@ -306,48 +327,55 @@
                   Within each row the desktop + mobile widths are mocked,
                   matching the storefront breakpoints.
                 -->
-                <div v-for="row in previewRows" :key="row.theme" class="mb-4">
-                  <div class="text-subtitle-2 mb-2">{{ row.label }}</div>
-                  <v-theme-provider :theme="row.theme" with-background>
-                    <div class="d-flex flex-column flex-md-row ga-4">
-                      <div class="preview-shell flex-grow-1">
-                        <div class="text-caption text-medium-emphasis mb-1">Desktop</div>
-                        <div class="preview-frame preview-desktop">
-                          <div class="preview-appbar">
-                            <span class="preview-menu">
-                              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
-                            </span>
-                            <img v-if="row.logoUrl" :alt="previewBrand" class="ml-3 app-logo app-logo--img" :src="row.logoUrl">
-                            <span v-else aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
-                            <span v-if="previewBrand" class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
+                  <div v-for="row in previewRows" :key="row.theme" class="mb-4">
+                    <div class="text-subtitle-2 mb-2">{{ row.label }}</div>
+
+                    <v-theme-provider :theme="row.theme" with-background>
+                      <div class="d-flex flex-column flex-md-row ga-4">
+                        <div class="preview-shell flex-grow-1">
+                          <div class="text-caption text-medium-emphasis mb-1">Desktop</div>
+
+                          <div class="preview-frame preview-desktop">
+                            <div class="preview-appbar">
+                              <span class="preview-menu">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
+                              </span>
+
+                              <img v-if="row.logoUrl" :alt="previewBrand" class="ml-3 app-logo app-logo--img" :src="row.logoUrl">
+                              <span v-else aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
+                              <span v-if="previewBrand" class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="preview-shell">
+                          <div class="text-caption text-medium-emphasis mb-1">Mobile</div>
+
+                          <div class="preview-frame preview-mobile">
+                            <div class="preview-appbar">
+                              <span class="preview-menu">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
+                              </span>
+
+                              <img v-if="row.logoUrl" :alt="previewBrand" class="ml-3 app-logo app-logo--img" :src="row.logoUrl">
+                              <span v-else aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
+                              <span v-if="previewBrand" class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <div class="preview-shell">
-                        <div class="text-caption text-medium-emphasis mb-1">Mobile</div>
-                        <div class="preview-frame preview-mobile">
-                          <div class="preview-appbar">
-                            <span class="preview-menu">
-                              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" fill="currentColor" /></svg>
-                            </span>
-                            <img v-if="row.logoUrl" :alt="previewBrand" class="ml-3 app-logo app-logo--img" :src="row.logoUrl">
-                            <span v-else aria-hidden="true" class="ml-3 app-logo" v-html="storefrontLogoSvg" />
-                            <span v-if="previewBrand" class="preview-brand"><b class="pl-1 font-weight-bold text-button">{{ previewBrand }}</b></span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </v-theme-provider>
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
+                    </v-theme-provider>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
 
           <div class="d-flex justify-end ga-2 mt-4">
             <v-btn :disabled="!isDirty || saving" variant="text" @click="reset">
               Discard
             </v-btn>
+
             <v-btn
               color="primary"
               :disabled="!isDirty || !formValid"
@@ -374,16 +402,16 @@
 
 <script lang="ts" setup>
   import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-  import SettingsLanguages from '@/components/SettingsLanguages.vue'
-  import storefrontLogo from '@/assets/storefront-logo.svg?raw'
   import {
     getMyTenant,
     presignTenantLogoUpload,
     TenantApiError,
     type TenantSummary,
-    type UpdateTenantSettingsPayload,
     updateMyTenant,
+    type UpdateTenantSettingsPayload,
   } from '@/api/tenants'
+  import storefrontLogo from '@/assets/storefront-logo.svg?raw'
+  import SettingsLanguages from '@/components/SettingsLanguages.vue'
   import { CDN_BASE_URL } from '@/config/env'
   import { useAuthStore } from '@/stores/auth'
 
@@ -477,16 +505,16 @@
    * sees, side by side, exactly what dark- and light-mode visitors get.
    */
   const previewRows = computed(() => [
-    { theme: 'light', label: 'Modo claro', logoUrl: previewLogoUrlLight.value },
-    { theme: 'dark', label: 'Modo oscuro', logoUrl: previewLogoUrlDark.value },
+    { theme: 'light', label: 'Light mode', logoUrl: previewLogoUrlLight.value },
+    { theme: 'dark', label: 'Dark mode', logoUrl: previewLogoUrlDark.value },
   ])
 
   async function validateLogoFile (file: File): Promise<void> {
     if (!LOGO_ALLOWED_TYPES.has(file.type)) {
-      throw new Error('Solo se permiten PNG o WebP.')
+      throw new Error('Only PNG or WebP are allowed.')
     }
     if (file.size > LOGO_MAX_BYTES) {
-      throw new Error('El archivo supera los 512 KB.')
+      throw new Error('File exceeds 512 KB.')
     }
     // Probe natural dimensions to enforce min-height + ratio. The Image
     // element decodes asynchronously; we await it before issuing the
@@ -496,15 +524,15 @@
       const dims = await new Promise<{ w: number, h: number }>((resolve, reject) => {
         const img = new Image()
         img.addEventListener('load', () => resolve({ w: img.naturalWidth, h: img.naturalHeight }))
-        img.addEventListener('error', () => reject(new Error('No se pudo leer la imagen.')))
+        img.addEventListener('error', () => reject(new Error('Could not read the image.')))
         img.src = url
       })
       if (dims.w < LOGO_MIN_DIMENSION || dims.h < LOGO_MIN_DIMENSION) {
-        throw new Error(`Dimensiones mínimas: ${LOGO_MIN_DIMENSION}×${LOGO_MIN_DIMENSION} px.`)
+        throw new Error(`Minimum dimensions: ${LOGO_MIN_DIMENSION}×${LOGO_MIN_DIMENSION} px.`)
       }
       const ratio = Math.max(dims.w / dims.h, dims.h / dims.w)
       if (ratio > LOGO_MAX_RATIO) {
-        throw new Error(`Proporción máxima ${LOGO_MAX_RATIO}:1 (este logo es ${ratio.toFixed(1)}:1).`)
+        throw new Error(`Maximum aspect ratio ${LOGO_MAX_RATIO}:1 (this logo is ${ratio.toFixed(1)}:1).`)
       }
     } finally {
       URL.revokeObjectURL(url)
@@ -526,7 +554,7 @@
     try {
       await validateLogoFile(file)
     } catch (error) {
-      logoError[variant] = error instanceof Error ? error.message : 'Archivo no válido.'
+      logoError[variant] = error instanceof Error ? error.message : 'Invalid file.'
       logoFileModel[variant] = null
       return
     }
@@ -548,16 +576,16 @@
         body: file,
       })
       if (!putRes.ok) {
-        throw new Error(`Subida falló (HTTP ${putRes.status}).`)
+        throw new Error(`Upload failed (HTTP ${putRes.status}).`)
       }
       // Successful upload — stage the key on the draft so the regular
       // Save button persists it via PATCH. The local object-URL preview
       // stays in place until the next snapshotIntoDraft.
       draft[draftKeyFor(variant)] = r2Key
-      showSnackbar('Logo subido. Pulsa Save changes para confirmar.', 'info')
+      showSnackbar('Logo uploaded. Press Save changes to confirm.', 'info')
     } catch (error) {
       const code = error instanceof TenantApiError ? error.code : (error as Error).message
-      logoError[variant] = `No se pudo subir el logo: ${code}`
+      logoError[variant] = `Could not upload logo: ${code}`
       const failedPreview = localLogoPreview[variant]
       if (failedPreview) {
         URL.revokeObjectURL(failedPreview)
