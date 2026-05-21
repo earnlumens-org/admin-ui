@@ -61,10 +61,16 @@
       <v-card class="mb-6">
         <v-card-item>
           <template #prepend>
-            <v-avatar color="primary" rounded="lg" size="48">
-              <v-img v-if="logoUrl" :alt="tenant.title" :src="logoUrl" />
-              <v-icon v-else size="28">mdi-domain</v-icon>
-            </v-avatar>
+            <div class="tenant-logo-thumb">
+              <v-img
+                v-if="logoUrl"
+                :alt="tenant.title"
+                contain
+                :src="logoUrl"
+              />
+
+              <v-icon v-else color="primary" size="28">mdi-domain</v-icon>
+            </div>
           </template>
 
           <v-card-title class="text-h6">{{ tenant.title }}</v-card-title>
@@ -216,6 +222,22 @@
 </script>
 
 <style scoped>
+.tenant-logo-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 4px;
+  border-radius: 8px;
+  background-color: rgb(var(--v-theme-surface-variant, var(--v-theme-surface)));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  overflow: hidden;
+}
+.tenant-logo-thumb :deep(.v-img__img) {
+  object-fit: contain !important;
+}
+
 .info-cell {
   padding: 12px 16px;
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
