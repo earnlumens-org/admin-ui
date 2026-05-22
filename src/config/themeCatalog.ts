@@ -45,7 +45,6 @@ export const THEMES: ThemeMeta[] = [
   { key: 'corporateClassic', label: 'Corporate Classic', mode: 'light', colors: { background: '#F5F7FA', surface: '#FFFFFF', primary: '#1E3A8A', secondary: '#64748B', accent: '#0891B2', onBackground: '#2C3E50' } },
   { key: 'anime', label: 'Anime', mode: 'light', colors: { background: '#FFF5F7', surface: '#FFFFFF', primary: '#FF3366', secondary: '#3357FF', accent: '#FFD700', onBackground: '#1A1A2E' } },
   { key: 'darkVoid', label: 'Dark Void', mode: 'dark', colors: { background: '#0A0A0F', surface: '#15151F', primary: '#8B5CF6', secondary: '#6B21A8', accent: '#DC2626', onBackground: '#E0D5E8' } },
-  { key: 'neoBrutalArt', label: 'Neo Brutal Art', mode: 'light', colors: { background: '#FFFEF9', surface: '#F5F5F0', primary: '#E77D30', secondary: '#004E89', accent: '#F5E600', onBackground: '#000000' } },
   { key: 'softPastel', label: 'Soft Pastel', mode: 'light', colors: { background: '#FFF0F5', surface: '#FFE4EC', primary: '#D81B60', secondary: '#EC407A', accent: '#F06292', onBackground: '#3D1F2E' } },
   { key: 'lavenderDreams', label: 'Lavender Dreams', mode: 'light', colors: { background: '#F7F4FF', surface: '#EDE7F6', primary: '#7B1FA2', secondary: '#8E24AA', accent: '#9C27B0', onBackground: '#2A1A3A' } },
   { key: 'mintFresh', label: 'Mint Fresh', mode: 'light', colors: { background: '#F1FFF8', surface: '#E0F7ED', primary: '#00897B', secondary: '#00796B', accent: '#26A69A', onBackground: '#1B2E23' } },
