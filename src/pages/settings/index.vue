@@ -212,6 +212,13 @@
         color: 'deep-purple',
         to: '/settings/banner',
       },
+      {
+        title: 'Theme defaults',
+        subtitle: 'Default light and dark themes new visitors see',
+        icon: 'mdi-palette-swatch',
+        color: 'teal',
+        to: '/settings/theme',
+      },
     ]
 
     if (isSuperadmin.value) {

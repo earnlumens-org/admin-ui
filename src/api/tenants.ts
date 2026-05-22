@@ -38,6 +38,9 @@ export interface TenantSummary {
   bannerCtaLabel: string | null
   bannerCtaUrl: string | null
   bannerImageAlt: string | null
+  /** Per-tenant default Vuetify theme keys. Null = use platform default. */
+  defaultLightTheme: string | null
+  defaultDarkTheme: string | null
   ownerUsername: string
   ownerDisplayName: string
   tenantWallet: string | null
@@ -177,6 +180,13 @@ export interface UpdateTenantSettingsPayload {
   bannerCtaUrl?: string
   /** Image alt text — accessibility + SEO. Empty string clears. */
   bannerImageAlt?: string
+  /**
+   * Default Vuetify theme keys for the storefront. Server validates each
+   * against its allowlist of light/dark keys. Empty string clears the
+   * override and the storefront falls back to the platform default.
+   */
+  defaultLightTheme?: string
+  defaultDarkTheme?: string
   tenantWallet?: string
   tenantFeePercent?: string
 }
