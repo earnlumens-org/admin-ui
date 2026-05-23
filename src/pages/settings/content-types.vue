@@ -112,6 +112,19 @@
             Pick at least one content type — your storefront can't accept nothing.
           </v-alert>
 
+          <v-alert
+            v-else-if="collectionWithoutEntriesError"
+            border="start"
+            class="mt-4"
+            density="compact"
+            type="error"
+            variant="tonal"
+          >
+            Collections bundle entries together, so you need at least one
+            entry type on (video, audio, image or resource) before you can
+            allow collections.
+          </v-alert>
+
           <div class="d-flex justify-end mt-4 ga-2">
             <v-btn
               :disabled="!isDirty || saving"
@@ -122,7 +135,7 @@
             </v-btn>
             <v-btn
               color="primary"
-              :disabled="!isDirty || atLeastOneError"
+              :disabled="!isDirty || hasValidationError"
               :loading="saving"
               variant="flat"
               @click="save"
@@ -227,6 +240,18 @@
 
   const atLeastOneError = computed(() => selected.value.length === 0)
 
+  // Collections bundle entries, so "collections only" makes no sense —
+  // a tenant that turns COLLECTION on must also keep at least one
+  // entry type (VIDEO / AUDIO / IMAGE / RESOURCE) on.
+  const ENTRY_TYPES: TypeKey[] = ['VIDEO', 'AUDIO', 'IMAGE', 'RESOURCE']
+  const hasAnyEntryType = computed(() => ENTRY_TYPES.some(k => draft.value[k]))
+  const collectionWithoutEntriesError = computed(
+    () => draft.value.COLLECTION && !hasAnyEntryType.value,
+  )
+  const hasValidationError = computed(
+    () => atLeastOneError.value || collectionWithoutEntriesError.value,
+  )
+
   const isDirty = computed(() => {
     const current = (tenant.value?.allowedEntryTypes ?? null)
     const currentSet = new Set((current ?? []).map(s => s.toUpperCase()))
@@ -252,7 +277,7 @@
   }
 
   async function save () {
-    if (atLeastOneError.value) return
+    if (hasValidationError.value) return
     // All-on draft → send an empty array so the server clears the
     // restriction and the tenant goes back to "no allowlist".
     const allOn = selected.value.length === options.length
