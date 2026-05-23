@@ -173,7 +173,12 @@
         </v-col>
       </v-row>
 
-      <div class="d-flex justify-end ga-2 mt-4">
+      <div class="d-flex align-center justify-end ga-2 mt-4 flex-wrap">
+        <span class="text-caption text-medium-emphasis">
+          Refresh the tenant site to apply. Defaults activate via
+          <v-icon icon="mdi-theme-light-dark" size="small" />.
+        </span>
+
         <v-btn :disabled="!isDirty || saving" variant="text" @click="reset">
           Discard
         </v-btn>
