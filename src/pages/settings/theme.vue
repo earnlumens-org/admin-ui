@@ -176,7 +176,7 @@
       <div class="d-flex align-center justify-end ga-2 mt-4 flex-wrap">
         <span class="text-caption text-medium-emphasis">
           Refresh the tenant site to apply. Defaults activate via
-          <v-icon icon="mdi-theme-light-dark" size="small" />.
+          <v-icon icon="mdi-circle-half-full" size="small" />.
         </span>
 
         <v-btn :disabled="!isDirty || saving" variant="text" @click="reset">
