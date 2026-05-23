@@ -4,6 +4,7 @@
 
     <div class="d-flex align-center flex-wrap ga-2 mb-1">
       <div class="text-h6">Dashboard</div>
+
       <v-chip
         v-if="roleChip"
         :color="roleChip.color"
@@ -14,6 +15,7 @@
         {{ roleChip.label }}
       </v-chip>
     </div>
+
     <div class="text-body-2 text-medium-emphasis mb-4">
       Signed in as @{{ authStore.user?.username }}
       <template v-if="activeTenantId">
@@ -22,6 +24,13 @@
     </div>
 
     <v-divider class="mb-4" />
+
+    <!--
+      Primary operational alert. Self-hides when uploads are enabled or
+      the user does not own a tenant; rendered first on the dashboard so
+      a tenant-wide outage is impossible to miss after login.
+    -->
+    <UploadsDisabledBanner />
 
     <v-alert
       v-if="pendingInvitationsCount > 0"
@@ -35,10 +44,12 @@
         You have {{ pendingInvitationsCount }} pending moderator
         {{ pendingInvitationsCount === 1 ? 'invitation' : 'invitations' }}
       </div>
+
       <div class="text-body-2 mb-2">
         A tenant owner has invited you to moderate their content. Review and accept (or reject) from the invitations
         inbox.
       </div>
+
       <v-btn color="warning" :to="'/moderation/invitations'" variant="flat">
         Review invitations
       </v-btn>
@@ -54,9 +65,11 @@
       variant="tonal"
     >
       <div class="text-subtitle-1 font-weight-medium">Set up your tenant</div>
+
       <div class="text-body-2 mb-2">
         Your Blue Credential lets you launch your own tenant on earnlumens. You can do it whenever you're ready — this reminder will keep showing until your tenant is configured.
       </div>
+
       <v-btn color="primary" :to="'/tenants'" variant="flat">
         Configure tenant
       </v-btn>
@@ -75,6 +88,7 @@
         hint="Platform-wide health metrics across every tenant."
         title="Platform"
       />
+
       <v-row class="mb-2">
         <DashboardMetricCard
           action-to="/tenants"
@@ -84,6 +98,7 @@
           :placeholder="platformStats?.activeTenants == null"
           :value="platformStats?.activeTenants"
         />
+
         <DashboardMetricCard
           action-to="/users"
           icon="mdi-account-group-outline"
@@ -92,6 +107,7 @@
           :placeholder="platformStats?.totalUsers == null"
           :value="platformStats?.totalUsers"
         />
+
         <DashboardMetricCard
           icon="mdi-progress-clock"
           label="Transcoding queue"
@@ -99,6 +115,7 @@
           :placeholder="platformStats?.transcodingQueue == null"
           :value="platformStats?.transcodingQueue"
         />
+
         <DashboardMetricCard
           color="error"
           icon="mdi-alert-circle-outline"
@@ -117,6 +134,7 @@
           : 'Revenue for your tenant context.'"
         title="Revenue"
       />
+
       <v-row class="mb-2">
         <DashboardMetricCard
           icon="mdi-cash-multiple"
@@ -125,6 +143,7 @@
           :placeholder="!revenueStats || revenueStats.totalRevenueXlm == null"
           :value="formatXlm(revenueStats?.totalRevenueXlm)"
         />
+
         <DashboardMetricCard
           icon="mdi-calendar-month-outline"
           label="Revenue this month"
@@ -132,6 +151,7 @@
           :placeholder="!revenueStats || revenueStats.monthRevenueXlm == null"
           :value="formatXlm(revenueStats?.monthRevenueXlm)"
         />
+
         <DashboardMetricCard
           :caption="revenueHighlightCaption"
           icon="mdi-trophy-outline"
@@ -140,6 +160,7 @@
           :placeholder="!revenueHighlight"
           :value="revenueHighlightValue"
         />
+
         <DashboardMetricCard
           color="primary"
           icon="mdi-bank-outline"
@@ -158,6 +179,7 @@
         : 'Moderation pipeline for the active tenant.'"
       title="Content & Moderation"
     />
+
     <v-row class="mb-2">
       <DashboardMetricCard
         action-to="/moderation"
@@ -167,6 +189,7 @@
         :loading="statsLoading"
         :value="stats?.inReview ?? inReviewCount"
       />
+
       <DashboardMetricCard
         icon="mdi-check-decagram-outline"
         label="Published entries"
@@ -174,6 +197,7 @@
         :placeholder="!stats"
         :value="stats?.published"
       />
+
       <DashboardMetricCard
         action-to="/moderation"
         icon="mdi-pause-octagon-outline"
@@ -182,6 +206,7 @@
         :placeholder="!stats"
         :value="stats?.suspended"
       />
+
       <DashboardMetricCard
         action-to="/reports"
         color="error"
@@ -194,8 +219,15 @@
 
     <!-- Quick actions: tailored to the role -->
     <DashboardSectionHeader hint="Jump to the tools available in your context." title="Quick actions" />
+
     <v-row>
-      <v-col v-for="action in quickActions" :key="action.to" cols="12" md="4" sm="6">
+      <v-col
+        v-for="action in quickActions"
+        :key="action.to"
+        cols="12"
+        md="4"
+        sm="6"
+      >
         <v-card
           class="h-100"
           link
@@ -208,6 +240,7 @@
                 <v-icon :icon="action.icon" />
               </v-avatar>
             </template>
+
             <v-card-title class="text-body-1 font-weight-medium">{{ action.title }}</v-card-title>
             <v-card-subtitle class="text-wrap">{{ action.description }}</v-card-subtitle>
           </v-card-item>
@@ -222,12 +255,13 @@
       the moderator currently holds and points them at the screen where the
       capability is exercised.
     -->
-    <template v-if="effectiveRole === 'moderator' && capabilityItems.length">
+    <template v-if="effectiveRole === 'moderator' && capabilityItems.length > 0">
       <DashboardSectionHeader
         class="mt-4"
         hint="Special permissions the tenant owner has granted you."
         title="Your capabilities"
       />
+
       <v-row>
         <v-col v-for="cap in capabilityItems" :key="cap.key" cols="12" md="6">
           <v-card class="h-100" variant="outlined">
@@ -237,9 +271,11 @@
                   <v-icon :icon="cap.icon" />
                 </v-avatar>
               </template>
+
               <v-card-title class="text-body-1 font-weight-medium">{{ cap.title }}</v-card-title>
               <v-card-subtitle class="text-wrap">{{ cap.description }}</v-card-subtitle>
             </v-card-item>
+
             <v-card-actions v-if="cap.to">
               <v-btn :prepend-icon="cap.toIcon" :to="cap.to" variant="text">
                 {{ cap.cta }}
@@ -258,11 +294,12 @@
   import type { RevenueStats } from '@/api/revenue'
 
   import { computed, ref, watch } from 'vue'
-  import DashboardMetricCard from '@/components/dashboard/DashboardMetricCard.vue'
-  import DashboardSectionHeader from '@/components/dashboard/DashboardSectionHeader.vue'
   import { fetchModerationStats } from '@/api/moderation'
   import { fetchPlatformStats } from '@/api/platform'
   import { fetchRevenueStats } from '@/api/revenue'
+  import DashboardMetricCard from '@/components/dashboard/DashboardMetricCard.vue'
+  import DashboardSectionHeader from '@/components/dashboard/DashboardSectionHeader.vue'
+  import UploadsDisabledBanner from '@/components/dashboard/UploadsDisabledBanner.vue'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
   import {
     activeTenantRole,
@@ -469,7 +506,9 @@
 
   watch(
     () => authStore.activeTenantId,
-    () => { loadStats() },
+    () => {
+      loadStats()
+    },
     { immediate: true },
   )
 
@@ -494,7 +533,9 @@
     }
   }
 
-  watch(effectiveRole, () => { loadPlatformStats() }, { immediate: true })
+  watch(effectiveRole, () => {
+    loadPlatformStats()
+  }, { immediate: true })
 
   // Revenue snapshot for the dashboard. Two effective scopes:
   //  • SUPERADMIN with no active tenant context → platform-wide aggregate
@@ -545,7 +586,9 @@
   // specific tenant no longer sees platform totals on screen.
   watch(
     () => [effectiveRole.value, authStore.activeTenantId],
-    () => { loadRevenue() },
+    () => {
+      loadRevenue()
+    },
     { immediate: true },
   )
 

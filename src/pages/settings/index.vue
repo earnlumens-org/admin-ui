@@ -219,6 +219,13 @@
         color: 'teal',
         to: '/settings/theme',
       },
+      {
+        title: 'Uploads',
+        subtitle: 'Master switch to enable or disable new uploads for your tenant',
+        icon: 'mdi-cloud-upload-outline',
+        color: 'orange-darken-2',
+        to: '/settings/uploads',
+      },
     ]
 
     if (isSuperadmin.value) {

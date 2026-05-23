@@ -41,6 +41,12 @@ export interface TenantSummary {
   /** Per-tenant default Vuetify theme keys. Null = use platform default. */
   defaultLightTheme: string | null
   defaultDarkTheme: string | null
+  /**
+   * Per-tenant uploads kill switch. When false, media-store-api refuses
+   * any new upload-init / finalize call with 403 UPLOADS_DISABLED.
+   * Legacy tenants without the field default to true.
+   */
+  uploadsEnabled: boolean
   ownerUsername: string
   ownerDisplayName: string
   tenantWallet: string | null
@@ -187,6 +193,11 @@ export interface UpdateTenantSettingsPayload {
    */
   defaultLightTheme?: string
   defaultDarkTheme?: string
+  /**
+   * Uploads kill switch. {@code true} = enable; {@code false} = disable
+   * (storefront stops accepting new uploads). Omit to leave unchanged.
+   */
+  uploadsEnabled?: boolean
   tenantWallet?: string
   tenantFeePercent?: string
 }
