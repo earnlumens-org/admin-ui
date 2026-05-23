@@ -6,10 +6,12 @@
   silently stays hidden for users who don't own a tenant (404) or whose
   tenant has uploads on.
 
-  Re-enabling from this banner is one click — the same PATCH path the
-  /settings/uploads page uses, so admin-api's cache invalidator drops
-  the storefront cached copy immediately. Disabling lives in the
-  settings page, behind a confirmation dialog, on purpose.
+  The banner intentionally exposes ONLY a "Manage in settings" link —
+  flipping uploads back on is a deliberate action (it can expose a
+  half-configured storefront to creators) and must go through the
+  /settings/uploads page where the owner sees the full context. The
+  same page is where brand-new tenants enable uploads for the first
+  time, since tenants are created with uploads OFF.
 -->
 <template>
   <v-alert
@@ -33,17 +35,9 @@
     <div class="d-flex flex-wrap ga-2">
       <v-btn
         color="error"
-        :loading="reenabling"
-        prepend-icon="mdi-cloud-upload-outline"
-        variant="flat"
-        @click="reenable"
-      >
-        Re-enable uploads now
-      </v-btn>
-
-      <v-btn
+        prepend-icon="mdi-cog-outline"
         :to="'/settings/uploads'"
-        variant="text"
+        variant="flat"
       >
         Manage in settings
       </v-btn>
@@ -54,10 +48,9 @@
 <script lang="ts" setup>
   import { computed, onMounted, ref } from 'vue'
 
-  import { getMyTenant, type TenantSummary, updateMyTenant } from '@/api/tenants'
+  import { getMyTenant, type TenantSummary } from '@/api/tenants'
 
   const tenant = ref<TenantSummary | null>(null)
-  const reenabling = ref(false)
 
   const show = computed(() => tenant.value !== null && tenant.value.uploadsEnabled === false)
 
@@ -71,18 +64,4 @@
       tenant.value = null
     }
   })
-
-  async function reenable () {
-    if (!tenant.value) return
-    reenabling.value = true
-    try {
-      tenant.value = await updateMyTenant(tenant.value.id, { uploadsEnabled: true })
-    } catch {
-      // Surface nothing here; /settings/uploads has full error handling.
-      // The button stays clickable so the user can retry, and the alert
-      // disappears as soon as the next successful PATCH lands.
-    } finally {
-      reenabling.value = false
-    }
-  }
 </script>

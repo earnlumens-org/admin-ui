@@ -113,13 +113,13 @@
         type="warning"
         variant="tonal"
       >
-        <div class="text-subtitle-2 font-weight-medium">Operational impact</div>
+        <div class="text-subtitle-2 font-weight-medium">What your visitors see</div>
 
         <div class="text-body-2">
-          Storefront upload buttons stay visible but every <code>POST /api/uploads/init</code>
-          and <code>POST /api/uploads/finalize</code> returns HTTP 403 with
-          <code>UPLOADS_DISABLED</code>. Affected users see a friendly notice
-          instead of a generic error.
+          Upload buttons stay visible on your storefront, but if someone
+          tries to upload new content they get a friendly message saying
+          uploads are paused right now. Browsing, purchases, and existing
+          content keep working normally.
         </div>
       </v-alert>
 
@@ -134,9 +134,14 @@
 
         <v-card-text class="text-body-2">
           <ul class="pl-4">
-            <li>You are about to migrate moderation rules and want a clean cutoff.</li>
-            <li>An incident is unfolding and you need to stop ingesting new content.</li>
-            <li>You're closing the tenant or pausing it during maintenance.</li>
+            <li>
+              Your tenant is brand new and you're still getting it ready —
+              for example, you haven't set up your moderation rules yet
+              and don't want creators uploading content before then.
+            </li>
+            <li>You're about to change your moderation rules and want a clean cutoff.</li>
+            <li>Something is going wrong and you need to stop new content coming in.</li>
+            <li>You're closing the storefront or pausing it for maintenance.</li>
           </ul>
         </v-card-text>
       </v-card>
