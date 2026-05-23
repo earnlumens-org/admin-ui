@@ -8,16 +8,19 @@
  * stay focused on their own field set.
  */
 
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import {
   getMyTenant,
+  getOwnedTenant,
   TenantApiError,
   type TenantSummary,
   updateMyTenant,
   type UpdateTenantSettingsPayload,
 } from '@/api/tenants'
+import { useAuthStore } from '@/stores/auth'
 
 export function useTenantSettings () {
+  const authStore = useAuthStore()
   const tenant = ref<TenantSummary | null>(null)
   const loading = ref(false)
   const loadError = ref<string | null>(null)
@@ -37,7 +40,16 @@ export function useTenantSettings () {
     loading.value = true
     loadError.value = null
     try {
-      tenant.value = await getMyTenant()
+      // Prefer the tenant currently selected in the top-right switcher.
+      // Falling back to /me would mis-target owners of multiple tenants
+      // because /me returns whichever tenant the owner-index surfaces
+      // first — making theme/banner/brand edits leak to the wrong tenant.
+      const activeId = authStore.activeTenantId
+      if (activeId) {
+        tenant.value = await getOwnedTenant(activeId)
+      } else {
+        tenant.value = await getMyTenant()
+      }
     } catch (error) {
       loadError.value = error instanceof TenantApiError ? error.code : 'Failed to load tenant'
     } finally {
@@ -79,6 +91,15 @@ export function useTenantSettings () {
   }
 
   onMounted(loadTenant)
+
+  // Re-load whenever the user switches the active tenant in the top-right
+  // selector. Without this the settings pages keep showing (and saving to)
+  // the previously loaded tenant even after the switcher changes.
+  watch(() => authStore.activeTenantId, (next, prev) => {
+    if (next !== prev) {
+      loadTenant()
+    }
+  })
 
   return {
     tenant,

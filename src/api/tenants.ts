@@ -114,6 +114,27 @@ export async function getMyTenant (): Promise<TenantSummary | null> {
   return res.json()
 }
 
+/**
+ * GET /api/tenants/me/{tenantId} — owner-scoped load for the specific
+ * tenant currently selected in the admin top-right switcher. Required
+ * because {@link getMyTenant} returns whichever tenant the owner-index
+ * happens to surface first, which silently mis-targets settings edits
+ * (theme, banner, brand) when the caller owns more than one tenant.
+ */
+export async function getOwnedTenant (tenantId: string): Promise<TenantSummary> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/tenants/me/${encodeURIComponent(tenantId)}`,
+    {
+      credentials: 'include',
+      headers: await authHeaders(),
+    },
+  )
+  if (!res.ok) {
+    throw await parseError(res)
+  }
+  return res.json()
+}
+
 export async function createMyTenant (payload: CreateTenantPayload): Promise<TenantSummary> {
   const res = await fetch(`${API_BASE_URL}/api/tenants/me`, {
     method: 'POST',
