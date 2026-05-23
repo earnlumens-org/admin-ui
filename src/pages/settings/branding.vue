@@ -220,6 +220,67 @@
           </v-card>
         </v-col>
 
+        <v-col cols="12" md="6">
+          <v-card>
+            <v-card-item>
+              <v-card-title>Browser favicon</v-card-title>
+              <v-card-subtitle>The icon shown in the browser tab</v-card-subtitle>
+            </v-card-item>
+
+            <v-card-text>
+              <div class="text-caption text-medium-emphasis mb-3">
+                PNG, WebP or ICO, up to 128 KB. Leave empty to use the
+                default EARNLUMENS favicon.
+              </div>
+
+              <div class="d-flex align-center ga-3 flex-wrap">
+                <div class="logo-thumb logo-thumb--light favicon-thumb">
+                  <img v-if="previewFaviconUrl" alt="Favicon preview" :src="previewFaviconUrl">
+                  <span v-else class="text-caption text-medium-emphasis">No icon</span>
+                </div>
+
+                <v-file-input
+                  accept="image/png,image/webp,image/x-icon,image/vnd.microsoft.icon,.ico"
+                  class="flex-grow-1"
+                  density="comfortable"
+                  :disabled="logoUploading.favicon"
+                  hide-details
+                  label="Upload favicon"
+                  :loading="logoUploading.favicon"
+                  :model-value="logoFileModel.favicon"
+                  prepend-icon=""
+                  prepend-inner-icon="mdi-image-outline"
+                  show-size
+                  style="min-width: 200px;"
+                  variant="outlined"
+                  @update:model-value="(v) => onLogoFileSelected('favicon', v)"
+                />
+
+                <v-btn
+                  :disabled="!draft.faviconR2Key || logoUploading.favicon"
+                  size="small"
+                  variant="text"
+                  @click="clearLogo('favicon')"
+                >
+                  Remove favicon
+                </v-btn>
+              </div>
+
+              <v-alert
+                v-if="logoError.favicon"
+                class="mt-3"
+                closable
+                density="compact"
+                type="error"
+                variant="tonal"
+                @click:close="logoError.favicon = ''"
+              >
+                {{ logoError.favicon }}
+              </v-alert>
+            </v-card-text>
+          </v-card>
+        </v-col>
+
         <v-col cols="12">
           <v-card>
             <v-card-item>
@@ -330,6 +391,7 @@
     title: '',
     logoR2Key: '',
     logoR2KeyDark: '',
+    faviconR2Key: '',
     brandText: '',
     brandTextHidden: false,
   })
@@ -353,23 +415,38 @@
   //
   // The owner can upload TWO independent logos — one for the light theme
   // and one for the dark theme. The dark variant is optional; when missing
-  // the storefront renders the light variant in both themes.
-  type LogoVariant = 'light' | 'dark'
+  // the storefront renders the light variant in both themes. The favicon
+  // variant lives alongside but uses its own narrower validation (smaller
+  // size cap, .ico accepted, no aspect-ratio check).
+  type LogoVariant = 'light' | 'dark' | 'favicon'
 
   const LOGO_ALLOWED_TYPES = new Set(['image/png', 'image/webp'])
   const LOGO_MAX_BYTES = 512 * 1024
   const LOGO_MIN_DIMENSION = 64
   const LOGO_MAX_RATIO = 6
 
-  const logoUploading = reactive<Record<LogoVariant, boolean>>({ light: false, dark: false })
-  const logoError = reactive<Record<LogoVariant, string>>({ light: '', dark: '' })
-  /** Object-URL preview of an in-flight upload per variant; replaced by the CDN URL once committed. */
-  const localLogoPreview = reactive<Record<LogoVariant, string | null>>({ light: null, dark: null })
-  /** Bound directly to v-file-input; cleared after each select. One slot per variant. */
-  const logoFileModel = reactive<Record<LogoVariant, File | File[] | null>>({ light: null, dark: null })
+  // Favicon: small browser-tab icon. Allow the legacy .ico container in
+  // addition to PNG/WebP because most logo-generator tooling still emits
+  // .ico, and cap aggressively so we never serve a multi-MB tab icon.
+  const FAVICON_ALLOWED_TYPES = new Set([
+    'image/png',
+    'image/webp',
+    'image/x-icon',
+    'image/vnd.microsoft.icon',
+  ])
+  const FAVICON_MAX_BYTES = 128 * 1024
 
-  function draftKeyFor (variant: LogoVariant): 'logoR2Key' | 'logoR2KeyDark' {
-    return variant === 'dark' ? 'logoR2KeyDark' : 'logoR2Key'
+  const logoUploading = reactive<Record<LogoVariant, boolean>>({ light: false, dark: false, favicon: false })
+  const logoError = reactive<Record<LogoVariant, string>>({ light: '', dark: '', favicon: '' })
+  /** Object-URL preview of an in-flight upload per variant; replaced by the CDN URL once committed. */
+  const localLogoPreview = reactive<Record<LogoVariant, string | null>>({ light: null, dark: null, favicon: null })
+  /** Bound directly to v-file-input; cleared after each select. One slot per variant. */
+  const logoFileModel = reactive<Record<LogoVariant, File | File[] | null>>({ light: null, dark: null, favicon: null })
+
+  function draftKeyFor (variant: LogoVariant): 'logoR2Key' | 'logoR2KeyDark' | 'faviconR2Key' {
+    if (variant === 'dark') return 'logoR2KeyDark'
+    if (variant === 'favicon') return 'faviconR2Key'
+    return 'logoR2Key'
   }
 
   /**
@@ -388,13 +465,25 @@
   }
   const previewLogoUrlLight = computed(() => previewLogoUrlFor('light'))
   const previewLogoUrlDark = computed(() => previewLogoUrlFor('dark'))
+  const previewFaviconUrl = computed(() => previewLogoUrlFor('favicon'))
 
   const previewRows = computed(() => [
     { theme: 'light', label: 'Light mode', logoUrl: previewLogoUrlLight.value },
     { theme: 'dark', label: 'Dark mode', logoUrl: previewLogoUrlDark.value },
   ])
 
-  async function validateLogoFile (file: File): Promise<void> {
+  async function validateLogoFile (file: File, variant: LogoVariant): Promise<void> {
+    if (variant === 'favicon') {
+      if (!FAVICON_ALLOWED_TYPES.has(file.type)) {
+        throw new Error('Only PNG, WebP or ICO are allowed for the favicon.')
+      }
+      if (file.size > FAVICON_MAX_BYTES) {
+        throw new Error('Favicon exceeds 128 KB.')
+      }
+      // Favicons are tiny and often non-square (16x16, 32x32, etc.);
+      // skip the aspect-ratio / minimum-dimension checks on purpose.
+      return
+    }
     if (!LOGO_ALLOWED_TYPES.has(file.type)) {
       throw new Error('Only PNG or WebP are allowed.')
     }
@@ -433,7 +522,7 @@
       return
     }
     try {
-      await validateLogoFile(file)
+      await validateLogoFile(file, variant)
     } catch (error) {
       logoError[variant] = error instanceof Error ? error.message : 'Invalid file.'
       logoFileModel[variant] = null
@@ -484,7 +573,7 @@
   }
 
   onUnmounted(() => {
-    for (const variant of ['light', 'dark'] as const) {
+    for (const variant of ['light', 'dark', 'favicon'] as const) {
       const preview = localLogoPreview[variant]
       if (preview) URL.revokeObjectURL(preview)
     }
@@ -498,11 +587,12 @@
     draft.title = t.title ?? ''
     draft.logoR2Key = t.logoR2Key ?? ''
     draft.logoR2KeyDark = t.logoR2KeyDark ?? ''
+    draft.faviconR2Key = t.faviconR2Key ?? ''
     draft.brandText = t.brandText ?? ''
     draft.brandTextHidden = t.brandTextHidden ?? false
     // Drop any local previews — the canonical URL now comes from the
     // freshly-snapshotted draft keys via previewLogoUrlFor().
-    for (const variant of ['light', 'dark'] as const) {
+    for (const variant of ['light', 'dark', 'favicon'] as const) {
       const preview = localLogoPreview[variant]
       if (preview) URL.revokeObjectURL(preview)
       localLogoPreview[variant] = null
@@ -522,6 +612,7 @@
     if (!tenant.value) return false
     return draft.logoR2Key !== (tenant.value.logoR2Key ?? '')
       || draft.logoR2KeyDark !== (tenant.value.logoR2KeyDark ?? '')
+      || draft.faviconR2Key !== (tenant.value.faviconR2Key ?? '')
       || draft.brandText !== (tenant.value.brandText ?? '')
       || draft.brandTextHidden !== (tenant.value.brandTextHidden ?? false)
   })
@@ -534,6 +625,7 @@
     const payload: UpdateTenantSettingsPayload = {}
     if (draft.logoR2Key !== (tenant.value.logoR2Key ?? '')) payload.logoR2Key = draft.logoR2Key.trim()
     if (draft.logoR2KeyDark !== (tenant.value.logoR2KeyDark ?? '')) payload.logoR2KeyDark = draft.logoR2KeyDark.trim()
+    if (draft.faviconR2Key !== (tenant.value.faviconR2Key ?? '')) payload.faviconR2Key = draft.faviconR2Key.trim()
     // brandText is sent raw (including empty string) so the server can clear
     // the override and fall back to the tenant title automatically.
     if (draft.brandText !== (tenant.value.brandText ?? '')) payload.brandText = draft.brandText.trim()
@@ -633,6 +725,13 @@
 .logo-thumb--dark {
   background: #1e1e1e;
   border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Favicons are square and tiny (16/32px); render the thumb at a 1:1
+ * ratio so the admin previews the actual shape, not a stretched copy. */
+.favicon-thumb {
+  width: 48px;
+  height: 48px;
 }
 
 .preview-brand {

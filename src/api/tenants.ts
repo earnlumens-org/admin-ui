@@ -25,6 +25,8 @@ export interface TenantSummary {
   logoR2Key: string | null
   /** Optional dark-theme logo; storefront falls back to logoR2Key when null. */
   logoR2KeyDark: string | null
+  /** Optional per-tenant browser favicon. Null = storefront uses the baked-in /favicon.ico. */
+  faviconR2Key: string | null
   brandText: string | null
   /** When true the storefront renders no text label next to the logo. */
   brandTextHidden: boolean
@@ -183,6 +185,8 @@ export interface UpdateTenantSettingsPayload {
   logoR2Key?: string
   /** Dark-theme logo R2 key. Empty string clears the value. */
   logoR2KeyDark?: string
+  /** Per-tenant browser favicon R2 key. Empty string clears the value. */
+  faviconR2Key?: string
   /**
    * Storefront app-bar label. Empty string clears the override and the
    * server falls back to the tenant title (or to the hardcoded EARNLUMENS
@@ -287,13 +291,14 @@ export interface LogoUploadUrlResponse {
 /**
  * Requests a presigned upload URL for the tenant logo. The caller must own
  * the tenant; the server enforces type (PNG or WebP for logo, +JPEG for the
- * banner variant) and size (≤ 512 KB for logos, ≤ 2 MB for the banner).
+ * banner variant, +ICO for the favicon variant) and size (≤ 512 KB for
+ * logos, ≤ 2 MB for the banner, ≤ 128 KB for the favicon).
  */
 export async function presignTenantLogoUpload (
   tenantId: string,
   contentType: string,
   sizeBytes: number,
-  variant: 'light' | 'dark' | 'banner' = 'light',
+  variant: 'light' | 'dark' | 'banner' | 'favicon' = 'light',
 ): Promise<LogoUploadUrlResponse> {
   const res = await fetch(
     `${API_BASE_URL}/api/tenants/me/${encodeURIComponent(tenantId)}/logo/upload-url`,
