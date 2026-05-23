@@ -226,6 +226,13 @@
         color: 'orange-darken-2',
         to: '/settings/uploads',
       },
+      {
+        title: 'Content types',
+        subtitle: 'Pick which kinds of content (video, audio, image, resource, collection) your storefront accepts',
+        icon: 'mdi-shape-outline',
+        color: 'pink-darken-1',
+        to: '/settings/content-types',
+      },
     ]
 
     if (isSuperadmin.value) {

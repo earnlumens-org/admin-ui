@@ -51,6 +51,12 @@ export interface TenantSummary {
    * Legacy tenants without the field default to true.
    */
   uploadsEnabled: boolean
+  /**
+   * Optional per-tenant allowlist of entry types (uppercase enum names:
+   * VIDEO, AUDIO, IMAGE, RESOURCE, COLLECTION). Null or empty means no
+   * restriction (every type allowed) so legacy tenants stay unrestricted.
+   */
+  allowedEntryTypes: string[] | null
   ownerUsername: string
   ownerDisplayName: string
   tenantWallet: string | null
@@ -227,6 +233,12 @@ export interface UpdateTenantSettingsPayload {
    * (storefront stops accepting new uploads). Omit to leave unchanged.
    */
   uploadsEnabled?: boolean
+  /**
+   * Per-tenant content-type allowlist. Omit to leave unchanged; pass an
+   * empty array to clear the restriction (revert to "all types allowed");
+   * pass a non-empty array of uppercase enum names to restrict.
+   */
+  allowedEntryTypes?: string[]
   tenantWallet?: string
   tenantFeePercent?: string
 }
