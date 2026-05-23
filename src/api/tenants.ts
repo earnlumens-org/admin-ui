@@ -27,6 +27,8 @@ export interface TenantSummary {
   logoR2KeyDark: string | null
   /** Optional per-tenant browser favicon. Null = storefront uses the baked-in /favicon.ico. */
   faviconR2Key: string | null
+  /** Optional browser-tab title override. Null = storefront falls back to title / EARNLUMENS. */
+  browserTitle: string | null
   brandText: string | null
   /** When true the storefront renders no text label next to the logo. */
   brandTextHidden: boolean
@@ -187,6 +189,8 @@ export interface UpdateTenantSettingsPayload {
   logoR2KeyDark?: string
   /** Per-tenant browser favicon R2 key. Empty string clears the value. */
   faviconR2Key?: string
+  /** Browser-tab title override. Empty string clears the value. */
+  browserTitle?: string
   /**
    * Storefront app-bar label. Empty string clears the override and the
    * server falls back to the tenant title (or to the hardcoded EARNLUMENS

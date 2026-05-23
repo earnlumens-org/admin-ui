@@ -223,8 +223,8 @@
         <v-col cols="12" md="6">
           <v-card>
             <v-card-item>
-              <v-card-title>Browser favicon</v-card-title>
-              <v-card-subtitle>The icon shown in the browser tab</v-card-subtitle>
+              <v-card-title>Browser tab</v-card-title>
+              <v-card-subtitle>Favicon and tab title shown in the browser</v-card-subtitle>
             </v-card-item>
 
             <v-card-text>
@@ -277,6 +277,42 @@
               >
                 {{ logoError.favicon }}
               </v-alert>
+
+              <v-divider class="my-4" />
+
+              <!--
+                Browser-tab title (document.title). Independent from
+                brandText so the owner can keep the AppBar label short
+                while showing a longer descriptive title in the tab.
+              -->
+              <v-text-field
+                v-model="draft.browserTitle"
+                density="comfortable"
+                hint="Leave empty to use the tenant name."
+                label="Browser tab title"
+                maxlength="60"
+                persistent-hint
+                :rules="[rules.brandTextLength]"
+                variant="outlined"
+              />
+
+              <!--
+                Live preview that mimics a real browser tab: favicon on
+                the left, document.title in the middle, the usual close
+                affordance on the right. Uses the same fallback chain as
+                the storefront so the admin sees the exact text users
+                will see in their tab strip.
+              -->
+              <div class="text-subtitle-2 mt-4 mb-2">Preview</div>
+
+              <div class="tab-preview">
+                <img v-if="previewFaviconUrl" alt="Favicon preview" class="tab-preview__favicon" :src="previewFaviconUrl">
+                <span v-else class="tab-preview__favicon tab-preview__favicon--placeholder" />
+                <span class="tab-preview__title">{{ previewBrowserTitle }}</span>
+                <span aria-hidden="true" class="tab-preview__close">
+                  <svg height="14" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z" fill="currentColor" /></svg>
+                </span>
+              </div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -392,6 +428,7 @@
     logoR2Key: '',
     logoR2KeyDark: '',
     faviconR2Key: '',
+    browserTitle: '',
     brandText: '',
     brandTextHidden: false,
   })
@@ -406,6 +443,23 @@
     if (draft.brandTextHidden) return ''
     const override = draft.brandText.trim()
     if (override) return override
+    const title = draft.title.trim()
+    if (title) return title
+    return 'EARNLUMENS'
+  })
+
+  /**
+   * Browser-tab title preview. Mirrors the storefront fallback in
+   * App.vue: explicit browserTitle override → brandText (when not
+   * hidden) → tenant title → hardcoded EARNLUMENS.
+   */
+  const previewBrowserTitle = computed(() => {
+    const override = draft.browserTitle.trim()
+    if (override) return override
+    if (!draft.brandTextHidden) {
+      const brand = draft.brandText.trim()
+      if (brand) return brand
+    }
     const title = draft.title.trim()
     if (title) return title
     return 'EARNLUMENS'
@@ -588,6 +642,7 @@
     draft.logoR2Key = t.logoR2Key ?? ''
     draft.logoR2KeyDark = t.logoR2KeyDark ?? ''
     draft.faviconR2Key = t.faviconR2Key ?? ''
+    draft.browserTitle = t.browserTitle ?? ''
     draft.brandText = t.brandText ?? ''
     draft.brandTextHidden = t.brandTextHidden ?? false
     // Drop any local previews — the canonical URL now comes from the
@@ -613,6 +668,7 @@
     return draft.logoR2Key !== (tenant.value.logoR2Key ?? '')
       || draft.logoR2KeyDark !== (tenant.value.logoR2KeyDark ?? '')
       || draft.faviconR2Key !== (tenant.value.faviconR2Key ?? '')
+      || draft.browserTitle !== (tenant.value.browserTitle ?? '')
       || draft.brandText !== (tenant.value.brandText ?? '')
       || draft.brandTextHidden !== (tenant.value.brandTextHidden ?? false)
   })
@@ -626,6 +682,7 @@
     if (draft.logoR2Key !== (tenant.value.logoR2Key ?? '')) payload.logoR2Key = draft.logoR2Key.trim()
     if (draft.logoR2KeyDark !== (tenant.value.logoR2KeyDark ?? '')) payload.logoR2KeyDark = draft.logoR2KeyDark.trim()
     if (draft.faviconR2Key !== (tenant.value.faviconR2Key ?? '')) payload.faviconR2Key = draft.faviconR2Key.trim()
+    if (draft.browserTitle !== (tenant.value.browserTitle ?? '')) payload.browserTitle = draft.browserTitle.trim()
     // brandText is sent raw (including empty string) so the server can clear
     // the override and fall back to the tenant title automatically.
     if (draft.brandText !== (tenant.value.brandText ?? '')) payload.brandText = draft.brandText.trim()
@@ -732,6 +789,61 @@
 .favicon-thumb {
   width: 48px;
   height: 48px;
+}
+
+/*
+ * Browser-tab preview. Mocks the rounded-corner tab shape and the
+ * favicon + title + close-button layout the user will see in their
+ * tab strip. Sized roughly to a real Chrome tab (240px) so the admin
+ * can judge truncation. Colors driven by Vuetify theme tokens so the
+ * preview adapts to light/dark.
+ */
+.tab-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 280px;
+  padding: 8px 12px;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-bottom: none;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 0.875rem;
+  line-height: 1.2;
+}
+
+.tab-preview__favicon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  object-fit: contain;
+  border-radius: 2px;
+}
+
+.tab-preview__favicon--placeholder {
+  display: inline-block;
+  background: rgba(var(--v-theme-on-surface), 0.16);
+}
+
+.tab-preview__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-preview__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  flex: 0 0 18px;
 }
 
 .preview-brand {
