@@ -98,6 +98,77 @@ declare module 'vue-router/auto-routes' {
       '/settings',
       Record<never, never>,
       Record<never, never>,
+      | '/settings/'
+      | '/settings/banner'
+      | '/settings/branding'
+      | '/settings/content-types'
+      | '/settings/general'
+      | '/settings/languages'
+      | '/settings/theme'
+      | '/settings/uploads'
+      | '/settings/wallet'
+    >,
+    '/settings/': RouteRecordInfo<
+      '/settings/',
+      '/settings',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/settings/banner': RouteRecordInfo<
+      '/settings/banner',
+      '/settings/banner',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/settings/branding': RouteRecordInfo<
+      '/settings/branding',
+      '/settings/branding',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/settings/content-types': RouteRecordInfo<
+      '/settings/content-types',
+      '/settings/content-types',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/settings/general': RouteRecordInfo<
+      '/settings/general',
+      '/settings/general',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/settings/languages': RouteRecordInfo<
+      '/settings/languages',
+      '/settings/languages',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/settings/theme': RouteRecordInfo<
+      '/settings/theme',
+      '/settings/theme',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/settings/uploads': RouteRecordInfo<
+      '/settings/uploads',
+      '/settings/uploads',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/settings/wallet': RouteRecordInfo<
+      '/settings/wallet',
+      '/settings/wallet',
+      Record<never, never>,
+      Record<never, never>,
       | never
     >,
     '/spaces': RouteRecordInfo<
@@ -213,6 +284,69 @@ declare module 'vue-router/auto-routes' {
     'src/pages/settings.vue': {
       routes:
         | '/settings'
+        | '/settings/'
+        | '/settings/banner'
+        | '/settings/branding'
+        | '/settings/content-types'
+        | '/settings/general'
+        | '/settings/languages'
+        | '/settings/theme'
+        | '/settings/uploads'
+        | '/settings/wallet'
+      views:
+        | 'default'
+    }
+    'src/pages/settings/index.vue': {
+      routes:
+        | '/settings/'
+      views:
+        | never
+    }
+    'src/pages/settings/banner.vue': {
+      routes:
+        | '/settings/banner'
+      views:
+        | never
+    }
+    'src/pages/settings/branding.vue': {
+      routes:
+        | '/settings/branding'
+      views:
+        | never
+    }
+    'src/pages/settings/content-types.vue': {
+      routes:
+        | '/settings/content-types'
+      views:
+        | never
+    }
+    'src/pages/settings/general.vue': {
+      routes:
+        | '/settings/general'
+      views:
+        | never
+    }
+    'src/pages/settings/languages.vue': {
+      routes:
+        | '/settings/languages'
+      views:
+        | never
+    }
+    'src/pages/settings/theme.vue': {
+      routes:
+        | '/settings/theme'
+      views:
+        | never
+    }
+    'src/pages/settings/uploads.vue': {
+      routes:
+        | '/settings/uploads'
+      views:
+        | never
+    }
+    'src/pages/settings/wallet.vue': {
+      routes:
+        | '/settings/wallet'
       views:
         | never
     }
