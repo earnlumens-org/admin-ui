@@ -43,18 +43,54 @@
       </template>
     </v-alert>
 
-    <v-card v-else-if="!tenant" class="pa-8 text-center" variant="tonal">
-      <v-icon color="medium-emphasis" size="48">mdi-domain-off</v-icon>
-      <div class="text-body-1 mt-4">No tenant to configure.</div>
+    <template v-else-if="!tenant">
+      <v-card class="pa-8 text-center mb-6" variant="tonal">
+        <v-icon color="medium-emphasis" size="48">mdi-domain-off</v-icon>
+        <div class="text-body-1 mt-4">No tenant to configure.</div>
 
-      <div class="text-body-2 text-medium-emphasis mt-1">
-        Create your tenant from the Tenants page first.
-      </div>
+        <div class="text-body-2 text-medium-emphasis mt-1">
+          Create your tenant from the Tenants page first.
+        </div>
 
-      <v-btn class="mt-4" color="primary" to="/tenants" variant="flat">
-        Go to tenants
-      </v-btn>
-    </v-card>
+        <v-btn class="mt-4" color="primary" to="/tenants" variant="flat">
+          Go to tenants
+        </v-btn>
+      </v-card>
+
+      <!-- Platform-wide sections remain available even without a tenant. -->
+      <v-card v-if="platformSections.length">
+        <v-list class="py-0" lines="two">
+          <template v-for="(section, index) in platformSections" :key="section.to">
+            <v-divider v-if="index > 0" />
+
+            <v-list-item :to="section.to">
+              <template #prepend>
+                <v-avatar
+                  :color="section.color"
+                  rounded="lg"
+                  size="40"
+                  variant="tonal"
+                >
+                  <v-icon :icon="section.icon" />
+                </v-avatar>
+              </template>
+
+              <v-list-item-title class="font-weight-medium">
+                {{ section.title }}
+              </v-list-item-title>
+
+              <v-list-item-subtitle>
+                {{ section.subtitle }}
+              </v-list-item-subtitle>
+
+              <template #append>
+                <v-icon color="medium-emphasis">mdi-chevron-right</v-icon>
+              </template>
+            </v-list-item>
+          </template>
+        </v-list>
+      </v-card>
+    </template>
 
     <template v-else>
       <!-- Fixed tenant context (read-only). -->
@@ -182,58 +218,66 @@
     return `${CDN_BASE_URL}/${tenant.value.logoR2Key}`
   })
 
-  const sections = computed(() => {
-    const list = [
-      {
-        title: 'General',
-        subtitle: 'Display name and description',
-        icon: 'mdi-tune',
-        color: 'primary',
-        to: '/settings/general',
-      },
-      {
-        title: 'Wallet & Fees',
-        subtitle: 'Stellar wallet for payouts and your tenant fee',
-        icon: 'mdi-wallet-outline',
-        color: 'success',
-        to: '/settings/wallet',
-      },
-      {
-        title: 'Storefront branding',
-        subtitle: 'Brand text, light and dark logos with live preview',
-        icon: 'mdi-palette-outline',
-        color: 'info',
-        to: '/settings/branding',
-      },
-      {
-        title: 'Storefront banner',
-        subtitle: 'Hero banner that introduces your niche on the home page',
-        icon: 'mdi-image-area',
-        color: 'deep-purple',
-        to: '/settings/banner',
-      },
-      {
-        title: 'Theme defaults',
-        subtitle: 'Default light and dark themes new visitors see',
-        icon: 'mdi-palette-swatch',
-        color: 'teal',
-        to: '/settings/theme',
-      },
-      {
-        title: 'Uploads',
-        subtitle: 'Master switch to enable or disable new uploads for your tenant',
-        icon: 'mdi-cloud-upload-outline',
-        color: 'orange-darken-2',
-        to: '/settings/uploads',
-      },
-      {
-        title: 'Content types',
-        subtitle: 'Pick which kinds of content (video, audio, image, resource, collection) your storefront accepts',
-        icon: 'mdi-shape-outline',
-        color: 'pink-darken-1',
-        to: '/settings/content-types',
-      },
-    ]
+  const tenantSections = computed(() => [
+    {
+      title: 'General',
+      subtitle: 'Display name and description',
+      icon: 'mdi-tune',
+      color: 'primary',
+      to: '/settings/general',
+    },
+    {
+      title: 'Wallet & Fees',
+      subtitle: 'Stellar wallet for payouts and your tenant fee',
+      icon: 'mdi-wallet-outline',
+      color: 'success',
+      to: '/settings/wallet',
+    },
+    {
+      title: 'Storefront branding',
+      subtitle: 'Brand text, light and dark logos with live preview',
+      icon: 'mdi-palette-outline',
+      color: 'info',
+      to: '/settings/branding',
+    },
+    {
+      title: 'Storefront banner',
+      subtitle: 'Hero banner that introduces your niche on the home page',
+      icon: 'mdi-image-area',
+      color: 'deep-purple',
+      to: '/settings/banner',
+    },
+    {
+      title: 'Theme defaults',
+      subtitle: 'Default light and dark themes new visitors see',
+      icon: 'mdi-palette-swatch',
+      color: 'teal',
+      to: '/settings/theme',
+    },
+    {
+      title: 'Uploads',
+      subtitle: 'Master switch to enable or disable new uploads for your tenant',
+      icon: 'mdi-cloud-upload-outline',
+      color: 'orange-darken-2',
+      to: '/settings/uploads',
+    },
+    {
+      title: 'Content types',
+      subtitle: 'Pick which kinds of content (video, audio, image, resource, collection) your storefront accepts',
+      icon: 'mdi-shape-outline',
+      color: 'pink-darken-1',
+      to: '/settings/content-types',
+    },
+  ])
+
+  const platformSections = computed(() => {
+    const list: Array<{
+      title: string
+      subtitle: string
+      icon: string
+      color: string
+      to: string
+    }> = []
 
     if (isSuperadmin.value) {
       list.push({
@@ -247,6 +291,8 @@
 
     return list
   })
+
+  const sections = computed(() => [...tenantSections.value, ...platformSections.value])
 </script>
 
 <style scoped>
