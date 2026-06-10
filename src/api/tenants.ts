@@ -330,3 +330,50 @@ export async function presignTenantLogoUpload (
   }
   return res.json()
 }
+
+/**
+ * Uploads a file to a presigned URL via XHR, reporting upload progress
+ * (0-100) and retrying transient failures (network errors / 5xx / 429)
+ * with exponential backoff. Small files, so 3 attempts is plenty.
+ */
+export async function uploadToPresignedUrl (
+  uploadUrl: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
+  const MAX_ATTEMPTS = 3
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('PUT', uploadUrl)
+        xhr.setRequestHeader('Content-Type', file.type)
+        xhr.timeout = 120_000
+        xhr.upload.addEventListener('progress', event => {
+          if (event.lengthComputable && onProgress) {
+            onProgress(Math.round((event.loaded / event.total) * 100))
+          }
+        })
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve()
+          } else {
+            reject(new Error(`Upload failed (HTTP ${xhr.status}).`))
+          }
+        })
+        xhr.addEventListener('error', () => reject(new Error('Upload failed (network error).')))
+        xhr.addEventListener('timeout', () => reject(new Error('Upload failed (timed out).')))
+        xhr.send(file)
+      })
+      return
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const transient = /network error|timed out|HTTP (5\d\d|429)/.test(message)
+      if (!transient || attempt === MAX_ATTEMPTS) {
+        throw error
+      }
+      onProgress?.(0)
+      await new Promise(r => setTimeout(r, 1000 * 2 ** (attempt - 1)))
+    }
+  }
+}

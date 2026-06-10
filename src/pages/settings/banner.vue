@@ -138,6 +138,15 @@
                     @update:model-value="onBannerFileSelected"
                   />
 
+                  <v-progress-linear
+                    v-if="bannerUploading"
+                    class="mt-2"
+                    color="primary"
+                    height="6"
+                    :model-value="bannerUploadProgress"
+                    rounded
+                  />
+
                   <div v-if="bannerError" class="text-caption text-error mt-1">
                     {{ bannerError }}
                   </div>
@@ -361,6 +370,7 @@
     TenantApiError,
     type TenantSummary,
     type UpdateTenantSettingsPayload,
+    uploadToPresignedUrl,
   } from '@/api/tenants'
   import { useTenantSettings } from '@/composables/useTenantSettings'
   import { CDN_BASE_URL } from '@/config/env'
@@ -401,6 +411,7 @@
   const localBannerPreview = ref<string | null>(null)
   const bannerFile = ref<File | File[] | null>(null)
   const bannerUploading = ref(false)
+  const bannerUploadProgress = ref(0)
   const bannerError = ref('')
 
   const bannerImagePreviewUrl = computed(() => {
@@ -441,18 +452,14 @@
     localBannerPreview.value = URL.createObjectURL(file)
 
     bannerUploading.value = true
+    bannerUploadProgress.value = 0
     try {
       const { uploadUrl, r2Key } = await presignTenantLogoUpload(
         tenant.value.id, file.type, file.size, 'banner',
       )
-      const putRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
+      await uploadToPresignedUrl(uploadUrl, file, percent => {
+        bannerUploadProgress.value = percent
       })
-      if (!putRes.ok) {
-        throw new Error(`Upload failed (HTTP ${putRes.status}).`)
-      }
       draft.bannerImageR2Key = r2Key
       showSnackbar('Image uploaded. Press Save changes to confirm.', 'info')
     } catch (error) {

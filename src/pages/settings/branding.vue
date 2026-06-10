@@ -149,6 +149,15 @@
                   </v-btn>
                 </div>
 
+                <v-progress-linear
+                  v-if="logoUploading.light"
+                  class="mt-3"
+                  color="primary"
+                  height="6"
+                  :model-value="logoUploadProgress.light"
+                  rounded
+                />
+
                 <v-alert
                   v-if="logoError.light"
                   class="mt-3"
@@ -203,6 +212,15 @@
                     Remove logo
                   </v-btn>
                 </div>
+
+                <v-progress-linear
+                  v-if="logoUploading.dark"
+                  class="mt-3"
+                  color="primary"
+                  height="6"
+                  :model-value="logoUploadProgress.dark"
+                  rounded
+                />
 
                 <v-alert
                   v-if="logoError.dark"
@@ -266,6 +284,15 @@
                 </v-btn>
               </div>
 
+              <v-progress-linear
+                v-if="logoUploading.favicon"
+                class="mt-3"
+                color="primary"
+                height="6"
+                :model-value="logoUploadProgress.favicon"
+                rounded
+              />
+
               <v-alert
                 v-if="logoError.favicon"
                 class="mt-3"
@@ -309,6 +336,7 @@
                 <img v-if="previewFaviconUrl" alt="Favicon preview" class="tab-preview__favicon" :src="previewFaviconUrl">
                 <span v-else class="tab-preview__favicon tab-preview__favicon--placeholder" />
                 <span class="tab-preview__title">{{ previewBrowserTitle }}</span>
+
                 <span aria-hidden="true" class="tab-preview__close">
                   <svg height="14" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z" fill="currentColor" /></svg>
                 </span>
@@ -408,6 +436,7 @@
     TenantApiError,
     type TenantSummary,
     type UpdateTenantSettingsPayload,
+    uploadToPresignedUrl,
   } from '@/api/tenants'
   import storefrontLogo from '@/assets/storefront-logo.svg?raw'
   import { useTenantSettings } from '@/composables/useTenantSettings'
@@ -491,6 +520,7 @@
   const FAVICON_MAX_BYTES = 128 * 1024
 
   const logoUploading = reactive<Record<LogoVariant, boolean>>({ light: false, dark: false, favicon: false })
+  const logoUploadProgress = reactive<Record<LogoVariant, number>>({ light: 0, dark: 0, favicon: 0 })
   const logoError = reactive<Record<LogoVariant, string>>({ light: '', dark: '', favicon: '' })
   /** Object-URL preview of an in-flight upload per variant; replaced by the CDN URL once committed. */
   const localLogoPreview = reactive<Record<LogoVariant, string | null>>({ light: null, dark: null, favicon: null })
@@ -588,18 +618,14 @@
     localLogoPreview[variant] = URL.createObjectURL(file)
 
     logoUploading[variant] = true
+    logoUploadProgress[variant] = 0
     try {
       const { uploadUrl, r2Key } = await presignTenantLogoUpload(
         tenant.value.id, file.type, file.size, variant,
       )
-      const putRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
+      await uploadToPresignedUrl(uploadUrl, file, percent => {
+        logoUploadProgress[variant] = percent
       })
-      if (!putRes.ok) {
-        throw new Error(`Upload failed (HTTP ${putRes.status}).`)
-      }
       draft[draftKeyFor(variant)] = r2Key
       showSnackbar('Logo uploaded. Press Save changes to confirm.', 'info')
     } catch (error) {

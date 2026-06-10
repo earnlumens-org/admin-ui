@@ -51,6 +51,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/earn': RouteRecordInfo<
+      '/earn',
+      '/earn',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/moderation': RouteRecordInfo<
       '/moderation',
       '/moderation',
@@ -242,6 +249,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/dashboard.vue': {
       routes:
         | '/dashboard'
+      views:
+        | never
+    }
+    'src/pages/earn.vue': {
+      routes:
+        | '/earn'
       views:
         | never
     }
