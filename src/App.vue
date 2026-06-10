@@ -114,6 +114,12 @@
               title="Moderators"
               to="/moderators"
             />
+            <v-list-item
+              v-if="isActiveTenantAdmin"
+              prepend-icon="mdi-handshake-outline"
+              title="Earn"
+              to="/earn"
+            />
           </template>
 
           <!-- ───────── CONFIGURE · set-and-forget ───────── -->
@@ -331,6 +337,7 @@
     if (path.startsWith('/moderation-settings')) return isActiveTenantAdmin.value
     if (path.startsWith('/moderators')) return isActiveTenantAdmin.value
     if (path.startsWith('/spaces')) return isActiveTenantAdmin.value
+    if (path.startsWith('/earn')) return isActiveTenantAdmin.value
     if (path.startsWith('/settings')) return isActiveTenantAdmin.value
     if (path.startsWith('/moderation')) return hasModerationAccess.value
     if (path.startsWith('/reports')) return hasModerationAccess.value
