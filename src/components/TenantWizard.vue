@@ -371,7 +371,7 @@
   )
 
   function isWalletErrorCode (code: string | null): boolean {
-    return code === 'wallet_invalid' || code === 'wallet_format'
+    return code === 'wallet_invalid' || code === 'wallet_format' || code === 'wallet_not_activated'
   }
 
   const localisedServerError = computed(() => {
