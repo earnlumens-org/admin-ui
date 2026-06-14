@@ -89,6 +89,16 @@
                   </div>
                   <div class="d-flex align-center flex-wrap ga-1 mt-1">
                     <v-chip
+                      v-if="report.targetType === 'COLLECTION'"
+                      color="info"
+                      label
+                      prepend-icon="mdi-folder-multiple"
+                      size="x-small"
+                      variant="flat"
+                    >
+                      Collection
+                    </v-chip>
+                    <v-chip
                       :color="severityColor(report.severity)"
                       label
                       size="x-small"
@@ -144,6 +154,7 @@
                     />
                     <v-divider />
                     <v-list-item
+                      v-if="report.targetType !== 'COLLECTION'"
                       prepend-icon="mdi-arrow-right"
                       title="View in Moderation"
                       @click="goToEntry(report)"

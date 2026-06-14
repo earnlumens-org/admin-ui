@@ -288,6 +288,7 @@ export interface ReportDto {
   id: string
   tenantId: string
   entryId: string
+  targetType?: string
   creatorUserId: string | null
   reporterUserId: string
   reporterUsername: string | null
