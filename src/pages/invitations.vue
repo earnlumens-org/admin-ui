@@ -76,7 +76,7 @@
           {{ invite.tenantTitle ?? invite.tenantId }}
         </v-card-title>
         <v-card-subtitle>
-          <span v-if="invite.tenantSubdomain">{{ invite.tenantSubdomain }}.{{ getPlatformDomain() }} · </span>
+          <span v-if="invite.tenantSubdomain">{{ invite.tenantSubdomain }}.earnlumens.org · </span>
           Invited by <strong>@{{ invite.invitedBy }}</strong> · {{ formatDate(invite.invitedAt) }}
         </v-card-subtitle>
 
@@ -130,7 +130,6 @@
   import { onMounted, ref } from 'vue'
   import { useRouter } from 'vue-router'
   import { acceptMyInvitation, fetchMyInvitations, type MyInvitation, rejectMyInvitation } from '@/api/invitations'
-  import { getPlatformDomain } from '@/config/env'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
   import { useTenantLabels } from '@/composables/useTenantLabels'
   import { refreshToken } from '@/services/tokenWorkerClient'

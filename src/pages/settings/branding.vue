@@ -248,7 +248,7 @@
             <v-card-text>
               <div class="text-caption text-medium-emphasis mb-3">
                 PNG, WebP or ICO, up to 128 KB. Leave empty to use the
-                default {{ getPlatformName() }} favicon.
+                default EARNLUMENS favicon.
               </div>
 
               <div class="d-flex align-center ga-3 flex-wrap">
@@ -440,7 +440,7 @@
   } from '@/api/tenants'
   import storefrontLogo from '@/assets/storefront-logo.svg?raw'
   import { useTenantSettings } from '@/composables/useTenantSettings'
-  import { CDN_BASE_URL, getPlatformName } from '@/config/env'
+  import { CDN_BASE_URL } from '@/config/env'
 
   const storefrontLogoSvg = storefrontLogo
 
@@ -474,7 +474,7 @@
     if (override) return override
     const title = draft.title.trim()
     if (title) return title
-    return getPlatformName()
+    return 'EARNLUMENS'
   })
 
   /**
@@ -491,7 +491,7 @@
     }
     const title = draft.title.trim()
     if (title) return title
-    return getPlatformName()
+    return 'EARNLUMENS'
   })
 
   // ----- Logo upload (PNG / WebP, max 512 KB, ratio <= 6:1, height >= 64) -----

@@ -57,7 +57,7 @@
               </template>
               <v-list-item-title class="font-weight-medium">{{ tenant.title }}</v-list-item-title>
               <v-list-item-subtitle>
-                {{ tenant.subdomain }}.{{ getPlatformDomain() }} · @{{ tenant.ownerUsername }}
+                {{ tenant.subdomain }}.earnlumens.org · @{{ tenant.ownerUsername }}
               </v-list-item-subtitle>
               <template #append>
                 <div class="d-flex align-center ga-2">
@@ -128,7 +128,7 @@
           <v-list-item-title class="text-h6">{{ myTenant.title }}</v-list-item-title>
           <v-list-item-subtitle>
             <a :href="storefrontUrl" rel="noopener noreferrer" target="_blank">
-              {{ myTenant.subdomain }}.{{ getPlatformDomain() }}
+              {{ myTenant.subdomain }}.earnlumens.org
             </a>
           </v-list-item-subtitle>
           <v-list-item-subtitle>{{ myTenant.description }}</v-list-item-subtitle>
@@ -188,7 +188,6 @@
   import { useI18n } from 'vue-i18n'
   import { getMyTenant, listAllTenants, TenantApiError, type TenantSummary } from '@/api/tenants'
   import TenantWizard from '@/components/TenantWizard.vue'
-  import { getPlatformDomain } from '@/config/env'
   import { useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
@@ -204,7 +203,7 @@
   const wizardOpen = ref(false)
 
   const storefrontUrl = computed(() =>
-    myTenant.value ? `https://${myTenant.value.subdomain}.${getPlatformDomain()}` : '',
+    myTenant.value ? `https://${myTenant.value.subdomain}.earnlumens.org` : '',
   )
 
   const localisedLoadError = computed(() => {

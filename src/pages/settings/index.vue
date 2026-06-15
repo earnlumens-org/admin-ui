@@ -118,7 +118,7 @@
               rel="noopener noreferrer"
               target="_blank"
             >
-              {{ tenant.subdomain }}.{{ getPlatformDomain() }}
+              {{ tenant.subdomain }}.earnlumens.org
               <v-icon class="ms-1" size="12">mdi-open-in-new</v-icon>
             </a>
           </v-card-subtitle>
@@ -201,7 +201,7 @@
   import { computed } from 'vue'
 
   import { useTenantSettings } from '@/composables/useTenantSettings'
-  import { CDN_BASE_URL, getPlatformDomain } from '@/config/env'
+  import { CDN_BASE_URL } from '@/config/env'
   import { useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
@@ -210,7 +210,7 @@
   const { tenant, loading, loadError, loadTenant } = useTenantSettings()
 
   const storefrontUrl = computed(() =>
-    tenant.value ? `https://${tenant.value.subdomain}.${getPlatformDomain()}` : '#',
+    tenant.value ? `https://${tenant.value.subdomain}.earnlumens.org` : '#',
   )
 
   const logoUrl = computed(() => {

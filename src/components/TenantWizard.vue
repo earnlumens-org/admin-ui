@@ -277,7 +277,6 @@
   import { useRouter } from 'vue-router'
   import { createMyTenant, type CreateTenantPayload, TenantApiError, type TenantSummary } from '@/api/tenants'
   import { accountExists } from '@/services/stellar'
-  import { getPlatformDomain } from '@/config/env'
   import { useAuthStore } from '@/stores/auth'
 
   const props = defineProps<{
@@ -299,7 +298,7 @@
     set: value => emit('update:modelValue', value),
   })
 
-  const rootDomain = computed(() => props.rootDomain ?? getPlatformDomain())
+  const rootDomain = computed(() => props.rootDomain ?? 'earnlumens.org')
 
   const stepTitles = computed(() => [
     t('tenants.wizard.step_profile'),

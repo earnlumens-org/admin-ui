@@ -67,7 +67,7 @@
       <div class="text-subtitle-1 font-weight-medium">Set up your tenant</div>
 
       <div class="text-body-2 mb-2">
-        Your Blue Credential lets you launch your own tenant on {{ platformName }}. You can do it whenever you're ready — this reminder will keep showing until your tenant is configured.
+        Your Blue Credential lets you launch your own tenant on earnlumens. You can do it whenever you're ready — this reminder will keep showing until your tenant is configured.
       </div>
 
       <v-btn color="primary" :to="'/tenants'" variant="flat">
@@ -301,7 +301,6 @@
   import DashboardSectionHeader from '@/components/dashboard/DashboardSectionHeader.vue'
   import UploadsDisabledBanner from '@/components/dashboard/UploadsDisabledBanner.vue'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
-  import { getPlatformName } from '@/config/env'
   import {
     activeTenantRole,
     allUserTenants,
@@ -330,7 +329,6 @@
   const authStore = useAuthStore()
   const permsStore = useMyPermissionsStore()
   const { inReviewCount, openReportsCount, pendingInvitationsCount } = useSidebarBadges()
-  const platformName = getPlatformName()
 
   const activeTenantId = computed(() => authStore.activeTenantId)
 
