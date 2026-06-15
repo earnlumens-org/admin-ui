@@ -10,7 +10,7 @@
         <div class="text-h6 mb-1">Earn — Franchises</div>
         <div class="text-body-2 text-medium-emphasis">
           Let trusted users open commercial <em>franchises</em> that resell your
-          approved catalogue under <code>{{ selectedTenant }}.earnlumens.org/f/&lt;slug&gt;</code>.
+          approved catalogue under <code>{{ selectedTenant }}.{{ getPlatformDomain() }}/f/&lt;slug&gt;</code>.
           You share a slice of <strong>your own profit</strong> with each franchise —
           the customer's final price never changes.
         </div>
@@ -412,6 +412,7 @@
     updateFranchiseConfig,
   } from '@/api/franchises'
   import { useTenantLabels } from '@/composables/useTenantLabels'
+  import { getPlatformDomain } from '@/config/env'
   import { useAuthStore } from '@/stores/auth'
 
   // -------------------------------------------------------------- auth

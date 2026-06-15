@@ -11,6 +11,13 @@
 
 const hostname = self.location?.hostname || 'localhost'
 
+const PRIMARY_HOST: string = (() => {
+  const raw = import.meta.env.VITE_PRIMARY_HOST
+  return typeof raw === 'string' && raw.trim() !== ''
+    ? raw.trim().toLowerCase()
+    : 'earnlumens.org'
+})()
+
 function resolveApiBaseUrl (): string {
   if (hostname === 'localhost.dv') {
     return 'http://localhost.dv:8082'
@@ -18,10 +25,10 @@ function resolveApiBaseUrl (): string {
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'http://localhost:8082'
   }
-  if (hostname === 'admin-dev.earnlumens.org') {
-    return 'https://api.admin-dev.earnlumens.org'
+  if (hostname === `admin-dev.${PRIMARY_HOST}`) {
+    return `https://api.admin-dev.${PRIMARY_HOST}`
   }
-  return 'https://api.admin.earnlumens.org'
+  return `https://api.admin.${PRIMARY_HOST}`
 }
 
 function apiUrl (path: string): string {

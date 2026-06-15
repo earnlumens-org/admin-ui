@@ -12,7 +12,7 @@
         <v-col cols="12" lg="3" md="5" sm="8">
           <v-card class="pa-8">
             <div class="text-center mb-6">
-              <div class="text-h6 font-weight-bold mb-1">EARNLUMENS</div>
+              <div class="text-h6 font-weight-bold mb-1">{{ platformName }}</div>
               <div class="text-body-2 text-medium-emphasis">Administration</div>
             </div>
 
@@ -42,7 +42,7 @@
           <div class="text-center mt-4">
             <v-btn
               class="text-caption text-medium-emphasis"
-              href="https://earnlumens.org/terms"
+              :href="legalHref"
               rel="noopener noreferrer"
               size="small"
               target="_blank"
@@ -53,7 +53,7 @@
             <span class="text-medium-emphasis mx-1">|</span>
             <v-btn
               class="text-caption text-medium-emphasis"
-              href="https://earnlumens.org/terms"
+              :href="legalHref"
               rel="noopener noreferrer"
               size="small"
               target="_blank"
@@ -82,12 +82,14 @@
 <script lang="ts" setup>
   import { computed, ref, watchEffect } from 'vue'
   import { useRouter } from 'vue-router'
-  import { API_BASE_URL } from '@/config/env'
+  import { API_BASE_URL, getPlatformDomain, getPlatformName } from '@/config/env'
   import { useAuthStore } from '@/stores/auth'
 
   const router = useRouter()
   const authStore = useAuthStore()
   const loading = ref(false)
+  const platformName = getPlatformName()
+  const legalHref = `https://${getPlatformDomain()}/terms`
 
   // Only render the sign-in card once we are sure the user is anonymous.
   // This prevents the brief "login -> dashboard" flash that authenticated

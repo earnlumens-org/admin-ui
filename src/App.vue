@@ -5,7 +5,7 @@
         <v-btn v-show="!drawer || !mdAndUp" icon="mdi-menu" @click="drawer = !drawer" />
 
         <v-toolbar-title>
-          <b class="pl-1 font-weight-bold text-label-large">EARNLUMENS</b>
+          <b class="pl-1 font-weight-bold text-label-large">{{ platformName }}</b>
           <v-chip class="ml-2" color="primary" size="x-small" variant="tonal">ADMIN</v-chip>
         </v-toolbar-title>
 
@@ -220,6 +220,7 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay, useTheme } from 'vuetify'
   import TenantSwitcher from '@/components/TenantSwitcher.vue'
+  import { getPlatformName } from '@/config/env'
   import { useSidebarBadges } from '@/composables/useSidebarBadges'
   import {
     allUserTenants,
@@ -231,6 +232,7 @@
 
   const authStore = useAuthStore()
   const permsStore = useMyPermissionsStore()
+  const platformName = getPlatformName()
   const route = useRoute()
   const router = useRouter()
   const theme = useTheme()

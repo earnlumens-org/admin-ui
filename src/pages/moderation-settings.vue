@@ -50,11 +50,11 @@
             <v-expansion-panel>
               <v-expansion-panel-title>
                 <v-icon class="mr-3" color="info" icon="mdi-shield-check-outline" />
-                <span class="font-weight-medium">What EarnLumens already moderates by default</span>
+                <span class="font-weight-medium">What {{ platformName }} already moderates by default</span>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <p class="text-body-2 mb-3">
-                  EarnLumens applies a mandatory baseline moderation layer to every entry
+                  {{ platformName }} applies a mandatory baseline moderation layer to every entry
                   published in any tenant — you do <strong>not</strong> need to write rules
                   for these. They are enforced before and on top of your business-rules
                   prompt below.
@@ -65,7 +65,7 @@
                   <li><strong>Graphic violence, gore, extreme hate.</strong></li>
                   <li><strong>Self-harm &amp; suicide</strong> — glorification, instructions, methods, pro-anorexia / pro-bulimia content. Educational and recovery-oriented framing is allowed.</li>
                   <li><strong>Phishing &amp; wallet drainers</strong> — seed-phrase requests, fake airdrops, look-alike domains of Freighter / xBull / LOBSTR / SDF / exchanges, malicious "connect-your-wallet" flows.</li>
-                  <li><strong>Impersonation &amp; deepfakes</strong> — synthesized media of public figures (Musk, McCaleb, SDF, exchange CEOs) endorsing tokens, misuse of official Stellar / EarnLumens branding.</li>
+                  <li><strong>Impersonation &amp; deepfakes</strong> — synthesized media of public figures (Musk, McCaleb, SDF, exchange CEOs) endorsing tokens, misuse of official Stellar / {{ platformName }} branding.</li>
                   <li><strong>Low-quality spam</strong> — gibberish titles, auto-generated or empty content, blank video.</li>
                   <li><strong>Financial scams</strong> — pump-and-dump, Ponzi, guaranteed-return promises, get-rich-quick schemes.</li>
                   <li><strong>Hate speech</strong> — slurs, calls for violence against groups.</li>
@@ -441,11 +441,14 @@
     updateModerationConfig,
   } from '@/api/moderationConfig'
   import { useTenantLabels } from '@/composables/useTenantLabels'
+  import { getPlatformDomain, getPlatformName, getRootTenantId } from '@/config/env'
   import { allUserTenants, useAuthStore } from '@/stores/auth'
 
   const authStore = useAuthStore()
   const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
   const { labelFor: tenantLabel } = useTenantLabels()
+  const platformName = getPlatformName()
+  const ROOT_TENANT_ID = getRootTenantId()
 
   // Tenants the caller may legitimately configure. For a tenant owner that's
   // strictly the tenants they own — moderators don't reach this page (sidebar
@@ -460,8 +463,8 @@
 
   function defaultTenant (): string {
     if (authStore.activeTenantId) return authStore.activeTenantId
-    if (isSuperadmin.value) return 'earnlumens'
-    return ownedTenantIds()[0] ?? allUserTenants(authStore.user)[0] ?? 'earnlumens'
+    if (isSuperadmin.value) return ROOT_TENANT_ID
+    return ownedTenantIds()[0] ?? allUserTenants(authStore.user)[0] ?? ROOT_TENANT_ID
   }
 
   const selectedTenant = ref(defaultTenant())
@@ -498,11 +501,11 @@
   const tenantPreviewUrl = computed(() => {
     const adminHost = typeof window === 'undefined' ? '' : window.location.hostname
     const isDev = adminHost.includes('admin-dev')
-    const tenantBase = isDev ? 'app-dev.earnlumens.org' : 'earnlumens.org'
+    const tenantBase = isDev ? `app-dev.${getPlatformDomain()}` : getPlatformDomain()
     const sub = selectedTenant.value
     // Root tenant lives at the apex (no subdomain prefix); every other tenant
     // lives at {sub}.{tenantBase}.
-    const host = sub === 'earnlumens' ? tenantBase : `${sub}.${tenantBase}`
+    const host = sub === ROOT_TENANT_ID ? tenantBase : `${sub}.${tenantBase}`
     return `https://${host}/guidelines#tenant-specific-rules`
   })
 
@@ -514,8 +517,8 @@
       return ownedTenantIds().map(t => ({ title: tenantLabel(t), value: t }))
     }
     const opts: Array<{ title: string, value: string }> = []
-    if (!allTenantIds.value.includes('earnlumens')) {
-      opts.push({ title: 'earnlumens (root)', value: 'earnlumens' })
+    if (!allTenantIds.value.includes(ROOT_TENANT_ID)) {
+      opts.push({ title: `${ROOT_TENANT_ID} (root)`, value: ROOT_TENANT_ID })
     }
     for (const t of allTenantIds.value) {
       opts.push({ title: tenantLabel(t), value: t })
@@ -583,7 +586,7 @@ The ideal entry is actionable, specific, ethical and immediately useful to a wor
     try {
       allTenantIds.value = await fetchTenantIds()
     } catch {
-      allTenantIds.value = ['earnlumens']
+      allTenantIds.value = [ROOT_TENANT_ID]
     }
   }
 

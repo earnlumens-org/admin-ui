@@ -1,4 +1,5 @@
 import { createI18n } from 'vue-i18n'
+import { normalizeBrandText } from '@/config/env'
 
 /**
  * Admin-UI i18n bundle.
@@ -186,9 +187,31 @@ const messages = {
   },
 }
 
+/**
+ * Recursively rewrites the canonical brand tokens (earnlumens.org / Earnlumens)
+ * baked into the bundled translations to this deployment's domain/name, so the
+ * same admin build re-brands purely from `VITE_PRIMARY_HOST`.
+ */
+function normalizeBrandMessages<T> (node: T): T {
+  if (typeof node === 'string') {
+    return normalizeBrandText(node) as unknown as T
+  }
+  if (Array.isArray(node)) {
+    return node.map(normalizeBrandMessages) as unknown as T
+  }
+  if (node && typeof node === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(node)) {
+      out[key] = normalizeBrandMessages(value)
+    }
+    return out as T
+  }
+  return node
+}
+
 export default createI18n({
   legacy: false,
   locale: 'en',
   fallbackLocale: 'en',
-  messages,
+  messages: normalizeBrandMessages(messages),
 })
