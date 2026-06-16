@@ -2,8 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Modern favicon set: a multi-size .ico for Safari / legacy, a
+         scalable SVG for Chrome / Firefox / Edge, and a 180×180
+         apple-touch-icon for iOS "Add to Home Screen". All are a white
+         flame on the brand dark tile so they stay legible on any browser
+         chrome (light or dark, desktop or mobile). -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <meta name="theme-color" content="#10131A">
     <!-- Baseline security headers. Strict CSP and HSTS are enforced at
          the Cloudflare Pages edge (see DEPLOY.md); these meta tags are
          the in-document fallback for environments that don't honour
