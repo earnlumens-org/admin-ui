@@ -37,6 +37,11 @@
       {{ loadError }}
     </v-alert>
 
+    <v-alert v-if="tenantOptions.length === 0" type="info" variant="tonal">
+      You don't own any tenant yet. Franchises are configured per tenant, so
+      create a tenant first to enable the earn model.
+    </v-alert>
+
     <div v-if="loading" class="d-flex justify-center py-12">
       <v-progress-circular indeterminate />
     </div>
@@ -416,20 +421,16 @@
 
   // -------------------------------------------------------------- auth
   const authStore = useAuthStore()
-  const isSuperadmin = computed(() => authStore.user?.role === 'SUPERADMIN')
   const ownedTenants = computed(() => authStore.user?.tenantAdminOf ?? [])
   const { labelFor: tenantLabel } = useTenantLabels()
 
-  const tenantOptions = computed(() => {
-    const opts = ownedTenants.value.map(t => ({ title: tenantLabel(t), value: t }))
-    if (isSuperadmin.value) {
-      const seen = new Set(opts.map(o => o.value))
-      if (!seen.has('earnlumens')) {
-        opts.unshift({ title: 'earnlumens (root)', value: 'earnlumens' })
-      }
-    }
-    return opts
-  })
+  // Note: unlike other pages we deliberately do NOT offer the synthetic
+  // "earnlumens (root)" tenant here. Franchise config lives on the Tenant
+  // document, and the root tenant has no document in the `tenants`
+  // collection, so the franchise endpoints would always return not_found.
+  const tenantOptions = computed(() =>
+    ownedTenants.value.map(t => ({ title: tenantLabel(t), value: t })),
+  )
 
   function defaultTenant (): string {
     if (
