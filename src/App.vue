@@ -284,7 +284,8 @@
   const canManageCredentials = computed(
     () => isSuperadmin.value
       || isActiveTenantAdmin.value
-      || myPerms.value.canVerifyCreators,
+      || myPerms.value.canVerifyCreators
+      || myPerms.value.canManageAmbassadors,
   )
   /**
    * Any per-user moderator capability — surfaces /users in the sidebar so

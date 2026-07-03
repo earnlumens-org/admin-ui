@@ -5,7 +5,7 @@
         border="start"
         class="mb-4"
         density="comfortable"
-        :icon="badgeType === 'U2' ? 'mdi-shield-star' : 'mdi-shield-check'"
+        :icon="badgeType === 'U3' ? 'mdi-shield-account' : badgeType === 'U2' ? 'mdi-shield-star' : 'mdi-shield-check'"
         type="info"
         variant="tonal"
       >
@@ -25,7 +25,7 @@
         <v-spacer />
         <v-btn
           v-if="canGrant"
-          color="amber-darken-3"
+          :color="copy.accentColor"
           prepend-icon="mdi-plus"
           variant="elevated"
           @click="openGrantDialog"
@@ -104,14 +104,12 @@
     <v-dialog v-if="canGrant" v-model="grantOpen" max-width="500">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2" color="amber-darken-2">mdi-shield-star</v-icon>
-          Grant Verified Gold
+          <v-icon class="mr-2" :color="copy.iconColor">{{ copy.icon }}</v-icon>
+          {{ copy.grantTitle }}
         </v-card-title>
         <v-card-text>
           <p class="text-body-2 text-medium-emphasis mb-4">
-            Enter the exact X (Twitter) username of the user you want to verify.
-            They will be allowed to publish in spaces restricted to Verified Gold
-            immediately.
+            {{ copy.grantBody }}
           </p>
           <v-text-field
             ref="usernameField"
@@ -133,13 +131,13 @@
           <v-spacer />
           <v-btn :disabled="granting" variant="text" @click="grantOpen = false">Cancel</v-btn>
           <v-btn
-            color="amber-darken-3"
+            :color="copy.accentColor"
             :disabled="!grantUsername.trim() || granting"
             :loading="granting"
             variant="elevated"
             @click="submitGrant"
           >
-            Grant Gold
+            {{ copy.grantCta }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -150,13 +148,12 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2" color="error">mdi-shield-off</v-icon>
-          Revoke Verified Gold?
+          {{ copy.revokeTitle }}
         </v-card-title>
         <v-card-text>
           <p class="text-body-2">
             <strong>{{ pendingRevoke?.displayName ?? pendingRevoke?.username }}</strong>
-            will lose the Gold badge immediately. Existing content stays online but
-            stops appearing in Verified-Gold-only spaces.
+            {{ copy.revokeBody }}
           </p>
           <p v-if="revokeError" class="text-body-2 text-error mt-2">{{ revokeError }}</p>
         </v-card-text>
@@ -187,8 +184,10 @@
     type CredentialBadgeType,
     CredentialApiError,
     type CredentialHolder,
+    grantAmbassador,
     grantGold,
     listHolders,
+    revokeAmbassador,
     revokeGold,
   } from '@/api/credentials'
 
@@ -204,6 +203,44 @@
     emptySubtitle: string
     grantLabel?: string
   }>()
+
+  /**
+   * Copy + API dispatch per badge type. U3 (Ambassador, gray) uses its own
+   * main-tenant-only endpoints; everything else goes through the Gold
+   * endpoints (U1 is read-only anyway).
+   */
+  const isAmbassador = computed(() => props.badgeType === 'U3')
+
+  const copy = computed(() => isAmbassador.value
+    ? {
+      icon: 'mdi-shield-account',
+      iconColor: 'blue-grey',
+      accentColor: 'blue-grey-darken-1',
+      label: 'Ambassador',
+      grantTitle: 'Add Stellar Ambassador',
+      grantBody: 'Enter the exact X (Twitter) username of the ambassador. The gray '
+        + 'badge is GLOBAL: it appears on their profile and content across every '
+        + 'tenant immediately.',
+      grantCta: 'Add Ambassador',
+      revokeTitle: 'Remove Stellar Ambassador?',
+      revokeBody: 'will lose the gray Ambassador badge on every tenant immediately. '
+        + 'If they still hold Gold or Blue badges on specific tenants, those '
+        + 'reappear automatically.',
+    }
+    : {
+      icon: 'mdi-shield-star',
+      iconColor: 'amber-darken-2',
+      accentColor: 'amber-darken-3',
+      label: 'Gold',
+      grantTitle: 'Grant Verified Gold',
+      grantBody: 'Enter the exact X (Twitter) username of the user you want to verify. '
+        + 'They will be allowed to publish in spaces restricted to Verified Gold '
+        + 'immediately.',
+      grantCta: 'Grant Gold',
+      revokeTitle: 'Revoke Verified Gold?',
+      revokeBody: 'will lose the Gold badge immediately. Existing content stays online but '
+        + 'stops appearing in Verified-Gold-only spaces.',
+    })
 
   const holders = ref<CredentialHolder[]>([])
   const loading = ref(false)
@@ -269,13 +306,14 @@
     granting.value = true
     grantError.value = null
     try {
-      const created = await grantGold(props.tenantId, { username: handle })
+      const grantFn = isAmbassador.value ? grantAmbassador : grantGold
+      const created = await grantFn(props.tenantId, { username: handle })
       // Idempotent UI: replace if exists, else prepend.
       const idx = holders.value.findIndex(h => h.assignmentId === created.assignmentId)
       if (idx >= 0) holders.value.splice(idx, 1, created)
       else holders.value.unshift(created)
       grantOpen.value = false
-      showSnack('success', `Gold granted to @${created.username ?? handle}`)
+      showSnack('success', `${copy.value.label} granted to @${created.username ?? handle}`)
     } catch (e: unknown) {
       grantError.value = mapErrorMessage(e)
     } finally {
@@ -301,10 +339,11 @@
     revoking.value = true
     revokeError.value = null
     try {
-      await revokeGold(props.tenantId, target.assignmentId)
+      const revokeFn = isAmbassador.value ? revokeAmbassador : revokeGold
+      await revokeFn(props.tenantId, target.assignmentId)
       holders.value = holders.value.filter(h => h.assignmentId !== target.assignmentId)
       revokeOpen.value = false
-      showSnack('success', `Gold revoked from @${target.username ?? target.oauthUserId}`)
+      showSnack('success', `${copy.value.label} revoked from @${target.username ?? target.oauthUserId}`)
     } catch (e: unknown) {
       revokeError.value = mapErrorMessage(e)
     } finally {
@@ -320,7 +359,8 @@
         case 'USER_REQUIRED': return 'Handle is required.'
         case 'FORBIDDEN': return 'You no longer have permission to manage credentials for this tenant.'
         case 'ASSIGNMENT_NOT_FOUND': return 'This assignment no longer exists.'
-        case 'BADGE_TYPE_MISMATCH': return 'This assignment is not a Gold credential.'
+        case 'BADGE_TYPE_MISMATCH': return `This assignment is not a ${copy.value.label} credential.`
+        case 'MAIN_TENANT_ONLY': return 'Ambassador credentials can only be managed from the main tenant.'
         default: return e.message || 'Request failed'
       }
     }

@@ -59,6 +59,10 @@
           <v-icon color="blue" start>mdi-shield-check</v-icon>
           Verified Blue
         </v-tab>
+        <v-tab v-if="showAmbassadorTab" value="ambassador">
+          <v-icon color="blue-grey" start>mdi-shield-account</v-icon>
+          Ambassadors
+        </v-tab>
       </v-tabs>
 
       <v-window v-model="subTab">
@@ -90,6 +94,21 @@
             :tenant-id="effectiveTenantId"
           />
         </v-window-item>
+
+        <v-window-item v-if="showAmbassadorTab" value="ambassador">
+          <CredentialList
+            badge-type="U3"
+            :can-grant="true"
+            :can-revoke="true"
+            empty-icon="mdi-shield-account-outline"
+            empty-title="No Stellar Ambassadors yet"
+            :empty-subtitle="`Add an ambassador to give them the gray badge across every tenant.`"
+            grant-label="Add Ambassador"
+            help-text="The gray Ambassador badge is GLOBAL: it appears on the holder's profile and content across all tenants, and it outranks Gold and Blue. It never expires and can only be managed here, on the main tenant, by admins with the 'Manage ambassadors' permission."
+            list-title="Stellar Ambassadors"
+            :tenant-id="effectiveTenantId"
+          />
+        </v-window-item>
       </v-window>
     </template>
   </div>
@@ -99,6 +118,7 @@
   import { computed, onMounted, ref, watch } from 'vue'
   import { listAllTenants, type TenantSummary } from '@/api/tenants'
   import { useAuthStore } from '@/stores/auth'
+  import { useMyPermissionsStore } from '@/stores/myPermissions'
   import CredentialList from './CredentialList.vue'
 
   const props = defineProps<{
@@ -118,7 +138,20 @@
    */
   const PLATFORM_TENANT_ID = 'earnlumens'
 
-  const subTab = ref<'gold' | 'blue'>('gold')
+  const subTab = ref<'gold' | 'blue' | 'ambassador'>('gold')
+
+  const permsStore = useMyPermissionsStore()
+
+  /**
+   * The Ambassador (gray, U3) credential is global but managed exclusively
+   * from the main tenant, guarded by the separate canManageAmbassadors
+   * permission (distinct from canVerifyCreators/Gold). The backend enforces
+   * both rules; here we just avoid showing a tab that would 403.
+   */
+  const showAmbassadorTab = computed(() =>
+    effectiveTenantId.value === PLATFORM_TENANT_ID
+    && (isSuperadmin.value || permsStore.permissionsFor(PLATFORM_TENANT_ID).canManageAmbassadors),
+  )
 
   // ---- SUPERADMIN-only tenant picker ----
   const tenants = ref<TenantSummary[]>([])
@@ -168,6 +201,19 @@
 
   onMounted(() => {
     if (isSuperadmin.value) loadTenants()
+  })
+
+  // Fetch the ambassador permission when operating on the main tenant so
+  // the tab appears/disappears without a reload. Cheap and cached by store.
+  watch(effectiveTenantId, value => {
+    if (value === PLATFORM_TENANT_ID && !isSuperadmin.value) {
+      permsStore.loadFor(PLATFORM_TENANT_ID)
+    }
+  }, { immediate: true })
+
+  // Never leave the window on a tab that just became unavailable.
+  watch(showAmbassadorTab, visible => {
+    if (!visible && subTab.value === 'ambassador') subTab.value = 'gold'
   })
 
   // Re-load if the role flips at runtime (defensive — should not happen).

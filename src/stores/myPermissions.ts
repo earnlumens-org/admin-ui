@@ -38,6 +38,7 @@ const ALL_FLAGS: (keyof MyPermissions)[] = [
   'canManualPermaBan',
   'canClearStrikes',
   'canVerifyCreators',
+  'canManageAmbassadors',
   'canViewTenantAudit',
 ]
 
@@ -57,6 +58,7 @@ function readSnapshot (oauthUserId: string, tenantId: string): MyPermissions | n
       canManualPermaBan: !!parsed.canManualPermaBan,
       canClearStrikes: !!parsed.canClearStrikes,
       canVerifyCreators: !!parsed.canVerifyCreators,
+      canManageAmbassadors: !!parsed.canManageAmbassadors,
       canViewTenantAudit: !!parsed.canViewTenantAudit,
     }
   } catch {
@@ -149,5 +151,6 @@ export const PERMISSION_LABELS: Record<keyof MyPermissions, string> = {
   canManualPermaBan: 'Manual permanent ban',
   canClearStrikes: 'Clear strike history',
   canVerifyCreators: 'Verify creators (Gold)',
+  canManageAmbassadors: 'Manage ambassadors (Gray)',
   canViewTenantAudit: 'View tenant audit',
 }

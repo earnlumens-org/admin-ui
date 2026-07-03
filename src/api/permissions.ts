@@ -13,6 +13,7 @@ export interface MyPermissions {
   canManualPermaBan: boolean
   canClearStrikes: boolean
   canVerifyCreators: boolean
+  canManageAmbassadors: boolean
   canViewTenantAudit: boolean
 }
 
@@ -20,6 +21,7 @@ export const NO_PERMISSIONS: Readonly<MyPermissions> = Object.freeze({
   canManualPermaBan: false,
   canClearStrikes: false,
   canVerifyCreators: false,
+  canManageAmbassadors: false,
   canViewTenantAudit: false,
 })
 

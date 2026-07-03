@@ -30,6 +30,7 @@ export interface ModeratorDto {
   canManualPermaBan: boolean
   canClearStrikes: boolean
   canVerifyCreators: boolean
+  canManageAmbassadors: boolean
   canViewTenantAudit: boolean
 }
 
@@ -42,6 +43,7 @@ export interface ModeratorPermissionsPayload {
   canManualPermaBan: boolean
   canClearStrikes: boolean
   canVerifyCreators: boolean
+  canManageAmbassadors: boolean
   canViewTenantAudit: boolean
 }
 

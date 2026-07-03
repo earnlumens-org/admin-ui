@@ -395,44 +395,70 @@
     canManualPermaBan: false,
     canClearStrikes: false,
     canVerifyCreators: false,
+    canManageAmbassadors: false,
     canViewTenantAudit: false,
   })
+
+  /** Main tenant id — the only tenant where ambassador management applies. */
+  const MAIN_TENANT_ID = 'earnlumens'
 
   /**
    * Editable flags shown in the dialog. canViewTenantAudit is hidden
    * while there is no UI surface that depends on it; it stays reachable
    * via the API for forward compatibility but is not exposed here so it
    * does not appear as a "dead toggle" to owners.
+   *
+   * canManageAmbassadors only appears for moderators of the main tenant:
+   * the gray (U3) credential is global but managed exclusively from
+   * there, so the toggle would be a dead switch on any other tenant.
    */
-  const editablePermissionFlags: ReadonlyArray<{
+  const editablePermissionFlags = computed<Array<{
     key: keyof ModeratorPermissionsPayload
     label: string
     description: string
     icon: string
     iconColor: string
-  }> = [
-    {
-      key: 'canManualPermaBan',
-      label: 'Manual permanent ban',
-      description: 'Issue a PERMA_BAN that bypasses the 3-strike ladder. Strike #3 still escalates to PERMA without this flag.',
-      icon: 'mdi-account-cancel',
-      iconColor: 'error',
-    },
-    {
-      key: 'canClearStrikes',
-      label: 'Clear strike history',
-      description: "Wipe a user's previous strikes when unblocking (treats prior sanctions as overturned). Plain Unblock stays available without this flag.",
-      icon: 'mdi-eraser-variant',
-      iconColor: 'warning',
-    },
-    {
-      key: 'canVerifyCreators',
-      label: 'Verify creators (Gold)',
-      description: 'Grant and revoke Gold creator credentials on this tenant.',
-      icon: 'mdi-shield-star',
-      iconColor: 'amber',
-    },
-  ]
+  }>>(() => {
+    const flags: Array<{
+      key: keyof ModeratorPermissionsPayload
+      label: string
+      description: string
+      icon: string
+      iconColor: string
+    }> = [
+      {
+        key: 'canManualPermaBan',
+        label: 'Manual permanent ban',
+        description: 'Issue a PERMA_BAN that bypasses the 3-strike ladder. Strike #3 still escalates to PERMA without this flag.',
+        icon: 'mdi-account-cancel',
+        iconColor: 'error',
+      },
+      {
+        key: 'canClearStrikes',
+        label: 'Clear strike history',
+        description: "Wipe a user's previous strikes when unblocking (treats prior sanctions as overturned). Plain Unblock stays available without this flag.",
+        icon: 'mdi-eraser-variant',
+        iconColor: 'warning',
+      },
+      {
+        key: 'canVerifyCreators',
+        label: 'Verify creators (Gold)',
+        description: 'Grant and revoke Gold creator credentials on this tenant.',
+        icon: 'mdi-shield-star',
+        iconColor: 'amber',
+      },
+    ]
+    if (permissionsTarget.value?.tenantId === MAIN_TENANT_ID) {
+      flags.push({
+        key: 'canManageAmbassadors',
+        label: 'Manage ambassadors (Gray)',
+        description: 'Add and remove Stellar Ambassadors. The gray badge is global — it applies across every tenant — and is managed only from the main tenant.',
+        icon: 'mdi-shield-account',
+        iconColor: 'blue-grey',
+      })
+    }
+    return flags
+  })
 
   /**
    * Compact badges shown on each moderator row for the flags they have
@@ -450,6 +476,9 @@
     if (mod.canVerifyCreators) {
       out.push({ key: 'verify', label: 'Verify', tooltip: 'Can grant Gold creator credentials', icon: 'mdi-shield-star', color: 'amber' })
     }
+    if (mod.canManageAmbassadors) {
+      out.push({ key: 'ambassadors', label: 'Ambassadors', tooltip: 'Can manage global Stellar Ambassadors (gray badge)', icon: 'mdi-shield-account', color: 'blue-grey' })
+    }
     return out
   }
 
@@ -458,6 +487,7 @@
     permissionsForm.canManualPermaBan = mod.canManualPermaBan
     permissionsForm.canClearStrikes = mod.canClearStrikes
     permissionsForm.canVerifyCreators = mod.canVerifyCreators
+    permissionsForm.canManageAmbassadors = mod.canManageAmbassadors
     permissionsForm.canViewTenantAudit = mod.canViewTenantAudit
     permissionsDialog.value = true
   }
@@ -470,6 +500,10 @@
         canManualPermaBan: permissionsForm.canManualPermaBan,
         canClearStrikes: permissionsForm.canClearStrikes,
         canVerifyCreators: permissionsForm.canVerifyCreators,
+        // Never send the flag as true for a non-main tenant — the toggle is
+        // hidden there, and this keeps a stale form from elevating it.
+        canManageAmbassadors: permissionsTarget.value.tenantId === MAIN_TENANT_ID
+          && permissionsForm.canManageAmbassadors,
         canViewTenantAudit: permissionsForm.canViewTenantAudit,
       }
       const updated = isTenantOwner.value && ownedTenantId.value

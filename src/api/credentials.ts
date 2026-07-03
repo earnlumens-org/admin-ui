@@ -9,7 +9,7 @@ import { getToken } from '@/services/tokenWorkerClient'
  * @see admin-api/src/main/java/org/earnlumens/admin/credential/CredentialController.java
  */
 
-export type CredentialBadgeType = 'U1' | 'U2'
+export type CredentialBadgeType = 'U1' | 'U2' | 'U3'
 export type CredentialStatus = 'ACTIVE' | 'EXPIRED'
 
 export interface CredentialHolder {
@@ -115,6 +115,44 @@ export async function revokeGold (
 ): Promise<void> {
   const res = await fetch(
     `${API_BASE_URL}/api/credentials/${encodeURIComponent(tenantId)}/gold/${encodeURIComponent(assignmentId)}`,
+    {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: await authHeaders(),
+    },
+  )
+  if (!res.ok && res.status !== 204) throw await parseError(res)
+}
+
+/**
+ * Grant the global Ambassador (gray, U3) credential. Main-tenant-only:
+ * the server rejects any tenantId other than "earnlumens" with
+ * MAIN_TENANT_ONLY. The badge applies on every tenant immediately.
+ */
+export async function grantAmbassador (
+  tenantId: string,
+  payload: GrantGoldPayload,
+): Promise<CredentialHolder> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/credentials/${encodeURIComponent(tenantId)}/ambassador`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: await authHeaders(),
+      body: JSON.stringify(payload),
+    },
+  )
+  if (!res.ok) throw await parseError(res)
+  return res.json()
+}
+
+/** Revoke an Ambassador assignment. Main-tenant-only (see grantAmbassador). */
+export async function revokeAmbassador (
+  tenantId: string,
+  assignmentId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/credentials/${encodeURIComponent(tenantId)}/ambassador/${encodeURIComponent(assignmentId)}`,
     {
       method: 'DELETE',
       credentials: 'include',

@@ -413,6 +413,17 @@
         toIcon: 'mdi-account-group-outline',
       })
     }
+    if (perms.canManageAmbassadors) {
+      items.push({
+        key: 'canManageAmbassadors',
+        title: 'Manage ambassadors (Gray)',
+        description: 'You can add and remove Stellar Ambassadors. The gray badge is global and applies across every tenant.',
+        icon: 'mdi-shield-account-outline',
+        cta: 'Open Credentials',
+        to: '/users',
+        toIcon: 'mdi-account-group-outline',
+      })
+    }
     if (perms.canViewTenantAudit) {
       items.push({
         key: 'canViewTenantAudit',
@@ -455,7 +466,7 @@
       // Surface /users when the moderator holds any per-user capability,
       // otherwise the granted flag has no entry point in the menu.
       const myPerms = permsStore.permissionsFor(authStore.activeTenantId)
-      if (myPerms.canManualPermaBan || myPerms.canClearStrikes || myPerms.canVerifyCreators) {
+      if (myPerms.canManualPermaBan || myPerms.canClearStrikes || myPerms.canVerifyCreators || myPerms.canManageAmbassadors) {
         actions.push({
           title: 'Users',
           description: 'Open user profiles to apply the moderator actions you have been granted.',

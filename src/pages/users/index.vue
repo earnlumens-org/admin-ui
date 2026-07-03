@@ -140,9 +140,11 @@
     () => isSuperadmin.value
       || isActiveTenantAdmin.value
       // Plain moderators see this tab only when the tenant owner granted
-      // the canVerifyCreators flag; the backend gates the underlying
-      // grant/revoke endpoints with the same check.
-      || permsStore.permissionsFor(authStore.activeTenantId).canVerifyCreators,
+      // the canVerifyCreators flag (or canManageAmbassadors on the main
+      // tenant); the backend gates the underlying grant/revoke endpoints
+      // with the same checks.
+      || permsStore.permissionsFor(authStore.activeTenantId).canVerifyCreators
+      || permsStore.permissionsFor(authStore.activeTenantId).canManageAmbassadors,
   )
   const activeTenantId = computed(() => authStore.activeTenantId)
 
