@@ -139,10 +139,11 @@
       list.push({ title: 'All tenants', value: '_all' })
       list.push({ title: 'earnlumens (root)', value: ROOT_TENANT_ID })
       for (const t of allTenants.value) {
-        if (t.id === ROOT_TENANT_ID) continue
+        if (t.subdomain === ROOT_TENANT_ID) continue
         list.push({
-          title: t.title?.trim() || t.subdomain || t.id,
-          value: t.id,
+          title: t.title?.trim() || t.subdomain,
+          // Subdomain = canonical tenantId; audit rows are keyed on it.
+          value: t.subdomain,
         })
       }
       // Keep the active tenant available even if the catalogue request

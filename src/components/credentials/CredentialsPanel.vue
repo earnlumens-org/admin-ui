@@ -162,7 +162,12 @@
   const tenantItems = computed(() => {
     const items = tenants.value.map(t => ({
       title: `${t.title} (${t.subdomain})`,
-      value: t.id,
+      // The SUBDOMAIN is the canonical platform-wide tenantId — it is what
+      // tenant-admin JWTs carry and what badge/entry documents are keyed
+      // on. Sending the Mongo _id here made every superadmin listing come
+      // back empty (and grants written under it were invisible to the
+      // tenant admin and to media-store-api's publish gates).
+      value: t.subdomain,
     }))
     // The "earnlumens" platform tenant is not a row in the `tenants`
     // collection (it is the synthetic id from admin.platform.default-tenant-id
