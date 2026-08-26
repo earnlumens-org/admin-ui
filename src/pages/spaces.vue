@@ -487,6 +487,55 @@
             label="Allow new content to be published into this space"
           />
 
+          <v-divider class="my-4" />
+          <div class="text-subtitle-2 mb-1">Publishing blocks</div>
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            Content queued to this space is released in blocks. Leave blank to use
+            the platform defaults (48 slots, every 10 minutes, FastPass $2).
+          </p>
+          <v-row dense>
+            <v-col cols="12" sm="4">
+              <v-text-field
+                v-model.number="form.publishingBlockSize"
+                density="compact"
+                hide-details="auto"
+                label="Block size (slots)"
+                min="1"
+                placeholder="48"
+                :rules="[v => v === null || v === '' || (Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 500) || '1–500']"
+                type="number"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field
+                v-model.number="form.publishingBlockIntervalMinutes"
+                density="compact"
+                hide-details="auto"
+                label="Interval (minutes)"
+                min="1"
+                placeholder="10"
+                :rules="[v => v === null || v === '' || (Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 1440) || '1–1440']"
+                type="number"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field
+                v-model.number="form.fastPassPriceUsd"
+                density="compact"
+                hide-details="auto"
+                label="FastPass price (USD)"
+                min="0.01"
+                placeholder="2.00"
+                :rules="[v => v === null || v === '' || (Number(v) >= 0.01) || 'Min $0.01']"
+                step="0.5"
+                type="number"
+                variant="outlined"
+              />
+            </v-col>
+          </v-row>
+
           <v-alert v-if="formError" class="mt-3" density="compact" type="error" variant="tonal">
             {{ formError }}
           </v-alert>
@@ -897,12 +946,18 @@
     whoCanPublish: SpacePublishRule
     showInSidebar: boolean
     allowPublishing: boolean
+    publishingBlockSize: number | null
+    publishingBlockIntervalMinutes: number | null
+    fastPassPriceUsd: number | null
   }>({
     baseName: '',
     icon: '',
     whoCanPublish: 'ALL',
     showInSidebar: true,
     allowPublishing: true,
+    publishingBlockSize: null,
+    publishingBlockIntervalMinutes: null,
+    fastPassPriceUsd: null,
   })
 
   const publishRuleOptions: Array<{ title: string, value: SpacePublishRule }> = [
@@ -1116,6 +1171,9 @@
     form.whoCanPublish = 'ALL'
     form.showInSidebar = true
     form.allowPublishing = true
+    form.publishingBlockSize = null
+    form.publishingBlockIntervalMinutes = null
+    form.fastPassPriceUsd = null
     formError.value = null
     resetNameCheck()
     formDialog.value = true
@@ -1129,6 +1187,9 @@
     form.whoCanPublish = s.whoCanPublish
     form.showInSidebar = s.showInSidebar
     form.allowPublishing = s.allowPublishing
+    form.publishingBlockSize = s.publishingBlockSize ?? null
+    form.publishingBlockIntervalMinutes = s.publishingBlockIntervalMinutes ?? null
+    form.fastPassPriceUsd = s.fastPassPriceUsd ?? null
     formError.value = null
     resetNameCheck()
     formDialog.value = true
@@ -1137,6 +1198,12 @@
   async function submitForm () {
     submitting.value = true
     formError.value = null
+
+    // Empty numeric inputs arrive as '' or null — send undefined so the
+    // backend keeps/uses defaults instead of failing validation.
+    function normNumber (v: number | null | undefined): number | undefined {
+      return typeof v === 'number' && Number.isFinite(v) ? v : undefined
+    }
 
     // UX: if the AI offered an English suggestion and the admin did NOT
     // explicitly choose 'Keep my text', auto-apply it on submit. This is
@@ -1161,6 +1228,9 @@
           whoCanPublish: form.whoCanPublish,
           showInSidebar: form.showInSidebar,
           allowPublishing: form.allowPublishing,
+          publishingBlockSize: normNumber(form.publishingBlockSize),
+          publishingBlockIntervalMinutes: normNumber(form.publishingBlockIntervalMinutes),
+          fastPassPriceUsd: normNumber(form.fastPassPriceUsd),
         }
         const created = await createSpace(selectedTenant.value, payload)
         spaces.value = [...spaces.value, created].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -1172,6 +1242,9 @@
           whoCanPublish: form.whoCanPublish,
           showInSidebar: form.showInSidebar,
           allowPublishing: form.allowPublishing,
+          publishingBlockSize: normNumber(form.publishingBlockSize),
+          publishingBlockIntervalMinutes: normNumber(form.publishingBlockIntervalMinutes),
+          fastPassPriceUsd: normNumber(form.fastPassPriceUsd),
         }
         const updated = await updateSpace(selectedTenant.value, editingId.value, payload)
         spaces.value = spaces.value.map(s => (s.id === updated.id ? updated : s))

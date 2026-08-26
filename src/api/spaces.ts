@@ -38,6 +38,12 @@ export interface SpaceResponse {
   translationStatus: Record<string, SpaceTranslationStatus>
   whoCanPublish: SpacePublishRule
   paidPublishEnabled: boolean
+  /** Publishing block base slots. null → platform default (48). */
+  publishingBlockSize: number | null
+  /** Minutes between block publications. null → platform default (10). */
+  publishingBlockIntervalMinutes: number | null
+  /** FastPass price in USD. null → platform default ($2). */
+  fastPassPriceUsd: number | null
   createdAt: string
   updatedAt: string
   archivedAt: string | null
@@ -51,6 +57,9 @@ export interface CreateSpacePayload {
   whoCanPublish?: SpacePublishRule
   showInSidebar?: boolean
   allowPublishing?: boolean
+  publishingBlockSize?: number | null
+  publishingBlockIntervalMinutes?: number | null
+  fastPassPriceUsd?: number | null
 }
 
 export interface UpdateSpacePayload {
@@ -59,6 +68,9 @@ export interface UpdateSpacePayload {
   whoCanPublish?: SpacePublishRule
   showInSidebar?: boolean
   allowPublishing?: boolean
+  publishingBlockSize?: number | null
+  publishingBlockIntervalMinutes?: number | null
+  fastPassPriceUsd?: number | null
 }
 
 export interface ReorderSpacesPayload {
