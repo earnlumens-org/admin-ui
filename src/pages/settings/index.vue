@@ -58,7 +58,7 @@
       </v-card>
 
       <!-- Platform-wide sections remain available even without a tenant. -->
-      <v-card v-if="platformSections.length">
+      <v-card v-if="platformSections.length > 0">
         <v-list class="py-0" lines="two">
           <template v-for="(section, index) in platformSections" :key="section.to">
             <v-divider v-if="index > 0" />
@@ -219,6 +219,13 @@
   })
 
   const tenantSections = computed(() => [
+    {
+      title: 'Plan',
+      subtitle: 'Free vs Pro — prepaid upgrade with your Stellar wallet',
+      icon: 'mdi-crown-outline',
+      color: 'amber-darken-2',
+      to: '/settings/plan',
+    },
     {
       title: 'General',
       subtitle: 'Display name and description',

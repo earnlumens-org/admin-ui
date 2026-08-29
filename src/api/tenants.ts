@@ -63,6 +63,12 @@ export interface TenantSummary {
   platformFeePercent: string
   tenantFeePercent: string
   status: TenantStatus
+  /** Commercial plan. FREE by default; PRO while prepaid (see settings/plan). */
+  plan: 'FREE' | 'PRO'
+  /** ISO instant when the paid PRO period ends; null = never bought a plan. */
+  planExpiresAt: string | null
+  /** planExpiresAt + grace days; Pro features stop after this instant. */
+  planGraceUntil: string | null
   createdAt: string
 }
 

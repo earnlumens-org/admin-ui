@@ -111,6 +111,7 @@ declare module 'vue-router/auto-routes' {
       | '/settings/content-types'
       | '/settings/general'
       | '/settings/languages'
+      | '/settings/plan'
       | '/settings/theme'
       | '/settings/uploads'
       | '/settings/wallet'
@@ -153,6 +154,13 @@ declare module 'vue-router/auto-routes' {
     '/settings/languages': RouteRecordInfo<
       '/settings/languages',
       '/settings/languages',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/settings/plan': RouteRecordInfo<
+      '/settings/plan',
+      '/settings/plan',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -295,6 +303,7 @@ declare module 'vue-router/auto-routes' {
         | '/settings/content-types'
         | '/settings/general'
         | '/settings/languages'
+        | '/settings/plan'
         | '/settings/theme'
         | '/settings/uploads'
         | '/settings/wallet'
@@ -334,6 +343,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/settings/languages.vue': {
       routes:
         | '/settings/languages'
+      views:
+        | never
+    }
+    'src/pages/settings/plan.vue': {
+      routes:
+        | '/settings/plan'
       views:
         | never
     }

@@ -17,6 +17,7 @@
     "lint:fix": "eslint --fix"
   },
   "dependencies": {
+    "@creit-tech/stellar-wallets-kit": "npm:@jsr/creit-tech__stellar-wallets-kit@^2.6.0",
     "@fontsource/roboto": "^5.2.10",
     "@mdi/font": "7.4.47",
     "pinia": "^3.0.4",
