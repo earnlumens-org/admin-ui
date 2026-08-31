@@ -69,6 +69,12 @@ export interface TenantSummary {
   planExpiresAt: string | null
   /** planExpiresAt + grace days; Pro features stop after this instant. */
   planGraceUntil: string | null
+  /** Custom domain FQDN (Pro), or null. Managed from /settings/domain. */
+  customDomain: string | null
+  /** Custom domain lifecycle; NONE when no domain is registered. */
+  customDomainStatus: 'NONE' | 'PENDING_DNS' | 'PENDING_SSL' | 'ACTIVE' | 'SUSPENDED' | 'FAILED'
+  /** Opt-in 301 {sub}.earnlumens.org → custom domain (default off). */
+  redirectSubdomainToCustomDomain: boolean
   createdAt: string
 }
 

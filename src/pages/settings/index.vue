@@ -227,6 +227,13 @@
       to: '/settings/plan',
     },
     {
+      title: 'Custom domain',
+      subtitle: 'Serve your storefront on your own domain (Pro)',
+      icon: 'mdi-web',
+      color: 'indigo',
+      to: '/settings/domain',
+    },
+    {
       title: 'General',
       subtitle: 'Display name and description',
       icon: 'mdi-tune',

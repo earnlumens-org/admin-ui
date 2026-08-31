@@ -379,7 +379,7 @@
     'Branding, themes, banner and franchises',
   ]
   const proFeatures = [
-    'Custom domain (yourbrand.com) — coming with Fase 2',
+    'Custom domain (yourbrand.com) — connect it in Settings → Custom domain',
     'Remove the EarnLumens branding (logo-only mode)',
     'Priority support',
   ]
