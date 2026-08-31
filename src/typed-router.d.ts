@@ -109,6 +109,7 @@ declare module 'vue-router/auto-routes' {
       | '/settings/banner'
       | '/settings/branding'
       | '/settings/content-types'
+      | '/settings/domain'
       | '/settings/general'
       | '/settings/languages'
       | '/settings/plan'
@@ -140,6 +141,13 @@ declare module 'vue-router/auto-routes' {
     '/settings/content-types': RouteRecordInfo<
       '/settings/content-types',
       '/settings/content-types',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/settings/domain': RouteRecordInfo<
+      '/settings/domain',
+      '/settings/domain',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -301,6 +309,7 @@ declare module 'vue-router/auto-routes' {
         | '/settings/banner'
         | '/settings/branding'
         | '/settings/content-types'
+        | '/settings/domain'
         | '/settings/general'
         | '/settings/languages'
         | '/settings/plan'
@@ -331,6 +340,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/settings/content-types.vue': {
       routes:
         | '/settings/content-types'
+      views:
+        | never
+    }
+    'src/pages/settings/domain.vue': {
+      routes:
+        | '/settings/domain'
       views:
         | never
     }
