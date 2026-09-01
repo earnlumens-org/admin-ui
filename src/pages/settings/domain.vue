@@ -485,7 +485,7 @@
       }
       case 'domain_cf_error': { return 'Our domain provider is having a hiccup. Please try again in a few minutes.'
       }
-      case 'domain_feature_disabled': { return 'Custom domains are temporarily unavailable. Please try again later.'
+      case 'domain_feature_disabled': { return 'Custom domains are not available for your shop yet (rolling out gradually). Please try again later.'
       }
       case 'plan_required': { return 'Custom domains require an active Pro plan.'
       }

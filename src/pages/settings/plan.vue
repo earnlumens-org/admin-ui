@@ -246,6 +246,49 @@
 
         <v-card class="mb-4">
           <v-card-item>
+            <v-card-title class="text-subtitle-2">Custom domains rollout</v-card-title>
+          </v-card-item>
+
+          <v-card-text>
+            <v-switch
+              v-model="draftCdEnabled"
+              color="primary"
+              density="comfortable"
+              hide-details
+              label="Custom domains enabled for everyone (GA)"
+            />
+
+            <div class="text-caption text-medium-emphasis mb-3">
+              While off, only the beta tenants below can register a new domain.
+              Domains that are already registered keep working either way.
+            </div>
+
+            <v-row dense>
+              <v-col cols="12" sm="8">
+                <v-text-field
+                  v-model="draftCdBeta"
+                  density="comfortable"
+                  hint="Comma-separated tenant subdomains"
+                  label="Beta tenants"
+                  persistent-hint
+                  variant="outlined"
+                />
+              </v-col>
+
+              <v-col class="d-flex align-center" cols="12" sm="4">
+                <v-btn
+                  color="primary"
+                  :loading="savingRollout"
+                  variant="flat"
+                  @click="saveRollout"
+                >Save rollout</v-btn>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+
+        <v-card class="mb-4">
+          <v-card-item>
             <v-card-title class="text-subtitle-2">Grant Pro manually (comp)</v-card-title>
           </v-card-item>
 
@@ -508,7 +551,10 @@
   async function savePrices () {
     savingPrices.value = true
     try {
-      const cfg = await updateBillingConfig(draftMonthly.value, draftYearly.value)
+      const cfg = await updateBillingConfig({
+        planPriceMonthlyUsd: draftMonthly.value,
+        planPriceYearlyUsd: draftYearly.value,
+      })
       draftMonthly.value = String(cfg.planPriceMonthlyUsd)
       draftYearly.value = String(cfg.planPriceYearlyUsd)
       prices.value = {
@@ -520,6 +566,31 @@
       showSnackbar(error instanceof PlanApiError ? error.code : 'Failed to save prices', 'error')
     } finally {
       savingPrices.value = false
+    }
+  }
+
+  // Custom-domains rollout (7.4): global GA flag + beta allowlist.
+  const draftCdEnabled = ref(false)
+  const draftCdBeta = ref('')
+  const savingRollout = ref(false)
+
+  async function saveRollout () {
+    savingRollout.value = true
+    try {
+      const cfg = await updateBillingConfig({
+        customDomainsEnabled: draftCdEnabled.value,
+        customDomainBetaTenants: draftCdBeta.value
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean),
+      })
+      draftCdEnabled.value = cfg.customDomainsEnabled === true
+      draftCdBeta.value = (cfg.customDomainBetaTenants ?? []).join(', ')
+      showSnackbar('Custom-domain rollout updated', 'success')
+    } catch (error) {
+      showSnackbar(error instanceof PlanApiError ? error.code : 'Failed to save rollout', 'error')
+    } finally {
+      savingRollout.value = false
     }
   }
 
@@ -569,6 +640,8 @@
         const cfg = await getBillingConfig()
         draftMonthly.value = String(cfg.planPriceMonthlyUsd)
         draftYearly.value = String(cfg.planPriceYearlyUsd)
+        draftCdEnabled.value = cfg.customDomainsEnabled === true
+        draftCdBeta.value = (cfg.customDomainBetaTenants ?? []).join(', ')
       } catch { /* superadmin card just stays empty */ }
     }
   })

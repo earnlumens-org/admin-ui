@@ -114,6 +114,8 @@ export interface BillingConfig {
   id: string
   planPriceMonthlyUsd: string
   planPriceYearlyUsd: string
+  customDomainsEnabled?: boolean
+  customDomainBetaTenants?: string[]
   updatedAt: string | null
   updatedBy: string | null
 }
@@ -122,12 +124,17 @@ export function getBillingConfig (): Promise<BillingConfig> {
   return request('/api/plan/admin/billing-config')
 }
 
-export function updateBillingConfig (
-  planPriceMonthlyUsd: string, planPriceYearlyUsd: string,
-): Promise<BillingConfig> {
+export interface BillingConfigPatch {
+  planPriceMonthlyUsd?: string
+  planPriceYearlyUsd?: string
+  customDomainsEnabled?: boolean
+  customDomainBetaTenants?: string[]
+}
+
+export function updateBillingConfig (patch: BillingConfigPatch): Promise<BillingConfig> {
   return request('/api/plan/admin/billing-config', {
     method: 'PATCH',
-    body: JSON.stringify({ planPriceMonthlyUsd, planPriceYearlyUsd }),
+    body: JSON.stringify(patch),
   })
 }
 
