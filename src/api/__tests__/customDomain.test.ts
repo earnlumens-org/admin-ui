@@ -1,5 +1,3 @@
-import type {
-  CustomDomainApiError } from '@/api/customDomain'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   previewServedHostname,
@@ -76,7 +74,7 @@ describe('customDomain API', () => {
 
       await expect(registerCustomDomain('t1', 'earnxlm.com', 'APEX_PROXY'))
         .rejects
-        .toMatchObject<Partial<CustomDomainApiError>>({ code: 'domain_connection_unsupported', status: 400 })
+        .toMatchObject({ code: 'domain_connection_unsupported', status: 400 })
     })
   })
 })
