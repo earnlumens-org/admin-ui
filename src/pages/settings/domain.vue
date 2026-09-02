@@ -1,11 +1,17 @@
 <!--
-  /settings/domain — Custom domain (custom-domain-upgrade Fase 2D).
+  /settings/domain — Custom domain (custom-domain-upgrade Fase 2D + decisión #9).
 
   UX requirement (2D.1): Shopify-level simplicity. One input → a screen with
   the exact DNS records to copy (copy button per record, literal values, no
   jargon), live status with automatic polling ("Waiting for DNS… / Issuing
   SSL… / Active!"), automatic detection without a mandatory "verify" click,
   and plain-language errors with the concrete fix.
+
+  Connection scheme (Cloudflare for SaaS Standard, decisión #9): the storefront
+  is served on a hostname (normally www.<apex>) CNAME'd to shops.earnlumens.org;
+  the apex is 301-redirected to www AT THE OWNER'S DNS PROVIDER. That external
+  redirect (step 2) is deliberately kept apart from EarnLumens' own opt-in
+  canonical redirect ({sub}.earnlumens.org → custom domain, the toggle).
 
   Free tenants see an upsell card linking to /settings/plan (2D.3).
 -->
@@ -22,7 +28,7 @@
     <div class="text-h6 mb-1">Custom domain</div>
 
     <div class="text-body-2 text-medium-emphasis mb-4">
-      Serve your storefront on your own domain (e.g. <strong>yourbrand.com</strong>)
+      Serve your storefront on your own domain (e.g. <strong>www.yourbrand.com</strong>)
       instead of {{ tenant?.subdomain ?? 'you' }}.earnlumens.org.
     </div>
 
@@ -67,8 +73,8 @@
           <v-card-title class="text-subtitle-1">Connect your domain</v-card-title>
 
           <v-card-subtitle>
-            Type the domain you already own. We'll give you the exact DNS
-            records to copy — nothing else to figure out.
+            Type the domain you already own. We'll give you the exact records
+            to copy into your domain provider — nothing else to figure out.
           </v-card-subtitle>
         </v-card-item>
 
@@ -88,13 +94,35 @@
               v-model="draftDomain"
               autocomplete="off"
               :disabled="connecting"
-              hint="Use a domain or subdomain you own, e.g. shop.yourbrand.com"
+              hint="yourbrand.com, www.yourbrand.com or shop.yourbrand.com"
               label="Your domain"
               persistent-hint
               placeholder="yourbrand.com"
               prepend-inner-icon="mdi-web"
               variant="outlined"
             />
+
+            <!-- Live preview of what will actually be connected (decisión #9) -->
+            <v-alert
+              v-if="preview"
+              class="mt-3"
+              density="compact"
+              :icon="preview.isApex ? 'mdi-information-outline' : 'mdi-check'"
+              type="info"
+              variant="tonal"
+            >
+              <template v-if="preview.isApex">
+                Your storefront will live at <strong>{{ preview.hostname }}</strong>.
+                Root domains ({{ preview.typed }}) can't be connected directly
+                yet, so we connect <strong>www</strong> and you set up a simple
+                redirect {{ preview.typed }} → {{ preview.hostname }} at your
+                provider (we'll show you exactly how).
+              </template>
+
+              <template v-else>
+                Your storefront will live at <strong>{{ preview.hostname }}</strong>.
+              </template>
+            </v-alert>
 
             <v-btn
               class="mt-4"
@@ -105,7 +133,7 @@
               type="submit"
               variant="flat"
             >
-              Connect domain
+              Connect {{ preview?.hostname ?? 'domain' }}
             </v-btn>
           </v-form>
         </v-card-text>
@@ -200,7 +228,26 @@
 
             <v-divider class="my-4" />
 
-            <!-- 2D.2 — canonical 301 toggle -->
+            <!-- Reminder: external apex → www redirect (owner's provider) -->
+            <div v-if="domain.apexRedirect" class="text-body-2 mb-4">
+              <v-icon class="me-1" icon="mdi-arrow-right-bottom" size="18" />
+              Visitors typing <strong>{{ domain.apexRedirect.from }}</strong> reach
+              your store only if your domain provider redirects it to
+              <strong>{{ domain.apexRedirect.to }}</strong>
+
+              <v-btn size="x-small" variant="text" @click="showApexHelp = !showApexHelp">
+                {{ showApexHelp ? 'Hide' : 'How?' }}
+              </v-btn>
+
+              <div v-if="showApexHelp" class="text-caption text-medium-emphasis mt-1">
+                In your provider's panel look for "Forwarding", "Redirect" or
+                "URL redirect" on {{ domain.apexRedirect.from }} and point it
+                (permanent / 301) to {{ domain.apexRedirect.to }}. This is
+                configured entirely at your provider — EarnLumens is not involved.
+              </div>
+            </div>
+
+            <!-- 2D.2 — EarnLumens canonical 301 toggle (distinct from the apex redirect above) -->
             <v-switch
               color="primary"
               density="comfortable"
@@ -213,9 +260,10 @@
             />
 
             <div class="text-caption text-medium-emphasis mt-1">
-              Off by default. When on, visitors of your subdomain are sent to
-              your custom domain (search engines will treat it as the main
-              address).
+              Off by default. When on, visitors of your EarnLumens subdomain are
+              sent to your custom domain (search engines will treat it as the
+              main address). This is handled by EarnLumens and is separate from
+              the root-domain redirect at your provider.
             </div>
           </v-card-text>
 
@@ -238,17 +286,19 @@
           </v-card-text>
         </v-card>
 
-        <!-- DNS instructions (2D.1) -->
+        <!-- DNS instructions (2D.1) — step 1: records at the owner's provider -->
         <v-card v-if="isPendingStatus && domain.dnsRecords.length > 0" class="mb-6">
           <v-card-item>
             <v-card-title class="text-subtitle-1">
-              Add {{ domain.dnsRecords.length === 1 ? 'this DNS record' : 'these DNS records' }}
+              {{ domain.apexRedirect ? 'Step 1 — ' : '' }}Add
+              {{ domain.dnsRecords.length === 1 ? 'this DNS record' : 'these DNS records' }}
             </v-card-title>
 
             <v-card-subtitle>
-              In the DNS panel of your domain provider (Cloudflare, Namecheap,
-              GoDaddy…), create {{ domain.dnsRecords.length === 1 ? 'this record' : 'each record' }}
-              exactly as shown. That's all.
+              In the DNS panel of your domain provider (Namecheap, GoDaddy,
+              Cloudflare, Google Domains…), create
+              {{ domain.dnsRecords.length === 1 ? 'this record' : 'each record' }}
+              exactly as shown for <strong>{{ domain.apexDomain }}</strong>.
             </v-card-subtitle>
           </v-card-item>
 
@@ -275,10 +325,23 @@
                   <div class="text-caption text-medium-emphasis">Name / Host</div>
 
                   <div class="d-flex align-center">
-                    <code class="text-body-2 text-truncate">{{ rec.name }}</code>
+                    <code class="text-body-2 text-truncate">{{ rec.host }}</code>
 
                     <v-btn
                       density="comfortable"
+                      icon="mdi-content-copy"
+                      size="x-small"
+                      variant="text"
+                      @click="copy(rec.host)"
+                    />
+                  </div>
+
+                  <div v-if="rec.host !== rec.name" class="text-caption text-medium-emphasis">
+                    If your provider asks for the full name:
+                    <code>{{ rec.name }}</code>
+
+                    <v-btn
+                      density="compact"
                       icon="mdi-content-copy"
                       size="x-small"
                       variant="text"
@@ -305,11 +368,23 @@
               </v-row>
             </v-card>
 
+            <!-- Legacy only: a root domain connected via CNAME before decisión #9 -->
+            <v-alert
+              v-if="hasLegacyApexCname"
+              class="mb-3"
+              density="compact"
+              type="warning"
+              variant="tonal"
+            >
+              This domain is connected at its root ("@"). A CNAME at the root
+              only works if your provider supports it (sometimes called ALIAS,
+              ANAME or CNAME flattening). If it never activates, remove it and
+              connect <strong>www.{{ domain.apexDomain }}</strong> instead.
+            </v-alert>
+
             <div class="text-caption text-medium-emphasis">
-              Tip: if you're connecting a root domain (yourbrand.com without
-              "www"), your provider must support CNAME at the root (Cloudflare
-              and most modern providers do — it may be called ALIAS or ANAME).
-              DNS changes can take a few minutes to propagate.
+              DNS changes can take a few minutes to propagate. We keep checking
+              automatically.
             </div>
 
             <v-btn
@@ -322,6 +397,71 @@
             >
               Check now
             </v-btn>
+          </v-card-text>
+        </v-card>
+
+        <!-- Step 2: external apex → www redirect (owner's provider, not EarnLumens) -->
+        <v-card v-if="isPendingStatus && domain.apexRedirect" class="mb-6">
+          <v-card-item>
+            <v-card-title class="text-subtitle-1">
+              Step 2 — Redirect {{ domain.apexRedirect.from }} to your store
+            </v-card-title>
+
+            <v-card-subtitle>
+              So people who type <strong>{{ domain.apexRedirect.from }}</strong>
+              (without www) also land on your store. Done at your domain
+              provider — look for "Forwarding", "Redirect" or "URL redirect".
+            </v-card-subtitle>
+          </v-card-item>
+
+          <v-card-text>
+            <v-card class="pa-3" variant="outlined">
+              <v-row dense>
+                <v-col cols="12" sm="2">
+                  <div class="text-caption text-medium-emphasis">Type</div>
+                  <code class="text-body-2">Redirect (301)</code>
+                </v-col>
+
+                <v-col cols="12" sm="4">
+                  <div class="text-caption text-medium-emphasis">From</div>
+
+                  <div class="d-flex align-center">
+                    <code class="text-body-2 text-truncate">{{ domain.apexRedirect.from }}</code>
+
+                    <v-btn
+                      density="comfortable"
+                      icon="mdi-content-copy"
+                      size="x-small"
+                      variant="text"
+                      @click="copy(domain.apexRedirect.from)"
+                    />
+                  </div>
+                </v-col>
+
+                <v-col cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">To</div>
+
+                  <div class="d-flex align-center">
+                    <code class="text-body-2 text-truncate">{{ domain.apexRedirect.to }}</code>
+
+                    <v-btn
+                      density="comfortable"
+                      icon="mdi-content-copy"
+                      size="x-small"
+                      variant="text"
+                      @click="copy(domain.apexRedirect.to)"
+                    />
+                  </div>
+                </v-col>
+              </v-row>
+            </v-card>
+
+            <div class="text-caption text-medium-emphasis mt-3">
+              Choose "permanent" (301) and keep the path if your provider offers
+              it. This redirect lives entirely at your provider and is not
+              required for activation — your store works on
+              {{ domain.domain }} as soon as step 1 is detected.
+            </div>
           </v-card-text>
         </v-card>
 
@@ -385,6 +525,7 @@
     type CustomDomainView,
     deleteCustomDomain,
     getCustomDomain,
+    previewServedHostname,
     registerCustomDomain,
     setCustomDomainRedirect,
     verifyCustomDomain,
@@ -404,6 +545,21 @@
   const togglingRedirect = ref(false)
   const deleteDialog = ref(false)
   const actionError = ref<string | null>(null)
+  const showApexHelp = ref(false)
+
+  // ---- live preview of the served hostname (decisión #9) ------------------
+
+  const preview = computed(() => {
+    const typed = draftDomain.value.trim().toLowerCase().replace(/\.$/, '')
+    const hostname = previewServedHostname(typed)
+    if (!hostname) return null
+    return { typed, hostname, isApex: hostname !== typed }
+  })
+
+  /** Root domain connected via CNAME before decisión #9 (needs provider flattening). */
+  const hasLegacyApexCname = computed(() =>
+    domain.value?.connection === 'CNAME'
+    && domain.value.dnsRecords.some(r => r.purpose === 'routing' && r.host === '@'))
 
   // ---- plan gate ---------------------------------------------------------
 
@@ -487,6 +643,8 @@
       }
       case 'domain_feature_disabled': { return 'Custom domains are not available for your shop yet (rolling out gradually). Please try again later.'
       }
+      case 'domain_connection_unsupported': { return 'That connection method is not available yet. Connect your domain as www.yourbrand.com (the default).'
+      }
       case 'plan_required': { return 'Custom domains require an active Pro plan.'
       }
       case 'domain_not_set': { return 'No domain is connected yet.'
@@ -520,7 +678,7 @@
     try {
       domain.value = await registerCustomDomain(tenant.value.id, draftDomain.value.trim())
       draftDomain.value = ''
-      showSnackbar('Domain connected — now add the DNS records', 'success')
+      showSnackbar(`${domain.value.domain} connected — now add the records at your provider`, 'success')
     } catch (error) {
       actionError.value = mapError(error)
     } finally {
