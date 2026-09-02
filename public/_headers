@@ -10,13 +10,18 @@
 #    whitelist it explicitly. Horizon is allowed because admin-ui validates
 #    Stellar account existence client-side (services/stellar.ts).
 #  - 'unsafe-inline' on style-src is required by Vuetify.
+#  - Stellar Wallets Kit (settings/plan purchase): its modal loads wallet
+#    icons from stellar.creit.tech (+ onekey / herewallet / scopuly), so
+#    those hosts are on img-src (explicit allowlist, NOT 'https:' like
+#    media-store-ui). Popup wallets (Albedo, Lobstr) need COOP
+#    same-origin-allow-popups and frame-src for the Lobstr web wallet.
 
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.earnlumens.org https://cdn-dev.earnlumens.org https://pbs.twimg.com https://abs.twimg.com; media-src 'self' blob: https://cdn.earnlumens.org https://cdn-dev.earnlumens.org; font-src 'self' data:; connect-src 'self' https://api.admin.earnlumens.org https://api.admin-dev.earnlumens.org https://cdn.earnlumens.org https://cdn-dev.earnlumens.org https://horizon.stellar.org https://horizon-testnet.stellar.org https://*.r2.cloudflarestorage.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.earnlumens.org https://cdn-dev.earnlumens.org https://pbs.twimg.com https://abs.twimg.com https://stellar.creit.tech https://uni.onekey-asset.com https://storage.herewallet.app https://scopuly.com; media-src 'self' blob: https://cdn.earnlumens.org https://cdn-dev.earnlumens.org; font-src 'self' data:; connect-src 'self' https://api.admin.earnlumens.org https://api.admin-dev.earnlumens.org https://cdn.earnlumens.org https://cdn-dev.earnlumens.org https://horizon.stellar.org https://horizon-testnet.stellar.org https://*.r2.cloudflarestorage.com; frame-src 'self' https://lobstr.co https://*.lobstr.co; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()
-  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cross-Origin-Resource-Policy: same-site
