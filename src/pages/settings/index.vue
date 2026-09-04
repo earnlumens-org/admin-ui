@@ -294,6 +294,17 @@
     }> = []
 
     if (isSuperadmin.value) {
+      if (!tenant.value) {
+        // Tenant owners reach the same page via tenantSections; this entry
+        // keeps the superadmin console reachable without an owned tenant.
+        list.push({
+          title: 'Plan administration',
+          subtitle: 'Global prices, custom-domain rollout, manual Pro grants (superadmin only)',
+          icon: 'mdi-shield-crown',
+          color: 'amber-darken-2',
+          to: '/settings/plan',
+        })
+      }
       list.push({
         title: 'Languages',
         subtitle: 'Global i18n catalogue (superadmin only)',

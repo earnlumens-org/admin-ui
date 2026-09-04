@@ -5,8 +5,9 @@
   Free vs Pro comparison, and the prepaid Stellar checkout:
   connect wallet → prepare (unsigned XDR) → sign → submit (sync on-chain).
 
-  SUPERADMIN extras (same page, gated): global price editor, manual Pro
-  grant (comp), and the recent plan_orders list.
+  SUPERADMIN extras (same page, gated): global price editor, custom-domain
+  rollout, manual Pro grant (comp), and the recent plan_orders list. They
+  render regardless of whether the superadmin owns a tenant.
 -->
 <template>
   <v-container class="pa-4 pa-sm-6" fluid>
@@ -195,190 +196,203 @@
           </div>
         </v-card-text>
       </v-card>
+    </template>
 
-      <!-- SUPERADMIN console (1D.4) -->
-      <template v-if="isSuperadmin">
-        <v-divider class="mb-4" />
+    <v-card v-else-if="!isSuperadmin" class="pa-8 text-center" variant="tonal">
+      <v-icon color="medium-emphasis" size="48">mdi-domain-off</v-icon>
+      <div class="text-body-1 mt-4">No tenant to configure.</div>
 
-        <div class="text-subtitle-1 mb-2">
-          <v-icon class="me-1" size="18">mdi-shield-crown</v-icon>
-          Superadmin — plan administration
-        </div>
+      <div class="text-body-2 text-medium-emphasis mt-1">
+        Create your tenant from the Tenants page first.
+      </div>
 
-        <v-card class="mb-4">
-          <v-card-item>
-            <v-card-title class="text-subtitle-2">Global prices (USD)</v-card-title>
-          </v-card-item>
+      <v-btn class="mt-4" color="primary" to="/tenants" variant="flat">
+        Go to tenants
+      </v-btn>
+    </v-card>
 
-          <v-card-text>
-            <v-row dense>
-              <v-col cols="12" sm="4">
-                <v-text-field
-                  v-model="draftMonthly"
-                  density="comfortable"
-                  label="Monthly (USD)"
-                  prefix="$"
-                  variant="outlined"
-                />
-              </v-col>
+    <!-- SUPERADMIN console (1D.4) — independent of tenant ownership. -->
+    <template v-if="isSuperadmin && !loading">
+      <v-divider class="mb-4" />
 
-              <v-col cols="12" sm="4">
-                <v-text-field
-                  v-model="draftYearly"
-                  density="comfortable"
-                  label="Yearly (USD)"
-                  prefix="$"
-                  variant="outlined"
-                />
-              </v-col>
+      <div class="text-subtitle-1 mb-2">
+        <v-icon class="me-1" size="18">mdi-shield-crown</v-icon>
+        Superadmin — plan administration
+      </div>
 
-              <v-col class="d-flex align-center" cols="12" sm="4">
-                <v-btn
-                  color="primary"
-                  :loading="savingPrices"
-                  variant="flat"
-                  @click="savePrices"
-                >Save prices</v-btn>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
+      <v-card class="mb-4">
+        <v-card-item>
+          <v-card-title class="text-subtitle-2">Global prices (USD)</v-card-title>
+        </v-card-item>
 
-        <v-card class="mb-4">
-          <v-card-item>
-            <v-card-title class="text-subtitle-2">Custom domains rollout</v-card-title>
-          </v-card-item>
-
-          <v-card-text>
-            <v-switch
-              v-model="draftCdEnabled"
-              color="primary"
-              density="comfortable"
-              hide-details
-              label="Custom domains enabled for everyone (GA)"
-            />
-
-            <div class="text-caption text-medium-emphasis mb-3">
-              While off, only the beta tenants below can register a new domain.
-              Domains that are already registered keep working either way.
-            </div>
-
-            <v-row dense>
-              <v-col cols="12" sm="8">
-                <v-text-field
-                  v-model="draftCdBeta"
-                  density="comfortable"
-                  hint="Comma-separated tenant subdomains"
-                  label="Beta tenants"
-                  persistent-hint
-                  variant="outlined"
-                />
-              </v-col>
-
-              <v-col class="d-flex align-center" cols="12" sm="4">
-                <v-btn
-                  color="primary"
-                  :loading="savingRollout"
-                  variant="flat"
-                  @click="saveRollout"
-                >Save rollout</v-btn>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
-
-        <v-card class="mb-4">
-          <v-card-item>
-            <v-card-title class="text-subtitle-2">Grant Pro manually (comp)</v-card-title>
-          </v-card-item>
-
-          <v-card-text>
-            <v-row dense>
-              <v-col cols="12" sm="5">
-                <v-text-field
-                  v-model="grantTenantId"
-                  density="comfortable"
-                  label="Tenant subdomain or id"
-                  variant="outlined"
-                />
-              </v-col>
-
-              <v-col cols="12" sm="3">
-                <v-text-field
-                  v-model.number="grantMonths"
-                  density="comfortable"
-                  label="Months"
-                  type="number"
-                  variant="outlined"
-                />
-              </v-col>
-
-              <v-col class="d-flex align-center" cols="12" sm="4">
-                <v-btn
-                  color="primary"
-                  :loading="granting"
-                  variant="flat"
-                  @click="doGrant"
-                >Grant</v-btn>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
-
-        <v-card>
-          <v-card-item>
-            <v-card-title class="text-subtitle-2">Recent plan orders</v-card-title>
-
-            <template #append>
-              <v-btn
-                icon="mdi-refresh"
-                size="small"
-                variant="text"
-                @click="loadOrders"
+        <v-card-text>
+          <v-row dense>
+            <v-col cols="12" sm="4">
+              <v-text-field
+                v-model="draftMonthly"
+                density="comfortable"
+                label="Monthly (USD)"
+                prefix="$"
+                variant="outlined"
               />
-            </template>
-          </v-card-item>
+            </v-col>
 
-          <v-card-text class="pa-0">
-            <v-table density="comfortable">
-              <thead>
-                <tr>
-                  <th>Tenant</th>
-                  <th>Period</th>
-                  <th>USD</th>
-                  <th>Status</th>
-                  <th>Applied</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
+            <v-col cols="12" sm="4">
+              <v-text-field
+                v-model="draftYearly"
+                density="comfortable"
+                label="Yearly (USD)"
+                prefix="$"
+                variant="outlined"
+              />
+            </v-col>
 
-              <tbody>
-                <tr v-for="o in orders" :key="o.id">
-                  <td>{{ o.tenantId }}</td>
-                  <td>{{ o.period }}</td>
-                  <td>{{ o.amountUsd ?? '—' }}</td>
+            <v-col class="d-flex align-center" cols="12" sm="4">
+              <v-btn
+                color="primary"
+                :loading="savingPrices"
+                variant="flat"
+                @click="savePrices"
+              >Save prices</v-btn>
+            </v-col>
+          </v-row>
+        </v-card-text>
+      </v-card>
 
-                  <td>
-                    <v-chip
-                      :color="o.status === 'COMPLETED' ? 'success' : (o.status === 'FAILED' ? 'error' : 'grey')"
-                      density="comfortable"
-                      size="small"
-                      variant="tonal"
-                    >{{ o.status }}</v-chip>
-                  </td>
+      <v-card class="mb-4">
+        <v-card-item>
+          <v-card-title class="text-subtitle-2">Custom domains rollout</v-card-title>
+        </v-card-item>
 
-                  <td>{{ o.appliedAt ? 'yes' : (o.status === 'COMPLETED' ? 'pending' : '—') }}</td>
-                  <td>{{ formatDate(o.createdAt ?? null) }}</td>
-                </tr>
+        <v-card-text>
+          <v-switch
+            v-model="draftCdEnabled"
+            color="primary"
+            density="comfortable"
+            hide-details
+            label="Custom domains enabled for everyone (GA)"
+          />
 
-                <tr v-if="orders.length === 0">
-                  <td class="text-medium-emphasis" colspan="6">No plan orders yet.</td>
-                </tr>
-              </tbody>
-            </v-table>
-          </v-card-text>
-        </v-card>
-      </template>
+          <div class="text-caption text-medium-emphasis mb-3">
+            While off, only the beta tenants below can register a new domain.
+            Domains that are already registered keep working either way.
+          </div>
+
+          <v-row dense>
+            <v-col cols="12" sm="8">
+              <v-text-field
+                v-model="draftCdBeta"
+                density="comfortable"
+                hint="Comma-separated tenant subdomains"
+                label="Beta tenants"
+                persistent-hint
+                variant="outlined"
+              />
+            </v-col>
+
+            <v-col class="d-flex align-center" cols="12" sm="4">
+              <v-btn
+                color="primary"
+                :loading="savingRollout"
+                variant="flat"
+                @click="saveRollout"
+              >Save rollout</v-btn>
+            </v-col>
+          </v-row>
+        </v-card-text>
+      </v-card>
+
+      <v-card class="mb-4">
+        <v-card-item>
+          <v-card-title class="text-subtitle-2">Grant Pro manually (comp)</v-card-title>
+        </v-card-item>
+
+        <v-card-text>
+          <v-row dense>
+            <v-col cols="12" sm="5">
+              <v-text-field
+                v-model="grantTenantId"
+                density="comfortable"
+                label="Tenant subdomain or id"
+                variant="outlined"
+              />
+            </v-col>
+
+            <v-col cols="12" sm="3">
+              <v-text-field
+                v-model.number="grantMonths"
+                density="comfortable"
+                label="Months"
+                type="number"
+                variant="outlined"
+              />
+            </v-col>
+
+            <v-col class="d-flex align-center" cols="12" sm="4">
+              <v-btn
+                color="primary"
+                :loading="granting"
+                variant="flat"
+                @click="doGrant"
+              >Grant</v-btn>
+            </v-col>
+          </v-row>
+        </v-card-text>
+      </v-card>
+
+      <v-card>
+        <v-card-item>
+          <v-card-title class="text-subtitle-2">Recent plan orders</v-card-title>
+
+          <template #append>
+            <v-btn
+              icon="mdi-refresh"
+              size="small"
+              variant="text"
+              @click="loadOrders"
+            />
+          </template>
+        </v-card-item>
+
+        <v-card-text class="pa-0">
+          <v-table density="comfortable">
+            <thead>
+              <tr>
+                <th>Tenant</th>
+                <th>Period</th>
+                <th>USD</th>
+                <th>Status</th>
+                <th>Applied</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr v-for="o in orders" :key="o.id">
+                <td>{{ o.tenantId }}</td>
+                <td>{{ o.period }}</td>
+                <td>{{ o.amountUsd ?? '—' }}</td>
+
+                <td>
+                  <v-chip
+                    :color="o.status === 'COMPLETED' ? 'success' : (o.status === 'FAILED' ? 'error' : 'grey')"
+                    density="comfortable"
+                    size="small"
+                    variant="tonal"
+                  >{{ o.status }}</v-chip>
+                </td>
+
+                <td>{{ o.appliedAt ? 'yes' : (o.status === 'COMPLETED' ? 'pending' : '—') }}</td>
+                <td>{{ formatDate(o.createdAt ?? null) }}</td>
+              </tr>
+
+              <tr v-if="orders.length === 0">
+                <td class="text-medium-emphasis" colspan="6">No plan orders yet.</td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card-text>
+      </v-card>
     </template>
 
     <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="4000">
