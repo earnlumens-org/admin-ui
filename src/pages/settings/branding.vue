@@ -348,6 +348,102 @@
         <v-col cols="12">
           <v-card>
             <v-card-item>
+              <v-card-title>App icon</v-card-title>
+              <v-card-subtitle>Icon of the installable app on your custom domain</v-card-subtitle>
+            </v-card-item>
+
+            <v-card-text>
+              <v-alert
+                v-if="!appIconEligible"
+                class="mb-4"
+                density="comfortable"
+                type="info"
+                variant="tonal"
+              >
+                Visitors of a <strong>custom domain</strong> (Pro) can install
+                your store as an app with its own name and icon. On your
+                <code>{{ tenant.subdomain }}.earnlumens.org</code> address the
+                app always uses the generic EarnLumens store badge.
+                <RouterLink to="/settings/domain">Connect a custom domain</RouterLink>
+                to enable your own icon.
+              </v-alert>
+
+              <div class="text-caption text-medium-emphasis mb-3">
+                Square PNG, exactly 512×512 px, up to 512 KB. Keep the
+                important part inside the central 80% — Android may crop the
+                corners. Leave empty to use the generic store badge.
+              </div>
+
+              <div class="d-flex align-center ga-3 flex-wrap">
+                <div class="appicon-thumb">
+                  <img v-if="previewAppIconUrl" alt="App icon preview" :src="previewAppIconUrl">
+                  <span v-else class="text-caption text-medium-emphasis">No icon</span>
+                </div>
+
+                <div class="appicon-thumb appicon-thumb--round" title="Rounded (maskable) preview">
+                  <img v-if="previewAppIconUrl" alt="App icon rounded preview" :src="previewAppIconUrl">
+                </div>
+
+                <v-file-input
+                  accept="image/png"
+                  class="flex-grow-1"
+                  density="comfortable"
+                  :disabled="!appIconEligible || logoUploading.appicon"
+                  hide-details
+                  label="Upload app icon"
+                  :loading="logoUploading.appicon"
+                  :model-value="logoFileModel.appicon"
+                  prepend-icon=""
+                  prepend-inner-icon="mdi-cellphone-arrow-down"
+                  show-size
+                  style="min-width: 200px;"
+                  variant="outlined"
+                  @update:model-value="(v) => onLogoFileSelected('appicon', v)"
+                />
+
+                <v-btn
+                  :disabled="!draft.pwaIconR2Key || logoUploading.appicon"
+                  size="small"
+                  variant="text"
+                  @click="clearLogo('appicon')"
+                >
+                  Remove app icon
+                </v-btn>
+              </div>
+
+              <v-progress-linear
+                v-if="logoUploading.appicon"
+                class="mt-3"
+                color="primary"
+                height="6"
+                :model-value="logoUploadProgress.appicon"
+                rounded
+              />
+
+              <v-alert
+                v-if="logoError.appicon"
+                class="mt-3"
+                closable
+                density="compact"
+                type="error"
+                variant="tonal"
+                @click:close="logoError.appicon = ''"
+              >
+                {{ logoError.appicon }}
+              </v-alert>
+
+              <div class="text-caption text-medium-emphasis mt-3">
+                Already-installed apps pick up a new icon on their next launch
+                on Android and desktop; on iPhone/iPad users must remove and
+                re-add the app.
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+
+        <v-col cols="12">
+          <v-card>
+            <v-card-item>
               <v-card-title>Preview</v-card-title>
               <v-card-subtitle>Preview of the storefront app bar</v-card-subtitle>
             </v-card-item>
@@ -457,6 +553,7 @@
     logoR2Key: '',
     logoR2KeyDark: '',
     faviconR2Key: '',
+    pwaIconR2Key: '',
     browserTitle: '',
     brandText: '',
     brandTextHidden: false,
@@ -500,13 +597,18 @@
   // and one for the dark theme. The dark variant is optional; when missing
   // the storefront renders the light variant in both themes. The favicon
   // variant lives alongside but uses its own narrower validation (smaller
-  // size cap, .ico accepted, no aspect-ratio check).
-  type LogoVariant = 'light' | 'dark' | 'favicon'
+  // size cap, .ico accepted, no aspect-ratio check). The appicon variant is
+  // the PWA launcher icon: PNG only, exactly 512×512 (manifest advertises
+  // that size; the presign cannot inspect pixels, so we check here).
+  type LogoVariant = 'light' | 'dark' | 'favicon' | 'appicon'
 
   const LOGO_ALLOWED_TYPES = new Set(['image/png', 'image/webp'])
   const LOGO_MAX_BYTES = 512 * 1024
   const LOGO_MIN_DIMENSION = 64
   const LOGO_MAX_RATIO = 6
+
+  const APPICON_SIZE = 512
+  const APPICON_MAX_BYTES = 512 * 1024
 
   // Favicon: small browser-tab icon. Allow the legacy .ico container in
   // addition to PNG/WebP because most logo-generator tooling still emits
@@ -519,17 +621,18 @@
   ])
   const FAVICON_MAX_BYTES = 128 * 1024
 
-  const logoUploading = reactive<Record<LogoVariant, boolean>>({ light: false, dark: false, favicon: false })
-  const logoUploadProgress = reactive<Record<LogoVariant, number>>({ light: 0, dark: 0, favicon: 0 })
-  const logoError = reactive<Record<LogoVariant, string>>({ light: '', dark: '', favicon: '' })
+  const logoUploading = reactive<Record<LogoVariant, boolean>>({ light: false, dark: false, favicon: false, appicon: false })
+  const logoUploadProgress = reactive<Record<LogoVariant, number>>({ light: 0, dark: 0, favicon: 0, appicon: 0 })
+  const logoError = reactive<Record<LogoVariant, string>>({ light: '', dark: '', favicon: '', appicon: '' })
   /** Object-URL preview of an in-flight upload per variant; replaced by the CDN URL once committed. */
-  const localLogoPreview = reactive<Record<LogoVariant, string | null>>({ light: null, dark: null, favicon: null })
+  const localLogoPreview = reactive<Record<LogoVariant, string | null>>({ light: null, dark: null, favicon: null, appicon: null })
   /** Bound directly to v-file-input; cleared after each select. One slot per variant. */
-  const logoFileModel = reactive<Record<LogoVariant, File | File[] | null>>({ light: null, dark: null, favicon: null })
+  const logoFileModel = reactive<Record<LogoVariant, File | File[] | null>>({ light: null, dark: null, favicon: null, appicon: null })
 
-  function draftKeyFor (variant: LogoVariant): 'logoR2Key' | 'logoR2KeyDark' | 'faviconR2Key' {
+  function draftKeyFor (variant: LogoVariant): 'logoR2Key' | 'logoR2KeyDark' | 'faviconR2Key' | 'pwaIconR2Key' {
     if (variant === 'dark') return 'logoR2KeyDark'
     if (variant === 'favicon') return 'faviconR2Key'
+    if (variant === 'appicon') return 'pwaIconR2Key'
     return 'logoR2Key'
   }
 
@@ -550,6 +653,14 @@
   const previewLogoUrlLight = computed(() => previewLogoUrlFor('light'))
   const previewLogoUrlDark = computed(() => previewLogoUrlFor('dark'))
   const previewFaviconUrl = computed(() => previewLogoUrlFor('favicon'))
+  const previewAppIconUrl = computed(() => previewLogoUrlFor('appicon'))
+
+  /**
+   * The own app icon is only ever served on the tenant's custom domain
+   * (subdomains always get the generic badge), so the uploader is enabled
+   * only once a domain is connected. Mirrors the server-side manifest policy.
+   */
+  const appIconEligible = computed(() => tenant.value?.customDomainStatus === 'ACTIVE')
 
   const previewRows = computed(() => [
     { theme: 'light', label: 'Light mode', logoUrl: previewLogoUrlLight.value },
@@ -568,27 +679,44 @@
       // skip the aspect-ratio / minimum-dimension checks on purpose.
       return
     }
+    if (variant === 'appicon') {
+      if (file.type !== 'image/png') {
+        throw new Error('The app icon must be a PNG.')
+      }
+      if (file.size > APPICON_MAX_BYTES) {
+        throw new Error('App icon exceeds 512 KB.')
+      }
+      const dims = await readImageDimensions(file)
+      if (dims.w !== APPICON_SIZE || dims.h !== APPICON_SIZE) {
+        throw new Error(`The app icon must be exactly ${APPICON_SIZE}×${APPICON_SIZE} px (this file is ${dims.w}×${dims.h}).`)
+      }
+      return
+    }
     if (!LOGO_ALLOWED_TYPES.has(file.type)) {
       throw new Error('Only PNG or WebP are allowed.')
     }
     if (file.size > LOGO_MAX_BYTES) {
       throw new Error('File exceeds 512 KB.')
     }
+    const dims = await readImageDimensions(file)
+    if (dims.w < LOGO_MIN_DIMENSION || dims.h < LOGO_MIN_DIMENSION) {
+      throw new Error(`Minimum dimensions: ${LOGO_MIN_DIMENSION}×${LOGO_MIN_DIMENSION} px.`)
+    }
+    const ratio = Math.max(dims.w / dims.h, dims.h / dims.w)
+    if (ratio > LOGO_MAX_RATIO) {
+      throw new Error(`Maximum aspect ratio ${LOGO_MAX_RATIO}:1 (this logo is ${ratio.toFixed(1)}:1).`)
+    }
+  }
+
+  async function readImageDimensions (file: File): Promise<{ w: number, h: number }> {
     const url = URL.createObjectURL(file)
     try {
-      const dims = await new Promise<{ w: number, h: number }>((resolve, reject) => {
+      return await new Promise<{ w: number, h: number }>((resolve, reject) => {
         const img = new Image()
         img.addEventListener('load', () => resolve({ w: img.naturalWidth, h: img.naturalHeight }))
         img.addEventListener('error', () => reject(new Error('Could not read the image.')))
         img.src = url
       })
-      if (dims.w < LOGO_MIN_DIMENSION || dims.h < LOGO_MIN_DIMENSION) {
-        throw new Error(`Minimum dimensions: ${LOGO_MIN_DIMENSION}×${LOGO_MIN_DIMENSION} px.`)
-      }
-      const ratio = Math.max(dims.w / dims.h, dims.h / dims.w)
-      if (ratio > LOGO_MAX_RATIO) {
-        throw new Error(`Maximum aspect ratio ${LOGO_MAX_RATIO}:1 (this logo is ${ratio.toFixed(1)}:1).`)
-      }
     } finally {
       URL.revokeObjectURL(url)
     }
@@ -653,7 +781,7 @@
   }
 
   onUnmounted(() => {
-    for (const variant of ['light', 'dark', 'favicon'] as const) {
+    for (const variant of ['light', 'dark', 'favicon', 'appicon'] as const) {
       const preview = localLogoPreview[variant]
       if (preview) URL.revokeObjectURL(preview)
     }
@@ -668,12 +796,13 @@
     draft.logoR2Key = t.logoR2Key ?? ''
     draft.logoR2KeyDark = t.logoR2KeyDark ?? ''
     draft.faviconR2Key = t.faviconR2Key ?? ''
+    draft.pwaIconR2Key = t.pwaIconR2Key ?? ''
     draft.browserTitle = t.browserTitle ?? ''
     draft.brandText = t.brandText ?? ''
     draft.brandTextHidden = t.brandTextHidden ?? false
     // Drop any local previews — the canonical URL now comes from the
     // freshly-snapshotted draft keys via previewLogoUrlFor().
-    for (const variant of ['light', 'dark', 'favicon'] as const) {
+    for (const variant of ['light', 'dark', 'favicon', 'appicon'] as const) {
       const preview = localLogoPreview[variant]
       if (preview) URL.revokeObjectURL(preview)
       localLogoPreview[variant] = null
@@ -694,6 +823,7 @@
     return draft.logoR2Key !== (tenant.value.logoR2Key ?? '')
       || draft.logoR2KeyDark !== (tenant.value.logoR2KeyDark ?? '')
       || draft.faviconR2Key !== (tenant.value.faviconR2Key ?? '')
+      || draft.pwaIconR2Key !== (tenant.value.pwaIconR2Key ?? '')
       || draft.browserTitle !== (tenant.value.browserTitle ?? '')
       || draft.brandText !== (tenant.value.brandText ?? '')
       || draft.brandTextHidden !== (tenant.value.brandTextHidden ?? false)
@@ -708,6 +838,7 @@
     if (draft.logoR2Key !== (tenant.value.logoR2Key ?? '')) payload.logoR2Key = draft.logoR2Key.trim()
     if (draft.logoR2KeyDark !== (tenant.value.logoR2KeyDark ?? '')) payload.logoR2KeyDark = draft.logoR2KeyDark.trim()
     if (draft.faviconR2Key !== (tenant.value.faviconR2Key ?? '')) payload.faviconR2Key = draft.faviconR2Key.trim()
+    if (draft.pwaIconR2Key !== (tenant.value.pwaIconR2Key ?? '')) payload.pwaIconR2Key = draft.pwaIconR2Key.trim()
     if (draft.browserTitle !== (tenant.value.browserTitle ?? '')) payload.browserTitle = draft.browserTitle.trim()
     // brandText is sent raw (including empty string) so the server can clear
     // the override and fall back to the tenant title automatically.
@@ -815,6 +946,31 @@
 .favicon-thumb {
   width: 48px;
   height: 48px;
+}
+
+/* PWA launcher icon previews: square tile and the rounded (maskable) crop
+ * Android applies, so the admin can judge the safe zone at a glance. */
+.appicon-thumb {
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgb(var(--v-theme-surface));
+}
+
+.appicon-thumb--round {
+  border-radius: 50%;
+}
+
+.appicon-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 /*

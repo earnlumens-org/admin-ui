@@ -27,6 +27,8 @@ export interface TenantSummary {
   logoR2KeyDark: string | null
   /** Optional per-tenant browser favicon. Null = storefront uses the baked-in /favicon.ico. */
   faviconR2Key: string | null
+  /** Optional PWA app icon (512×512 PNG) used in the custom-domain manifest. Null = generic badge icon. */
+  pwaIconR2Key: string | null
   /** Optional browser-tab title override. Null = storefront falls back to title / EARNLUMENS. */
   browserTitle: string | null
   brandText: string | null
@@ -207,6 +209,8 @@ export interface UpdateTenantSettingsPayload {
   logoR2KeyDark?: string
   /** Per-tenant browser favicon R2 key. Empty string clears the value. */
   faviconR2Key?: string
+  /** PWA app icon R2 key (custom-domain manifest). Empty string clears the value. */
+  pwaIconR2Key?: string
   /** Browser-tab title override. Empty string clears the value. */
   browserTitle?: string
   /**
@@ -319,14 +323,15 @@ export interface LogoUploadUrlResponse {
 /**
  * Requests a presigned upload URL for the tenant logo. The caller must own
  * the tenant; the server enforces type (PNG or WebP for logo, +JPEG for the
- * banner variant, +ICO for the favicon variant) and size (≤ 512 KB for
- * logos, ≤ 2 MB for the banner, ≤ 128 KB for the favicon).
+ * banner variant, +ICO for the favicon variant, PNG only for the appicon
+ * variant) and size (≤ 512 KB for logos and the app icon, ≤ 2 MB for the
+ * banner, ≤ 128 KB for the favicon).
  */
 export async function presignTenantLogoUpload (
   tenantId: string,
   contentType: string,
   sizeBytes: number,
-  variant: 'light' | 'dark' | 'banner' | 'favicon' = 'light',
+  variant: 'light' | 'dark' | 'banner' | 'favicon' | 'appicon' = 'light',
 ): Promise<LogoUploadUrlResponse> {
   const res = await fetch(
     `${API_BASE_URL}/api/tenants/me/${encodeURIComponent(tenantId)}/logo/upload-url`,
