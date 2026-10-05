@@ -374,6 +374,18 @@
                 corners. Leave empty to use the generic store badge.
               </div>
 
+              <v-alert
+                class="mb-4"
+                density="compact"
+                type="info"
+                variant="tonal"
+              >
+                The installed app will be named <strong>{{ previewAppName }}</strong>
+                (browser tab title → brand text → tenant name). Set a browser
+                tab title above to change it — the logo-only switch does not
+                affect this name.
+              </v-alert>
+
               <div class="d-flex align-center ga-3 flex-wrap">
                 <div class="appicon-thumb">
                   <img v-if="previewAppIconUrl" alt="App icon preview" :src="previewAppIconUrl">
@@ -661,6 +673,15 @@
    * only once a domain is connected. Mirrors the server-side manifest policy.
    */
   const appIconEligible = computed(() => tenant.value?.customDomainStatus === 'ACTIVE')
+
+  /**
+   * Name of the installable app. Mirrors media-store-api's manifest chain
+   * (browserTitle → brandText → title → subdomain); unlike the AppBar label
+   * it is NOT blanked by the logo-only switch.
+   */
+  const previewAppName = computed(() =>
+    draft.browserTitle.trim() || draft.brandText.trim() || draft.title.trim() || tenant.value?.subdomain || '',
+  )
 
   const previewRows = computed(() => [
     { theme: 'light', label: 'Light mode', logoUrl: previewLogoUrlLight.value },
