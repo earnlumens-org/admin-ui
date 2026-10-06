@@ -381,9 +381,9 @@
                 variant="tonal"
               >
                 The installed app will be named <strong>{{ previewAppName }}</strong>
-                (browser tab title → brand text → tenant name). Set a browser
-                tab title above to change it — the logo-only switch does not
-                affect this name.
+                (browser tab title → brand text → tenant name → your domain).
+                Set a browser tab title above to change it — the logo-only
+                switch does not affect this name.
               </v-alert>
 
               <div class="d-flex align-center ga-3 flex-wrap">
@@ -676,12 +676,25 @@
 
   /**
    * Name of the installable app. Mirrors media-store-api's manifest chain
-   * (browserTitle → brandText → title → subdomain); unlike the AppBar label
-   * it is NOT blanked by the logo-only switch.
+   * (browserTitle → brandText → title → custom-domain brand → subdomain);
+   * a title identical to the slug counts as a placeholder, and the logo-only
+   * switch does NOT blank this name.
    */
-  const previewAppName = computed(() =>
-    draft.browserTitle.trim() || draft.brandText.trim() || draft.title.trim() || tenant.value?.subdomain || '',
-  )
+  const previewAppName = computed(() => {
+    const sub = tenant.value?.subdomain ?? ''
+    const title = draft.title.trim()
+    const realTitle = title && title.toLowerCase() !== sub.toLowerCase() ? title : ''
+    return draft.browserTitle.trim() || draft.brandText.trim() || realTitle || customDomainBrand.value || sub
+  })
+
+  /** `www.udemo.app` ⇒ `udemo`; empty when no ACTIVE custom domain. */
+  const customDomainBrand = computed(() => {
+    if (tenant.value?.customDomainStatus !== 'ACTIVE' || !tenant.value.customDomain) return ''
+    let host = tenant.value.customDomain.toLowerCase()
+    if (host.startsWith('www.')) host = host.slice(4)
+    const labels = host.split('.')
+    return labels.length >= 2 ? labels.at(-2) ?? '' : ''
+  })
 
   const previewRows = computed(() => [
     { theme: 'light', label: 'Light mode', logoUrl: previewLogoUrlLight.value },
