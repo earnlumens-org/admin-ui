@@ -682,9 +682,8 @@
    */
   const previewAppName = computed(() => {
     const sub = tenant.value?.subdomain ?? ''
-    const title = draft.title.trim()
-    const realTitle = title && title.toLowerCase() !== sub.toLowerCase() ? title : ''
-    return draft.browserTitle.trim() || draft.brandText.trim() || realTitle || customDomainBrand.value || sub
+    const unlessSlug = (v: string) => (v.trim() && v.trim().toLowerCase() !== sub.toLowerCase() ? v.trim() : '')
+    return unlessSlug(draft.browserTitle) || unlessSlug(draft.brandText) || unlessSlug(draft.title) || customDomainBrand.value || sub
   })
 
   /** `www.udemo.app` ⇒ `udemo`; empty when no ACTIVE custom domain. */
