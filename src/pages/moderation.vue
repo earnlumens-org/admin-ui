@@ -322,6 +322,13 @@
                       title="Suspend..."
                       @click="openSuspendDialog(entry)"
                     />
+                    <v-list-item
+                      v-if="entry.moderationBlock"
+                      class="text-success"
+                      prepend-icon="mdi-restore"
+                      title="Reinstate (lift block)"
+                      @click="handleReinstate(entry)"
+                    />
                   </v-list>
                 </v-menu>
                 <!-- Locked indicator for AI processing -->
@@ -875,6 +882,16 @@
               >
                 Suspend
               </v-btn>
+              <v-btn
+                v-if="detailEntry.moderationBlock"
+                color="success"
+                :loading="actionLoading"
+                prepend-icon="mdi-restore"
+                variant="flat"
+                @click="handleReinstate(detailEntry)"
+              >
+                Reinstate
+              </v-btn>
             </div>
           </div>
         </template>
@@ -1013,6 +1030,7 @@
     fetchTenantIds,
     type ModerationJobDto,
     type ModerationStats,
+    reinstateEntry,
     rejectEntry,
     type ReportDto,
     type ReportSummary,
@@ -1583,8 +1601,24 @@
     actionLoading.value = true
     try {
       await suspendEntry(selectedTenant.value, actionTarget.value.id, justification.value.trim())
-      showSnackbar('Entry suspended', 'warning')
+      showSnackbar('Content taken down — blocked for everyone; disputes opened for its buyers', 'warning')
       suspendDialog.value = false
+      detailDrawer.value = false
+      loadEntries()
+      refreshBadges()
+    } catch (error: any) {
+      showSnackbar(error.message, 'error')
+    } finally {
+      actionLoading.value = false
+    }
+  }
+
+  /** H3: lifts the moderation block; buyers regain access automatically, disputes stay for the admin. */
+  async function handleReinstate (entry: EntryDto) {
+    actionLoading.value = true
+    try {
+      await reinstateEntry(selectedTenant.value, entry.id)
+      showSnackbar('Content reinstated — access restored', 'success')
       detailDrawer.value = false
       loadEntries()
       refreshBadges()

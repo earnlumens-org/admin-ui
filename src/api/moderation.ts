@@ -45,6 +45,55 @@ export interface EntryDto {
   publishedAt: string | null
   moderationFeedback: string | null
   statusHistory: StatusChangeRecord[]
+  /** H3: non-null ⇒ blocked for everyone until a moderator reinstates it. */
+  moderationBlock?: { caseId: string, reason: string, by: string, at: string } | null
+  blocked?: boolean
+  /** N9: staged edit awaiting moderation; the live fields are the approved ones. */
+  pendingVersion?: PendingVersionDto | null
+  hasPendingVersion?: boolean
+  currentVersion?: number | null
+}
+
+export interface PendingVersionDto {
+  title?: string | null
+  description?: string | null
+  resourceContent?: string | null
+  tags?: string[] | null
+  thumbnailR2Key?: string | null
+  previewR2Key?: string | null
+  changeSummary?: string[]
+  creatorNote?: string | null
+  submittedAt?: string | null
+  moderationJobId?: string | null
+}
+
+export interface ModerationCaseDto {
+  id: string
+  tenantId: string
+  kind: 'TAKEDOWN' | 'PREVENTIVE'
+  entryIds: string[]
+  collectionIds: string[]
+  reason: string
+  actor: string
+  createdAt: string | null
+  resolvedAt: string | null
+  resolution: 'REINSTATED' | 'UPHELD' | null
+}
+
+export interface DisputeDto {
+  id: string
+  moderationCaseId: string
+  entitlementId: string
+  orderId: string | null
+  userId: string
+  entryId: string | null
+  affectedEntryIds: string[]
+  collectionId: string | null
+  reason: string
+  status: 'OPEN' | 'REFUNDED' | 'RESOLVED' | 'DISMISSED'
+  createdAt: string | null
+  resolvedAt: string | null
+  resolvedBy: string | null
 }
 
 export interface StatusChangeRecord {
@@ -187,6 +236,71 @@ export async function suspendEntry (tenantId: string, entryId: string, justifica
     throw new Error(body.error || 'Failed to suspend')
   }
   return res.json()
+}
+
+/** Generic POST helper for the H3/N9 moderation actions (same error contract as above). */
+async function moderationPost<T> (path: string, tenantId: string, body?: Record<string, unknown>, fallback = 'Request failed'): Promise<T> {
+  const params = new URLSearchParams({ tenantId })
+  const res = await fetch(`${API_BASE_URL}/api/moderation/${path}?${params}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: await authHeaders(),
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || fallback)
+  }
+  return res.json()
+}
+
+async function moderationGet<T> (path: string, query: Record<string, string>, fallback = 'Request failed'): Promise<T> {
+  const params = new URLSearchParams(query)
+  const res = await fetch(`${API_BASE_URL}/api/moderation/${path}?${params}`, {
+    credentials: 'include',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || fallback)
+  }
+  return res.json()
+}
+
+/** H3: lifts a moderation block; buyers regain access automatically. */
+export function reinstateEntry (tenantId: string, entryId: string): Promise<EntryDto> {
+  return moderationPost(`entries/${entryId}/reinstate`, tenantId, undefined, 'Failed to reinstate')
+}
+
+/** N9: published entries whose staged edit awaits a human moderator. */
+export function fetchPendingEdits (tenantId: string, page = 0, size = 20): Promise<PageResponse<EntryDto>> {
+  return moderationGet('pending-edits', { tenantId, page: String(page), size: String(size) }, 'Failed to fetch pending edits')
+}
+
+export function approvePendingVersion (tenantId: string, entryId: string): Promise<EntryDto> {
+  return moderationPost(`entries/${entryId}/pending-version/approve`, tenantId, undefined, 'Failed to approve edit')
+}
+
+export function rejectPendingVersion (tenantId: string, entryId: string, justification: string): Promise<EntryDto> {
+  return moderationPost(`entries/${entryId}/pending-version/reject`, tenantId, { justification }, 'Failed to reject edit')
+}
+
+/** D-15: moderation cases (one per blocking action) and their disputes. */
+export function fetchModerationCases (tenantId: string, limit = 100): Promise<ModerationCaseDto[]> {
+  return moderationGet('cases', { tenantId, limit: String(limit) }, 'Failed to fetch cases')
+}
+
+export function fetchCaseDisputes (tenantId: string, caseId: string): Promise<DisputeDto[]> {
+  return moderationGet(`cases/${caseId}/disputes`, { tenantId }, 'Failed to fetch disputes')
+}
+
+/** D-09: administrator resolution. REFUNDED is not available here (needs the refund flow). */
+export function resolveCase (tenantId: string, caseId: string, resolution: 'RESOLVED' | 'DISMISSED'): Promise<{ updated: number }> {
+  return moderationPost(`cases/${caseId}/resolve`, tenantId, { resolution }, 'Failed to resolve case')
+}
+
+export function resolveDispute (tenantId: string, disputeId: string, resolution: 'RESOLVED' | 'DISMISSED'): Promise<{ updated: number }> {
+  return moderationPost(`disputes/${disputeId}/resolve`, tenantId, { resolution }, 'Failed to resolve dispute')
 }
 
 export async function fetchModerationStats (tenantId: string): Promise<ModerationStats> {

@@ -82,6 +82,13 @@
               </template>
             </v-list-item>
             <v-list-item
+              v-if="hasModerationAccess"
+              prepend-icon="mdi-file-document-edit-outline"
+              to="/moderation-edits"
+            >
+              <v-list-item-title>Edits &amp; takedowns</v-list-item-title>
+            </v-list-item>
+            <v-list-item
               v-if="pendingInvitationsCount > 0"
               prepend-icon="mdi-email-outline"
               to="/moderation/invitations"
