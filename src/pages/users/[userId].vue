@@ -207,7 +207,7 @@
             variant="tonal"
           >
             This will apply strike #{{ nextStrikeNumber }} and
-            <b>{{ strikePreview }}</b>.<span v-if="atMaxStrikes"> The strike counter stays at 3 — it does not climb further.</span>
+            <b>{{ strikePreview }}</b>.<span v-if="atMaxStrikes"> The strike counter stays at 2 — it does not climb further and never becomes a permanent ban on its own.</span>
           </v-alert>
           <v-alert
             v-if="dialogMode === 'ban'"
@@ -252,7 +252,33 @@
               type="info"
               variant="tonal"
             >
-              Manual permanent bans are not part of your moderator role. Issue a temporary ban or apply a strike instead — strike #3 still escalates to PERMA automatically.
+              Manual permanent bans are not part of your moderator role. Issue a temporary ban or apply a strike instead — the strike ladder caps at a 30-day block.
+            </v-alert>
+
+            <v-alert
+              v-if="banType === 'PERMA_BAN'"
+              class="mb-3"
+              density="compact"
+              :type="hasPurchases ? 'error' : 'warning'"
+              variant="tonal"
+            >
+              <template v-if="hasPurchases">
+                This user has <b>{{ activePurchases }}</b> active purchase{{ activePurchases === 1 ? '' : 's' }}
+                paid on-chain. A permanent ban removes their access to <b>all</b> of them and there is no refund path.
+              </template>
+              <template v-else>
+                A permanent ban is irreversible for the user without a moderator unblock. This user has no active purchases.
+              </template>
+
+              <v-checkbox
+                v-model="permaBanAcknowledged"
+                class="mt-2"
+                density="compact"
+                hide-details
+                :label="hasPurchases
+                  ? 'I understand this user loses access to content they paid for'
+                  : 'I confirm this permanent ban is deliberate'"
+              />
             </v-alert>
             <v-text-field
               v-if="banType === 'TEMP_BAN'"
@@ -289,7 +315,7 @@
           <v-btn :disabled="acting" variant="text" @click="dialogOpen = false">Cancel</v-btn>
           <v-btn
             :color="dialogColor"
-            :disabled="acting || !formReason.trim()"
+            :disabled="acting || !formReason.trim() || (dialogMode === 'ban' && banType === 'PERMA_BAN' && !permaBanAcknowledged)"
             :loading="acting"
             variant="flat"
             @click="submit"
@@ -343,6 +369,8 @@
   const banType = ref<'TEMP_BAN' | 'PERMA_BAN'>('TEMP_BAN')
   const banDays = ref<number>(7)
   const clearStrikes = ref(false)
+  /** Explicit acknowledgement required before a PERMA_BAN (N3 / L2). */
+  const permaBanAcknowledged = ref(false)
 
   /** True when the moderator is looking at their own profile. The backend
    *  also rejects self-sanctions, but we hide the buttons so the moderator
@@ -360,14 +388,18 @@
     return u.banType === 'PERMA_BAN' || u.banType === 'STRIKE_3'
   })
   /** Strike count is at the top of the ladder. Surfaced in the strike
-   *  preview so the moderator knows the next strike re-applies PERMA. */
-  const atMaxStrikes = computed(() => (detail.value?.user.strikeCount ?? 0) >= 3)
-  /** Display value for the strike chip. The backend now clamps at 3, but
-   *  legacy data may still contain higher counts. */
-  const displayedStrikes = computed(() => Math.min(detail.value?.user.strikeCount ?? 0, 3))
-  /** Strike # the next Apply-strike action will record. Clamped at 3 to
+   *  preview so the moderator knows the next strike is another 30-day ban. */
+  const atMaxStrikes = computed(() => (detail.value?.user.strikeCount ?? 0) >= 2)
+  /** Display value for the strike chip. The backend clamps at 2 since L2
+   *  (the ladder never bans permanently), but legacy data may still contain
+   *  higher counts. */
+  const displayedStrikes = computed(() => Math.min(detail.value?.user.strikeCount ?? 0, 2))
+  /** Strike # the next Apply-strike action will record. Clamped at 2 to
    *  match the backend. */
-  const nextStrikeNumber = computed(() => Math.min((detail.value?.user.strikeCount ?? 0) + 1, 3))
+  const nextStrikeNumber = computed(() => Math.min((detail.value?.user.strikeCount ?? 0) + 1, 2))
+  /** ACTIVE purchases across the platform; a permanent ban confiscates them. */
+  const activePurchases = computed(() => detail.value?.library?.activePurchases ?? 0)
+  const hasPurchases = computed(() => activePurchases.value > 0)
 
   const dialogTitle = computed(() => ({
     warn: 'Issue formal warning',
@@ -386,8 +418,7 @@
   const strikePreview = computed(() => {
     const next = nextStrikeNumber.value
     if (next === 1) return 'block the account for 7 days'
-    if (next === 2) return 'block the account for 30 days'
-    return 'permanently ban the account'
+    return 'block the account for 30 days (the ladder never bans permanently)'
   })
 
   function open (mode: typeof dialogMode.value) {
@@ -399,6 +430,7 @@
     banType.value = 'TEMP_BAN'
     banDays.value = 7
     clearStrikes.value = false
+    permaBanAcknowledged.value = false
     dialogOpen.value = true
   }
 

@@ -58,6 +58,19 @@
       v-model="formValid"
       @submit.prevent="save"
     >
+      <v-alert
+        v-if="payoutUnconfigured"
+        border="start"
+        class="mb-4"
+        type="error"
+        variant="tonal"
+      >
+        <b>Sales are currently refused on your storefront.</b> Your tenant fee is
+        {{ tenant.tenantFeePercent }}% but no payout wallet is configured, so every
+        purchase and tip fails with <code>TENANT_PAYOUT_UNCONFIGURED</code>. Add a
+        funded Stellar wallet below (or set the fee to 0) to resume sales.
+      </v-alert>
+
       <v-row>
         <v-col cols="12" md="6">
           <v-card>
@@ -177,6 +190,14 @@
     if (!tenant.value) return false
     return draft.tenantWallet !== (tenant.value.tenantWallet ?? '')
       || draft.tenantFeePercent !== (tenant.value.tenantFeePercent ?? '')
+  })
+
+  /** Saved state the storefront refuses to sell under (H7): fee > 0, no wallet. */
+  const payoutUnconfigured = computed(() => {
+    const t = tenant.value
+    if (!t) return false
+    const fee = Number(t.tenantFeePercent ?? 0)
+    return Number.isFinite(fee) && fee > 0 && !(t.tenantWallet ?? '').trim()
   })
 
   async function save () {

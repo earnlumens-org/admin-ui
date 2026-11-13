@@ -71,6 +71,16 @@ export interface UserDetailResponse {
     priorSanctions: number
     dismissedReports: number
   }
+  /**
+   * Paid library of the user (ACTIVE entitlements). A permanent ban cuts the
+   * user off from everything they bought, so the UI surfaces this before the
+   * moderator confirms (MYCELIUM-RESILIENCE.md N3 / L2). Absent on older
+   * backends.
+   */
+  library?: {
+    activePurchases: number
+    activePurchasesInTenant: number
+  }
 }
 
 export type UserListFilter = 'blocked' | 'strikes' | 'search'

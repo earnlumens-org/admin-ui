@@ -15,18 +15,20 @@
   >
     <div class="text-subtitle-2 mb-1">How user sanctions work</div>
     <div class="text-body-2 mb-2">
-      We use a 3-strike escalation. Every action below is permanent in the
-      audit log; only an unblock with "clear strikes" resets the count.
+      We use a strike escalation that caps at a 30-day block. Every action
+      below is permanent in the audit log; only an unblock with "clear
+      strikes" resets the count.
     </div>
     <ol class="text-body-2 ml-4" style="list-style: decimal">
       <li><b>Warning</b> — first nudge. No login restriction; the user sees a notice on their Account page.</li>
       <li><b>1st strike</b> — temporary ban for <b>7 days</b>.</li>
-      <li><b>2nd strike</b> — temporary ban for <b>30 days</b>.</li>
-      <li><b>3rd strike</b> — <b>permanent ban</b>. Account cannot log in.</li>
+      <li><b>2nd strike</b> and every further strike — temporary ban for <b>30 days</b>. The ladder <b>never</b> bans permanently on its own.</li>
     </ol>
     <div class="text-body-2 mt-2">
-      Severe violations (CSAM, credible threats, fraud) bypass the ladder and
-      use <b>Ban → Permanent</b> directly.
+      A <b>permanent ban</b> is always an explicit decision (<b>Ban → Permanent</b>)
+      because it removes the user's access to everything they paid for. The
+      confirmation shows their active purchases first. Severe violations
+      (CSAM, credible threats, fraud) go there directly.
     </div>
   </v-alert>
 </template>
